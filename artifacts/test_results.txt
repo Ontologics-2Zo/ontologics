@@ -7,6 +7,10 @@ test_repeated_cells_preserve_package_and_position (tests.test_ingest.IngestTests
 test_source_scoped_models_do_not_merge_same_name_across_revisions (tests.test_ingest.IngestTests) ... ok
 test_uncertain_population_is_never_assumed_populated (tests.test_ingest.IngestTests) ... ok
 test_variant_identity_links_pdf_and_retains_sheet_conflict (tests.test_ingest.IngestTests) ... ok
+test_failed_model_answer_preserves_role_report_and_runtime (tests.test_llm_examples.ExampleChecks) ... ok
+test_malformed_answer_types_fail_without_raising (tests.test_llm_examples.ExampleChecks) ... ok
+test_product_draft_evidence_and_unknown_checks_use_real_common_tools (tests.test_llm_examples.ExampleChecks) ... ok
+test_quality_checks_reject_fabricated_citation_and_changed_time (tests.test_llm_examples.ExampleChecks) ... ok
 test_allowed_field_contract_is_explicit_for_all_node_types (tests.test_model.GraphValidationTests) ... ok
 test_allowed_synthetic_operations_validate (tests.test_model.GraphValidationTests) ... ok
 test_empty_positions_only_allowed_when_explicitly_not_confirmed_populated (tests.test_model.GraphValidationTests) ... ok
@@ -21,6 +25,18 @@ test_semantic_operational_constraints_remain_enforced (tests.test_model.GraphVal
 test_shape_mutations_are_total_across_every_present_field (tests.test_model.GraphValidationTests) ... ok
 test_source_hash_and_path_constraints_remain_enforced (tests.test_model.GraphValidationTests) ... ok
 test_unknown_factual_fields_are_rejected_on_each_supported_type (tests.test_model.GraphValidationTests) ... ok
+test_environment_is_data_not_shell_and_environment_overrides_file (tests.test_openai_provider.ProviderTests) ... ok
+test_fixed_endpoint_configuration_and_no_secret_in_public_metadata (tests.test_openai_provider.ProviderTests) ... ok
+test_http_errors_redacted_and_classified (tests.test_openai_provider.ProviderTests) ... ok
+test_incomplete_response_does_not_release_partial_tool_calls (tests.test_openai_provider.ProviderTests) ... ok
+test_invalid_arguments_duplicate_calls_and_missing_reasoning_state_rejected (tests.test_openai_provider.ProviderTests) ... ok
+test_malformed_content_and_usage_end_in_recorded_safe_failure (tests.test_openai_provider.ProviderTests) ... ok
+test_network_errors_do_not_echo_credentials (tests.test_openai_provider.ProviderTests) ... ok
+test_replays_exact_reasoning_and_original_multiple_call_ids (tests.test_openai_provider.ProviderTests) ... ok
+test_role_specs_never_expose_authority (tests.test_openai_provider.ProviderTests) ... ok
+test_safe_provider_error_code_and_config_persist_in_runtime (tests.test_openai_provider.ProviderTests) ... ok
+test_transient_retry_is_bounded_by_existing_runtime (tests.test_openai_provider.ProviderTests) ... ok
+test_unexposed_tool_and_model_switch_are_rejected (tests.test_openai_provider.ProviderTests) ... ok
 test_configuration_rejects_unbounded_retry_settings (tests.test_runtime.RuntimeTests) ... ok
 test_fixed_model_tool_sequence_and_persistent_private_trace (tests.test_runtime.RuntimeTests) ... ok
 test_input_and_context_limits_prevent_further_provider_calls (tests.test_runtime.RuntimeTests) ... ok
@@ -74,6 +90,6 @@ test_unknown_end_is_not_infinity_even_with_coverage (tests.test_temporal.Tempora
 test_unknown_overlap_not_fabricated_as_conflict (tests.test_temporal.TemporalTests) ... ok
 
 ----------------------------------------------------------------------
-Ran 74 tests in 1.100s
+Ran 90 tests in 1.221s
 
 OK

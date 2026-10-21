@@ -60,13 +60,14 @@ class ModelRuntime:
     A killed process may leave a run as running; automatic crash recovery is not
     provided by this small adapter.
     """
-    def __init__(self, service, actor, provider, *, config: ModelConfig):
+    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False):
         if not isinstance(config, ModelConfig) or not callable(provider):
             raise ValueError("A ModelConfig and callable provider are required")
         if service.db.in_transaction:
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
         self.config = config
+        self.capture_tool_trace = bool(capture_tool_trace)
         self._gateway = AgentGateway(service, actor)
         service.db.executescript("""
         CREATE TABLE IF NOT EXISTS runtime_runs(
@@ -169,7 +170,9 @@ class ModelRuntime:
                 if attempt == self.config.max_attempts:
                     raise _Failure(error["code"], "Transient retry budget exhausted", type(exc).__name__) from None
             except Exception as exc:
-                failure = exc if isinstance(exc, _Failure) else _Failure(kind.upper() + "_ERROR", "Callback failed", type(exc).__name__)
+                failure = (exc if isinstance(exc, _Failure) else
+                           _Failure(exc.code, "Provider or common tool reported failure") if isinstance(exc, DomainError) else
+                           _Failure(kind.upper() + "_ERROR", "Callback failed", type(exc).__name__))
                 db.execute("UPDATE runtime_steps SET status=?,tool_run_ids=?,finished_at=?,error=? WHERE id=?",
                            ("failed", _json(self._tool_ids(response) if kind == "tool" else []), self._service.now(), _json(failure.error), sid))
                 raise failure from None
@@ -179,9 +182,13 @@ class ModelRuntime:
         if self._service.db.in_transaction:
             raise ValueError("Runtime cannot run inside a transaction")
         run_id, db = str(uuid.uuid4()), self._service.db
+        config = asdict(self.config)
+        if callable(getattr(self._provider, 'public_config', None)):
+            config['provider'] = self._provider.public_config()
         db.execute("INSERT INTO runtime_runs VALUES(?,?,?,?,?,?,?,?,?,?)",
-                   (run_id, self._actor, self.config.model, _json(asdict(self.config)), "running", self._service.now(), None, None, None, None))
+                   (run_id, self._actor, self.config.model, _json(config), "running", self._service.now(), None, None, None, None))
         status, text, error, steps = "failed", "", None, 0
+        trace = []
         try:
             self._service._require(self._actor, "read")
             history = self._messages(messages)
@@ -198,8 +205,13 @@ class ModelRuntime:
                 history.append({"role": "assistant", "content": response["text"], "tool_calls": response["tool_calls"]})
                 for index, call in enumerate(response["tool_calls"]):
                     args = json.loads(_json(call["arguments"]))
+                    def invoke(name=call['name'], args=args):
+                        result = self._gateway.call(name, json.loads(_json(args)))
+                        if self.capture_tool_trace:
+                            trace.append({'name': name, 'arguments': json.loads(_json(args)), 'result': result})
+                        return result
                     result = self._attempt(run_id, step, "tool", call,
-                        lambda name=call["name"], args=args: self._gateway.call(name, json.loads(_json(args))),
+                        invoke,
                         self._tool_response, call["name"])
                     history.append({"role": "tool", "name": call["name"], "call_index": index, "content": _json(result)})
             else:
@@ -213,5 +225,8 @@ class ModelRuntime:
         db.execute("UPDATE runtime_runs SET status=?,finished_at=?,output_hash=?,error=? WHERE id=?",
                    (status, self._service.now(), _hash(text) if status == "completed" else None, _json(error) if error else None, run_id))
         tool_ids = sorted({tid for row in db.execute("SELECT tool_run_ids FROM runtime_steps WHERE runtime_id=?", (run_id,)) for tid in json.loads(row[0])})
-        return {"ok": status == "completed", "run_id": run_id, "status": status, "text": text,
+        result = {"ok": status == "completed", "run_id": run_id, "status": status, "text": text,
                 "model": self.config.model, "steps": steps, "tool_run_ids": tool_ids, "error": error}
+        if self.capture_tool_trace:
+            result['tool_trace'] = trace
+        return result

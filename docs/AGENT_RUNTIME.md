@@ -24,3 +24,5 @@
 | Supervisor | 요청을 S1/S2와 현재 상태에 연결 → 필요한 역할·도구 선택 → 진행 결과 종합 | 완료·보완 필요·검토 대기·실패 중 하나를 설명하고 불필요한 모델 반복 종료 |
 
 역할별 별도 모델이나 별도 서버가 필요하다는 뜻은 아니다. 동료는 해석·추출·도구 선택·대화·결과 설명을 개발하고 공통 ID·시간·검증·승인 코드를 재구현하지 않는다. 평가 사례는 `tests/`와 `ontologics/demo.py`의 기대 결과를 재사용한다. 현재 계약에 없는 규격 필드·변형·품목 병합이 필요하면 근거와 영향이 있는 공통 변경으로 제안한다.
+
+실모델 시작점은 [examples/llm_agents.py](../examples/llm_agents.py)의 Product/Quality 프롬프트·task builder·평가 함수다. `python3 -m examples.llm_agents --role product` 또는 `--role quality`로 실행한다. 설정과 기대 결과는 [README](../README.md#실제-llm-실행과-동료-개발-시작), 도구 입출력과 근거 연결은 [TOOLS](TOOLS.md#실모델-예제의-입출력)를 따른다. 이 최소 예제의 성공은 위 역할 전체나 S1/S2의 모든 대화·추출 업무가 구현됐다는 뜻이 아니다.

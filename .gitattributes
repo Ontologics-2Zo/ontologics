@@ -1,0 +1,4 @@
+# Preserve downloaded evidence byte-for-byte, including original line endings.
+data/sources/* -text -whitespace
+data/sources/manifest.json text eol=lf whitespace
+docs/reference/* -text

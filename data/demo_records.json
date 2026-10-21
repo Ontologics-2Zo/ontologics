@@ -1,0 +1,30 @@
+{
+  "notice": "All records in this file are fictional demonstration operations, not OLIMEX internal records. No inspection, fault cause, defect rate or operating-time data is asserted.",
+  "authored_at": "2026-10-22T00:10:00+09:00",
+  "initial": {
+    "units": ["U104", "U105", "U106", "U107"],
+    "company": "Demo Assembly Company",
+    "supplier": "Demo Supplier",
+    "lot_code": "L07",
+    "configuration_id": "config:esp32-poe:L:WROOM",
+    "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+    "position": "U4",
+    "installations": [
+      {"id": "mount:U104:U4:1", "unit_id": "unit:U104", "installed_at": "2026-08-20T09:00:00+09:00"},
+      {"id": "mount:U105:U4:1", "unit_id": "unit:U105", "installed_at": "2026-09-05T09:00:00+09:00", "confirmed_until": "2026-09-21T00:00:00+09:00"}
+    ],
+    "coverage": [
+      {"id": "coverage:U107:September", "unit_id": "unit:U107", "start": "2026-09-01T00:00:00+09:00", "end": "2026-09-21T00:00:00+09:00", "complete": true}
+    ],
+    "inventory": [
+      {"id": "movement:L07:receipt", "movement": "receipt", "quantity": 20, "occurred_at": "2026-08-01T09:00:00+09:00"},
+      {"id": "movement:L07:issue", "movement": "issue", "quantity": 2, "occurred_at": "2026-08-19T09:00:00+09:00"}
+    ]
+  },
+  "supplement": {
+    "installation_id": "mount:U104:U4:1",
+    "removed_at": "2026-09-12T09:00:00+09:00",
+    "coverage": {"id": "coverage:U104:September", "unit_id": "unit:U104", "start": "2026-09-01T00:00:00+09:00", "end": "2026-09-21T00:00:00+09:00", "complete": true},
+    "coverage_meaning": "Initial state and all installation/removal records in this range have been checked; no reinstallation of L07. This is a fictional completeness assertion."
+  }
+}

@@ -1,0 +1,663 @@
+<!DOCTYPE html><html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	
+	<title>ESP32-POE - Open Source Hardware Board</title>
+	
+	<meta name="description" content="ESP32-POE IoT development board with 100Mb Ethernet, Power over Ethernet, WiFi, BLE, programmer" />
+	<meta name="author" content="Olimex" />
+	<meta name="generator" content="Olimex Content Management - Open Source Hardware Development Boards" />
+	<meta name="viewport" content="width=device-width, shrink-to-fit=yes" />
+	
+	<link rel="canonical" href="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware" />
+	
+	<meta property="og:title"       content="ESP32-POE - Open Source Hardware Board" />
+	<meta property="og:type"        content="product" />
+	<meta property="og:url"         content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware" />
+	<meta property="og:site_name"   content="Olimex" />
+	<meta property="og:description" content="ESP32-POE IoT development board with 100Mb Ethernet, Power over Ethernet, WiFi, BLE, programmer" />
+	<meta property="fb:admins"      content="100002941920756" />
+										<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/310x230/ESP32-POE-EA-16.jpg" />
+						<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-EA-16.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-EA-IND.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-EA.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-WROVER-POE-EA.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-WROVER-POE.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-WROVER-POEc.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-16.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-IND.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-16-2.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-2.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-IND-2.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-16-3.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-3.jpg" />
+											<meta property="og:image" content="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-IND-3.jpg" />
+				
+		
+	<link rel="icon" sizes="16x16" href="/favicon.ico" />
+	<link rel="icon" sizes="48x48" href="/Olimex-48.png" />
+	<link rel="apple-touch-icon" sizes="48x48" href="/Olimex-48.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="48x48" href="/Olimex-48.png" />
+	
+	<link href="/_layout/css/style.css?1768822273"    rel="stylesheet" type="text/css" />
+	<link href="/_layout/css/layout.css?1667391269"   rel="stylesheet" type="text/css" />
+	<link href="/_layout/css/lightbox.css?1562916260" rel="stylesheet" type="text/css" />
+	
+	<link href="/_layout/css/basket.css?1787202759"   rel="stylesheet" type="text/css" />
+	<link href="/_layout/css/docs.css?1417269094"     rel="stylesheet" type="text/css" />
+	<link href="/_layout/css/print.css?1598247597"    rel="stylesheet" type="text/css" media="print" />
+	<link href="/_layout/css/handheld.css?1566195422" rel="stylesheet" type="text/css" media="only screen and (max-width:1000px)" />
+	<link href="/_layout/css/extra.css?1790325202"    rel="stylesheet" type="text/css" />
+	
+	<script src="/_js/jquery-1.11.3.min.js?1476876218"></script>
+	<script src="/_js/thumbs.js?1560835542"></script>
+	<script src="/_js/lightbox.js?1582637247"></script>
+	<script src="/_js/modal.js?1560835542"></script>
+	<script src="/_js/selection.js?1560835542"></script>
+	<script src="/_js/autocomplete.js?1560835542"></script>
+	<script src="/_js/lib.js?1589894046"></script>
+	<script src="/_js/etc.js?1615801099"></script>
+				
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-01V6MC2TE1"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+	
+	  gtag('config', 'G-01V6MC2TE1');
+	</script>
+
+	<!-- Facebook Pixel Code -->
+	<script>
+		!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+		n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+		n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+		t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+		document,'script','https://connect.facebook.net/en_US/fbevents.js');
+		
+		fbq('init', '1626441684349595');
+		fbq('track', "PageView");
+	</script>
+	<!-- 
+	<noscript>
+		<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1626441684349595&ev=PageView&noscript=1"/>
+	</noscript>
+	 -->
+	<!-- End Facebook Pixel Code -->
+
+		</head>
+
+<body id="page">
+
+<div id="extra">
+	</div>
+
+<script>$('#extra').width('10px');</script>
+
+<div class="tile-top">
+<div class="tile-bottom">
+	<div id="main">
+		<!--header -->
+		<div id="header" class="navigation no-snow">
+			<div class="container">
+				<div class="left">
+									<a href="/" title="www.olimex.com"><img alt="www.olimex.com" src="/_layout/images/logo.png" width="240" height="65" /></a>
+								</div>
+				
+								
+				<div class="right">
+											<div id="account">
+	<div class="navigation">
+					<a href="/how-to-order">
+				How to order?			</a>
+			</div>
+	<a href="/basket" id="summary" class="cart" title="Shopping Cart">
+		<span>0 item(s). 0.00 EUR</span>
+	</a>
+</div>
+																<form id="search-form" action="/" method="post">
+	<a class="icon"></a>
+	<div>
+		<input type="text" name="context" id="context" class="input search" /> 
+		<button id="search" type="submit">Search</button>
+	</div>
+</form>
+									</div>
+			</div>
+				
+<div class="menu"><a class="icon">≡</a>
+	<div>
+	<div class="container">
+		<a href="/">NEWS</a>
+		<a href="/Products">PRODUCTS</a>
+		<a href="/PCB">PCB</a>
+		<a href="/forum">FORUM</a>
+		<a href="/wiki">WIKI</a>
+		<a href="/Projects">PROJECTS</a>
+	</div>
+	</div>
+</div>
+		</div>
+		<!--header end-->
+		
+		<div id="content">
+			<div class="container"><a class="icon">≡</a>
+				<div class="col-1 navigation">
+															
+<div id="navigation" class="container">
+	<h2>Products</h2>
+	<ul >
+		<li><a href="/Products/OLinuXino/open-source-hardware">OLinuXino - Industrial Linux SBC</a></li>
+		<li><a href="/Products/SOM/">System On Module</a></li>
+		<li><a href="/Products/SOM204/">SOM204</a></li>
+		<li><a href="/Products/IoT/">Internet of Things</a>	<ul >
+		<li><a href="/Products/IoT/ESP32-P4/">ESP32-P4</a></li>
+		<li><a href="/Products/IoT/ESP32-C5/">ESP32-C5</a></li>
+		<li><a href="/Products/IoT/ESP32-C6/">ESP32-C6</a></li>
+		<li><a href="/Products/IoT/ESP32-C3/">ESP32-C3</a></li>
+		<li><a href="/Products/IoT/ESP32-S2/">ESP32-S2</a></li>
+		<li><a href="/Products/IoT/ESP32-S3/">ESP32-S3</a></li>
+		<li><a href="/Products/IoT/ESP32-H2/">ESP32-H2</a></li>
+		<li><a href="/Products/IoT/ESP32/">ESP32</a></li>
+		<li><a href="/Products/IoT/ESP8266/">ESP8266</a></li>
+		<li><a href="/Products/IoT/LoRa/">LoRa</a></li>
+		<li><a href="/Products/IoT/NB-IoT/">NB-IoT</a></li>
+		<li><a href="/Products/IoT/LTE/">LTE</a></li>
+		<li><a href="/Products/IoT/Programmer/">Programmer</a></li>
+	</ul>
+</li>
+		<li><a href="/Products/MicroPython/">MicroPython</a></li>
+		<li><a href="/Products/Retro-Computers/">Retro Computers</a></li>
+		<li><a href="/Products/RaspberryPi/">RaspberryPi</a></li>
+		<li><a href="/Products/Elecrow/">Elecrow</a></li>
+		<li><a href="/Products/FPGA/">FPGA</a></li>
+		<li><a href="/Products/RISC-V/">RISC-V</a></li>
+		<li><a href="/Products/Robot-CNC-Parts/">Robot &amp; CNC parts</a></li>
+		<li><a href="/Products/EEG/">EEG</a></li>
+		<li><a href="/Products/DIY-Laptop/">DIY Laptop</a></li>
+		<li><a href="/Products/Soldering-Kits/">Soldering Kits</a></li>
+		<li><a href="/Products/Duino/open-source-hardware">Duino</a></li>
+		<li><a href="/Products/ARM/">ARM</a></li>
+		<li><a href="/Products/AVR/">AVR</a></li>
+		<li><a href="/Products/MAXQ/">MAXQ</a></li>
+		<li><a href="/Products/MSP430/">MSP430</a></li>
+		<li><a href="/Products/PIC/">PIC</a></li>
+		<li><a href="/Products/DSP/">DSP</a></li>
+		<li><a href="/Products/Power-Supply/">Power Supply</a></li>
+		<li><a href="/Products/Modules/">UEXT Modules</a></li>
+		<li><a href="/Products/USB-Modules/">USB Modules</a></li>
+		<li><a href="/Products/Breadboarding/">Breadboarding</a></li>
+		<li><a href="/Products/Components/">Components</a></li>
+		<li><a href="/Products/Tools/">Tools</a></li>
+		<li><a href="/Products/Swag/">Swag</a></li>
+		<li><a href="/Products/Retired/">Retired</a></li>
+	</ul>
+ 
+</div>
+<a href="/prices" class="blue">Products Price List</a>
+														</div>
+				<div class="col-2">
+					<div class="breadcrumb">
+							
+		<div id="fb-root"></div>
+	<div class="social">
+		<a href="https://twitter.com/share" class="twitter-share-button" data-url="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware" data-text="Is checking out ESP32-POE - Open Source Hardware Board">Tweet</a>
+		<div class="fb-like" data-href="https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware" data-send="false" data-layout="button_count" data-show-faces="false" data-action="like"></div>
+	</div>
+
+	<!-- Facebook Like button. -->
+	<script>
+		(function(d, s, id) {
+			var js, fjs = d.getElementsByTagName(s)[0];
+			if (d.getElementById(id)) return;
+			js = d.createElement(s); js.id = id;
+			js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
+			fjs.parentNode.insertBefore(js, fjs);
+		}(document, 'script', 'facebook-jssdk'));
+	</script>
+	
+	<!-- Tweet button. -->
+	<script>
+		(function(d,s,id){
+			var js,fjs=d.getElementsByTagName(s)[0];
+			if(!d.getElementById(id)){
+				js=d.createElement(s);
+				js.id=id;
+				js.src="//platform.twitter.com/widgets.js";
+				fjs.parentNode.insertBefore(js,fjs);
+			}
+		}(document,"script","twitter-wjs"));
+	</script>
+		
+	<!-- Breadcrumb -->
+	<ul id="breadcrumb" itemscope="itemscope" itemtype="http://schema.org/BreadcrumbList">
+					<li itemprop="itemListElement" itemscope="itemscope" itemtype="http://schema.org/ListItem">
+				<a href="/Products/" itemprop="item">
+					<span itemprop="name">Products</span>
+					<span class="meta" itemprop="position">1</span>
+				</a>
+			</li>
+						<li itemprop="itemListElement" itemscope="itemscope" itemtype="http://schema.org/ListItem">
+				<a href="/Products/IoT/" itemprop="item">
+					<span itemprop="name">Internet of Things</span>
+					<span class="meta" itemprop="position">2</span>
+				</a>
+			</li>
+						<li itemprop="itemListElement" itemscope="itemscope" itemtype="http://schema.org/ListItem">
+				<a href="/Products/IoT/ESP32/" itemprop="item">
+					<span itemprop="name">ESP32</span>
+					<span class="meta" itemprop="position">3</span>
+				</a>
+			</li>
+						<li itemprop="itemListElement" itemscope="itemscope" itemtype="http://schema.org/ListItem">
+				<a href="/Products/IoT/ESP32/ESP32-POE/open-source-hardware" itemprop="item">
+					<span itemprop="name">ESP32-POE</span>
+					<span class="meta" itemprop="position">4</span>
+				</a>
+			</li>
+				</ul>
+					</div>
+					<div class="box">
+						<div class="tile-top">
+						<div class="tile-right">
+						<div class="tile-left">
+						<div class="corner-bottom-right">
+						<div class="corner-bottom-left">
+						<div class="corner-top-right">
+						<div class="corner-top-left">							<div class="container" id="content-container" itemscope="itemscope" itemtype="http://schema.org/Product">
+									<h1 id="title">
+	<span itemprop="name">ESP32-POE</span><span class="meta" itemprop="mpn" content="MPN9251"></span><span class="meta" itemprop="gtin" content="4260696351671"></span>			<a title="Open Source Hardware" href="http://freedomdefined.org/OSHW" target="_blank" class="OSHW">&nbsp;</a>	
+				<button id="product_change_notification">
+			<svg width="120" height="30" xmlns="http://www.w3.org/2000/svg">
+			  <text text-anchor="middle" font-family="Arial, sans-serif" font-size="11" y="12" x="40" fill="#909090">Product Change</text>
+			  <text text-anchor="middle" font-family="Arial, sans-serif" font-size="11" y="25" x="40" fill="#909090">Notification</text>
+			  <rect height="20" width="30" y="5" x="85" rx="3" ry="3" stroke-width="1.5" fill="#2bb6d1"/>
+			  <path stroke="#ffffff" d="m 83,4 l 17,13 l 17,-13 l -34,0 z" fill-opacity="null" stroke-opacity="null" stroke-width="2" fill="none" />
+			  <circle  stroke="#ffffff" r="5.5" cy="5" cx="115" stroke-width="2.5" fill="#ea337c"/>
+			</svg>
+		</button>
+	</h1>
+	<div class="block">
+		
+
+<div id="images" class="col images">
+				<img id="image-34473" itemprop="image" width="310" height="230" alt="ESP32-POE - Open Source Hardware Board" src="/Products/IoT/ESP32/ESP32-POE/images/thumbs/310x230/ESP32-POE.jpg" />
+				<div class="thumb">
+																		<img id="image-34473" alt="ESP32-POE - Open Source Hardware Board" src="/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE.jpg" width="100" height="75" class="active" />
+																							<img id="image-34476" alt="ESP32-POE - Open Source Hardware Board" src="/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-2.jpg" width="100" height="75"  />
+																							<img id="image-34479" alt="ESP32-POE - Open Source Hardware Board" src="/Products/IoT/ESP32/ESP32-POE/images/thumbs/100x75/ESP32-POE-3.jpg" width="100" height="75"  />
+													</div>
+	</div>
+		
+		<div class="col">
+			<span itemprop="description">											<b class="description">ESP32-POE IoT development board with 100Mb Ethernet, Power over Ethernet, WiFi, BLE, programmer</b>		 	</span>
+			<div id="res-12013" class="pricing" itemprop="offers" itemscope="itemscope" itemtype="http://schema.org/Offer">
+<span class="meta" itemprop="url">https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware</span>				<div id="products" class="products">
+			<h4>Select Product Variant</h4>
+						<ul>
+										<li class="product active" id="product-9251">
+										ESP32-POE				</li>
+							<li class="product" id="product-11898">
+										ESP32-POE-16MB				</li>
+							<li class="product" id="product-9990">
+										ESP32-POE-EA				</li>
+							<li class="product" id="product-11903">
+										ESP32-POE-EA-16MB				</li>
+							<li class="product" id="product-10360">
+										ESP32-POE-EA-IND				</li>
+							<li class="product" id="product-10355">
+										ESP32-POE-IND				</li>
+							<li class="product" id="product-11218">
+										ESP32-POE-WROVER				</li>
+							<li class="product" id="product-11285">
+										ESP32-POE-WROVER-EA				</li>
+						</ul>
+		</div>
+		
+
+						<table class="pricing"><tr class="default"><th>Price</th><td><span itemprop="price" content="17.95">17.95</span> <span itemprop="priceCurrency" content="EUR">EUR</span></td></tr><tr itemprop="addOn" itemscope="itemscope" itemtype="http://schema.org/Offer"><th itemprop="eligibleQuantity">10 - 49 pcs</th><td><span itemprop="price" content="16.16">16.16</span> <span itemprop="priceCurrency" content="EUR">EUR</span></td></tr><tr itemprop="addOn" itemscope="itemscope" itemtype="http://schema.org/Offer"><th itemprop="eligibleQuantity">50 - 10000 pcs</th><td><span itemprop="price" content="14.36">14.36</span> <span itemprop="priceCurrency" content="EUR">EUR</span></td></tr></table>						<form action="/" method="post">
+				<input name="item" type="hidden" value="9251" class="addToBasket" />
+																				<b itemprop="availability" content="http://schema.org/InStock">In Stock</b>
+						<br/>										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+																	ESP32-POE is&nbsp;<a href="https://certification.oshwa.org/list.html" target="_blank">OSHW certified</a> Open Source Hardware with UID&nbsp;BG000009		 						</div>
+	</div>
+
+<div class="block">
+												<p>ESP32-PoE is an ESP32-powered WIFI/BLE/Ethernet development board with Power-Over-Ethernet feature. It is the perfect addition to any project that requires connectivity.</p>
+<p>The PoE is currently handled by&nbsp;TPS2375PW chip that is IEEE 802.3-compliant, including pre-standard (legacy) PoE support. The PoE&nbsp;powering requires at least 37V DC to operate successfully.&nbsp;The board takes power from the Ethernet cable and can be expanded with&nbsp;sensors and more.&nbsp;Perfect solution for Internet-of-Things projects.</p>
+<p><strong>Important notice:</strong> ESP32-POE has <strong>no galvano isolation</strong> from Ethernet's power supply, when you program the board via the micro USB connector the Ethernet cable should be disconnected (if you have power over the Ethernet cable)! Consider using Olimex&nbsp;<a href="/Products/USB-Modules/Isolators/USB-ISO/">USB-ISO</a> to protect your computer and board from accidental short circuit (do not use external power for the USB-ISO!). Also consider instead using Olimex ESP32-PoE-ISO board&nbsp;which is insulated.<br /><br />ESP32-POE-EA has ESP32-WROOM-32UE module with U.FL connector and external antenna attached.<br /><br />ESP32-POE-IND and ESP32-POE-EA-IND use industrial grade components suitable for -40+85C operating temperature.<br /><br />ESP32-POE-WROVER comes with&nbsp;ESP32-WROVER-E with 4MB flash and 8MB PSRAM, while ESP32-POE-WROVER-EA uses ESP32-WROVER-IE - notice that WROVER module requires two extra pins for the PSRAM - some software changes related to Ethernet and I2C might be required.</p>		 									<div class="col" >
+				<h4>FEATURES</h4>
+				<ul>
+<li>ESP32 module with WIFI and Bluetooth (exact module depedns on the variant)</li>
+<li>Ethernet 100Mb interface with&nbsp;IEEE 802.3af PoE support</li>
+<li>LiPo battery charger</li>
+<li>LiPo battery connector</li>
+<li>Low power design - down to 200uA in deep sleep</li>
+<li><a href="/Products/Modules/UEXT/">UEXT connector</a></li>
+<li>User button</li>
+<li>Reset button</li>
+<li>Micro USB with programmer for ESP32 programming</li>
+<li>MicroSD card</li>
+<li>Two extension connectors 0.1" step spaced at 1"</li>
+<li>PCB dimensions: (80 x 28)mm ~ (3 x 1)"</li>
+</ul>		 	</div>
+	 	 									<div class="col" >
+				<h4>DOCUMENTS</h4>
+				<ul>
+<li><a href="https://github.com/OLIMEX/ESP32-POE/blob/master/DOCUMENTS/ESP32-POE-user-manual.pdf" target="_blank">ESP32-POE user manual</a></li>
+<li><a href="https://github.com/OLIMEX/ESP32-POE/blob/master/DOCUMENTS/ESP32-POE-PINOUT.png" target="_blank">ESP32-POE pinout cheatsheet</a></li>
+<li><a href="https://github.com/OLIMEX/ESP32-POE/blob/master/HARDWARE/ESP32-PoE-hardware-revision-M1/ESP32-PoE_Rev_M1.pdf" target="_blank">ESP32-POE latest schematic in PDF format<br /><br /></a></li>
+<li class=""><a class="" href="/Products/IoT/ESP32/ESP32-POE/resources/EU-DOC-ESP32-POE.pdf" target="_blank">ESP32-POE European Declaration of Conformity</a></li>
+<li class=""><a class="" href="/Products/IoT/ESP32/ESP32-POE/resources/UKCA-DOC-ESP32-POE.pdf" target="_blank">ESP32-POE UKCA Declaration of Conformity</a></li>
+</ul>		 	</div>
+	 	 									<div class="col" >
+				<h4>HARDWARE</h4>
+				<ul>
+<li><a href="https://github.com/OLIMEX/ESP32-POE" target="_blank">ESP32-POE CAD files on GitHub</a></li>
+</ul>		 	</div>
+	 	 									<div class="col" >
+				<h4>SOFTWARE</h4>
+				<strong>Works with any software that has ESP32 chip support. There is configuraiton for the board in most popular tools like the ESP32 package for Arduino, esphome, Tasmota, etc.<br /><br />Demo software<br /></strong><br />
+<ul>
+<li class=""><a href="https://github.com/OLIMEX/ESP32-POE/tree/master/SOFTWARE">All Arduino IDE and ESP-IDF demos at our GitHub pages</a>
+<ul>
+<li class=""><a href="https://github.com/OLIMEX/ESP32-POE/tree/master/SOFTWARE/ESP-IDF/ESP32_PoE_Ethernet_IDFv4.0">Simple Ethernet demo for ESP-IDF</a></li>
+<li class=""><a href="https://raw.githubusercontent.com/OLIMEX/ESP32-POE/master/SOFTWARE/ARDUINO/ESP32_PoE_Ethernet_SD_Card_Arduino/ESP32_PoE_Ethernet_SD_Card_Arduino.ino">Simple Ethernet and SD card demo for Arduino</a></li>
+<li class=""><a href="https://raw.githubusercontent.com/OLIMEX/ESP32-POE/master/SOFTWARE/ARDUINO/ESP32_PoE_WebServer_Demo/ESP32_PoE_WebServer_Demo.ino">WIFI webserver and UEXT demo for Arduino</a></li>
+<li class=""><a href="https://github.com/OLIMEX/ESP32-POE/tree/master/SOFTWARE/ESP32-PoE_NES-Emu">LCD demo with&nbsp;MOD-LCD2.8RTP<br /></a></li>
+<li class=""><a href="https://github.com/OLIMEX/ESP32-POE/blob/master/SOFTWARE/ARDUINO/ESP32-POE-ISO-eth-wifi-nat/ESP32-POE-ISO-eth-wifi-nat.ino">ESP32-POE NAT ETH-WIFI demo<br /><br /></a></li>
+</ul>
+</li>
+<li><a href="https://github.com/OLIMEX/ESP32-POE/tree/master/SOFTWARE/ESPHOME">ESPHome</a>&nbsp;configs</li>
+<li><a href="https://github.com/OLIMEX/ESP32-POE/tree/master/SOFTWARE/PLATFORMIO">PlatformIO</a>&nbsp;json configs</li>
+<li><a href="https://github.com/OLIMEX/ESP32-POE/tree/master/SOFTWARE/ESPectre">ESPectre motion detector</a><br /><br /></li>
+</ul>
+<strong>USB drivers:</strong>
+<ul>
+<li><a class="" href="/Products/Breadboarding/BB-CH340T/resources/CH341SER.zip" target="_blank">USB driver for Windows</a></li>
+<li><a href="https://github.com/OLIMEX/ch340-dkms">High-speed USB driver for Linux</a></li>
+<li><a href="/Products/Breadboarding/BB-CH340T/resources/CH341SER_LINUX.ZIP">USB driver for Linux (for old kernels; pre-3.14.x)</a></li>
+<li><a class="" href="/Products/Breadboarding/BB-CH340T/resources/CH341SER_MAC.ZIP">USB driver for Mac</a></li>
+<li><a class="" href="/Products/Breadboarding/BB-CH340T/resources/CH341SER_ANDROID.ZIP">USB driver for Android</a></li>
+</ul>		 	</div>
+	 	 	</div>
+
+		
+	<div id="UEXT" class="block line pricing"><div class="thumb left"><a href="/Products/Modules/UEXT/"><img alt="UEXT" src="/Products/Modules/UEXT/images/thumbs/200x150/UEXT.jpg" /></a></div><h3>UEXT Modules</h3>	<ul  class="float">
+		<li><a href="/Products/Modules/Interface/">Interface</a></li>
+		<li><a href="/Products/Modules/Adapters/">Adapters</a></li>
+		<li><a href="/Products/Modules/Sensors/">Sensors</a></li>
+		<li><a href="/Products/Modules/LCD/">LCD</a></li>
+		<li><a href="/Products/Modules/LED/">LED</a></li>
+		<li><a href="/Products/Modules/IO/">IO</a></li>
+		<li><a href="/Products/Modules/Video/">Video</a></li>
+		<li><a href="/Products/Modules/RF/">RF</a></li>
+		<li><a href="/Products/Modules/RFID/">RFID</a></li>
+		<li><a href="/Products/Modules/Ethernet/">Ethernet</a></li>
+		<li><a href="/Products/Modules/Time/">Time</a></li>
+		<li><a href="/Products/Modules/GPS/">GPS</a></li>
+		<li><a href="/Products/Modules/MP3/">MP3</a></li>
+		<li><a href="/Products/Modules/Biofeedback/">Biofeedback</a></li>
+	</ul>
+</div>
+<div id="related" class="block line related">
+		<h3>Related Products - <span>People who bought this product also bought</span></h3>
+	<div id="res-4371" class="pricing left">
+	<div class="thumb">
+		
+									<a href="/Products/Power-Supply/Lipo-battery/BATTERY-LIPO1400mAh/" title="Rechargable LI-PO battery 3.7V 1400mAh with JST connector">
+			<img alt="Rechargable LI-PO battery 3.7V 1400mAh with JST connector" src="/Products/Power-Supply/Lipo-battery/BATTERY-LIPO1400mAh/images/thumbs/200x150/LIPO1400mAh.jpg" width="200" height="150" />
+		</a>
+				<p>Rechargable LI-PO battery 3.7V 1400mAh with JST connector</p>
+	</div>
+		
+			<div class="h4">
+			<a href="/Products/Power-Supply/Lipo-battery/BATTERY-LIPO1400mAh/" title="BATTERY-LIPO1400mAh">BATTERY-LIPO1400mAh</a>
+		</div>
+		
+	
+						<div class="pricing default">5.95 EUR</div><div class="discount"><p><a href="/Products/Power-Supply/Lipo-battery/BATTERY-LIPO1400mAh/">Click here to see quantity discounts</a></p></div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="4032" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-4371" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+<div id="res-34919" class="pricing left">
+	<div class="thumb">
+		
+								<div class="new"> </div>
+						<a href="/Products/IoT/ESP32/BOX-ESP32-POE/" title="PLASTIC BOX FOR ESP32-POE">
+			<img alt="PLASTIC BOX FOR ESP32-POE" src="/Products/IoT/ESP32/BOX-ESP32-POE/images/thumbs/200x150/BOX-ESP32-POE-F-1.jpg" width="200" height="150" />
+		</a>
+				<p>PLASTIC BOX FOR ESP32-POE</p>
+	</div>
+		
+			<div class="products">
+			<ul>
+							<li class="product" id="product-11751">
+					BOX-ESP32-POE				</li>
+							<li class="product" id="product-12304">
+					BOX-ESP32-POE-EA-F				</li>
+							<li class="product active" id="product-11774">
+					BOX-ESP32-POE-F				</li>
+							<li class="product" id="product-13215">
+					BOX-ESP32-POE-WROVER-EA-F				</li>
+						</ul>
+		</div>
+		
+	
+						<div class="pricing default">8.50 EUR</div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="11774" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-34919" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+<div id="res-37696" class="pricing left">
+	<div class="thumb">
+		
+								<div class="new"> </div>
+						<a href="/Products/IoT/ESP32/DIN-CLIP-ESP32-POE/" title="Aluminum clip for DIN rail with Plastic seat for ESP32-POE ESP32-POE2 and ESP32-POE-ISO boards">
+			<img alt="Aluminum clip for DIN rail with Plastic seat for ESP32-POE ESP32-POE2 and ESP32-POE-ISO boards" src="/Products/IoT/ESP32/DIN-CLIP-ESP32-POE/images/thumbs/200x150/DIN-CLIP-ESP32-POE-1.jpg" width="200" height="150" />
+		</a>
+				<p>Aluminum clip for DIN rail with Plastic seat for ESP32-POE ESP32-POE2 and ESP32-POE-ISO boards</p>
+	</div>
+		
+			<div class="products">
+			<ul>
+							<li class="product active" id="product-12694">
+					DIN-CLIP-ESP32-POE				</li>
+							<li class="product" id="product-12697">
+					DIN-CLIP-ESP32-POE-ISO				</li>
+							<li class="product" id="product-12700">
+					DIN-CLIP-ESP32-POE2				</li>
+						</ul>
+		</div>
+		
+	
+						<div class="pricing default">5.95 EUR</div><div class="discount"><p><a href="/Products/IoT/ESP32/DIN-CLIP-ESP32-POE/">Click here to see quantity discounts</a></p></div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="12694" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-37696" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+<div id="res-12265" class="pricing left">
+	<div class="thumb">
+		
+									<a href="/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware" title="ESP32-POE-ISO IoT development board with 100Mb Ethernet, Power over Ethernet, WiFi, BLE, programmer">
+			<img alt="ESP32-POE-ISO IoT development board with 100Mb Ethernet, Power over Ethernet, WiFi, BLE, programmer" src="/Products/IoT/ESP32/ESP32-POE-ISO/images/thumbs/200x150/ESP32-POE-ISO-1.jpg" width="200" height="150" />
+		</a>
+				<p>ESP32-POE-ISO IoT development board with 100Mb Ethernet, Power over Ethernet, WiFi, BLE, programmer</p>
+	</div>
+			<a title="Open Source Hardware" href="http://freedomdefined.org/OSHW" target="_blank" class="OSHW">&nbsp;</a>
+		
+			<div class="products">
+			<ul>
+							<li class="product active" id="product-9821">
+					ESP32-POE-ISO				</li>
+							<li class="product" id="product-11908">
+					ESP32-POE-ISO-16MB				</li>
+							<li class="product" id="product-11976">
+					ESP32-POE-ISO-16MB-IND				</li>
+							<li class="product" id="product-9995">
+					ESP32-POE-ISO-EA				</li>
+							<li class="product" id="product-11913">
+					ESP32-POE-ISO-EA-16MB				</li>
+							<li class="product" id="product-10370">
+					ESP32-POE-ISO-EA-IND				</li>
+							<li class="product" id="product-10365">
+					ESP32-POE-ISO-IND				</li>
+							<li class="product" id="product-11224">
+					ESP32-POE-ISO-WROVER				</li>
+							<li class="product" id="product-11290">
+					ESP32-POE-ISO-WROVER-EA				</li>
+						</ul>
+		</div>
+		
+	
+						<div class="pricing default">24.95 EUR</div><div class="discount"><p><a href="/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware">Click here to see quantity discounts</a></p></div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="9821" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-12265" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+<div id="res-35565" class="pricing left">
+	<div class="thumb">
+		
+								<div class="new"> </div>
+						<a href="/Products/IoT/ESP32/ESP32-POE2/open-source-hardware" title="Power Over Ethernet POE Internet of Things IoT board with ESP32 and 25W power delivery WiFi BLE Wired 100Mb Ethernet">
+			<img alt="Power Over Ethernet POE Internet of Things IoT board with ESP32 and 25W power delivery WiFi BLE Wired 100Mb Ethernet" src="/Products/IoT/ESP32/ESP32-POE2/images/thumbs/200x150/ESP32-POE2-1w.jpg" width="200" height="150" />
+		</a>
+				<p>Power Over Ethernet POE Internet of Things IoT board with ESP32 and 25W power delivery WiFi BLE Wired 100Mb Ethernet</p>
+	</div>
+			<a title="Open Source Hardware" href="http://freedomdefined.org/OSHW" target="_blank" class="OSHW">&nbsp;</a>
+		
+			<div class="h4">
+			<a href="/Products/IoT/ESP32/ESP32-POE2/open-source-hardware" title="ESP32-POE2">ESP32-POE2</a>
+		</div>
+		
+	
+						<div class="pricing default">20.95 EUR</div><div class="discount"><p><a href="/Products/IoT/ESP32/ESP32-POE2/open-source-hardware">Click here to see quantity discounts</a></p></div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="11951" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-35565" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+<div id="res-11372" class="pricing left">
+	<div class="thumb">
+		
+									<a href="/Products/Modules/LCD/MOD-LCD2-8RTP/open-source-hardware" title="MOD-LCD2.8RTP color TFT LCD 320*240 pixels with resistive touch panel and UEXT connector">
+			<img alt="MOD-LCD2.8RTP color TFT LCD 320*240 pixels with resistive touch panel and UEXT connector" src="/Products/Modules/LCD/MOD-LCD2-8RTP/images/thumbs/200x150/LCD-MOD2.8RTP-1.jpg" width="200" height="150" />
+		</a>
+				<p>MOD-LCD2.8RTP color TFT LCD 320*240 pixels with resistive touch panel and UEXT connector</p>
+	</div>
+			<a title="Open Source Hardware" href="http://freedomdefined.org/OSHW" target="_blank" class="OSHW">&nbsp;</a>
+		
+			<div class="h4">
+			<a href="/Products/Modules/LCD/MOD-LCD2-8RTP/open-source-hardware" title="MOD-LCD2.8RTP">MOD-LCD2.8RTP</a>
+		</div>
+		
+	
+						<div class="pricing default">13.00 EUR</div><div class="discount"><p><a href="/Products/Modules/LCD/MOD-LCD2-8RTP/open-source-hardware">Click here to see quantity discounts</a></p></div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="9179" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-11372" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+<div id="res-12123" class="pricing left">
+	<div class="thumb">
+		
+									<a href="/Products/Components/Cables/USB/USB-CABLE-A-MICRO-1.8M/" title="USB 2.0 Type A to MICRO with 1.0 / 1.8 m length">
+			<img alt="USB 2.0 Type A to MICRO with 1.0 / 1.8 m length" src="/Products/Components/Cables/USB/USB-CABLE-A-MICRO-1.8M/images/thumbs/200x150/USB-micro1.jpg" width="200" height="150" />
+		</a>
+				<p>USB 2.0 Type A to MICRO with 1.0 / 1.8 m length</p>
+	</div>
+		
+			<div class="products">
+			<ul>
+							<li class="product" id="product-4457">
+					USB-CABLE-A-MICRO-1.8M				</li>
+							<li class="product active" id="product-12368">
+					USB-CABLE-A-MICRO-1M				</li>
+						</ul>
+		</div>
+		
+	
+						<div class="pricing default">3.00 EUR</div>						<form action="/" method="post">
+				<input name="item" type="hidden" value="12368" class="addToBasket" />
+																				<b >In Stock</b> <span class="right"><br/></span><br/>
+										<input name="quantity" type="text" class="addToBasket" value="1" />
+					<button id="addToBasket-12123" class="addToBasket" type="submit">Add to basket</button>
+							</form>
+						</div>
+</div>
+
+							</div>
+						</div>
+						</div>
+						</div>
+						</div>
+						</div>
+						</div>
+						</div>
+					</div>
+							
+									</div>
+			</div>
+		</div>
+		<!--footer -->
+		<div id="footer" class="navigation">
+			<div class="list">
+				<a class="social twitter"   title="Twitter"   href="http://twitter.com/Olimex"                                     target="_blank">&nbsp;</a>
+				<a class="social wordpress" title="Blog"      href="http://olimex.wordpress.com"                                   target="_blank">&nbsp;</a>
+				<a class="social github"    title="GitHub"    href="https://github.com/OLIMEX"                                     target="_blank">&nbsp;</a>
+				<a class="social youtube"   title="YouTube"   href="http://www.youtube.com/tsvetanusunov"                          target="_blank">&nbsp;</a>
+				<a class="social facebook"  title="Facebook"  href="http://www.facebook.com/pages/Olimex/284513994899126"          target="_blank">&nbsp;</a>
+				<a class="social instagram" title="Instagram" href="https://www.instagram.com/olimexbulgaria/"                     target="_blank">&nbsp;</a>
+				<a class="social mastodon"  title="Mastodon"  href="https://mastodon.social/@olimex"                               target="_blank">&nbsp;</a>
+				<a class="social discord"   title="Discord"   href="https://discord.gg/QQEBXZk7y8"                                 target="_blank">&nbsp;</a>
+				<br />
+				<a href="/About/">About</a> &nbsp;|&nbsp;
+				 
+				<a href="/wiki/GTC">Terms &amp; Conditions</a> &nbsp;|&nbsp; 
+				<a href="/wiki/GTC-FAQ">FAQ</a> &nbsp;|&nbsp; 
+				<a href="mailto:support@olimex.com?subject=Support%20Question">Support</a> &nbsp;|&nbsp;
+				<a href="/Distributors">Distributors</a> &nbsp;|&nbsp;
+				<a href="mailto:info@olimex.com?subject=I%20Have%20a%20Wish">Make a wish</a> &nbsp;|&nbsp;
+				<a href="/wiki/JOBS">Работа</a> &nbsp;|&nbsp;
+				<a href="/wiki/OPIC">ОПИК</a>
+							</div>
+			<div>Olimex &copy; 1997-2026</div>
+			<div>
+				<div class="left">
+					<img src="/_layout/images/cc/VISA.png" alt="VISA" width="36" height="23" />
+					<img src="/_layout/images/cc/VISA-E.png" alt="VISA Electron" width="33" height="23" />
+					<img src="/_layout/images/cc/V-PAY.png" alt="V-Pay" width="21" height="23" />
+					<a href="http://www.mastercard.com/"><img src="/_layout/images/cc/mc_accpt_023_gif.gif" alt="Master Card" width="37" height="23" /></a>
+					<a href="http://www.mastercard.com/"><img src="/_layout/images/cc/me_accpt_023_gif.gif" alt="Master Card Electronic" width="37" height="23" /></a>
+					<a href="http://www.maestrocard.com/internetpurch/"><img src="/_layout/images/cc/ms_accpt_023_gif.gif" alt="Maestro" width="37" height="23" /></a>
+				</div>
+				<div class="right">
+					<img src="/_layout/images/cc/VbV_2c.png" alt="Verified by VISA" width="109" height="56" />
+					<a href="http://www.mastercardbusiness.com/mcbiz/index.jsp?template=/orphans&content=securecodepopup" title="Learn More" target="_blank"><img src="/_layout/images/cc/sclogo_104x56.gif" alt="Master Card Secure Code" width="104" height="56" /></a>
+				</div>
+			</div>
+		</div>
+		<!--footer end-->
+	</div>
+</div>
+</div>
+	
+</body>
+
+</html>

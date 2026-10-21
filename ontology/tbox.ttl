@@ -1,0 +1,27 @@
+@prefix o: <urn:ontologics:> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.1" .
+o:SourceDocument a owl:Class .
+o:Evidence a owl:Class .
+o:ProductModel a owl:Class .
+o:ProductRevision a owl:Class .
+o:Configuration a owl:Class .
+o:ComponentModel a owl:Class .
+o:BOMItem a owl:Class .
+o:ProductUnit a owl:Class .
+o:ComponentLot a owl:Class .
+o:Installation a owl:Class .
+o:HistoryCoverage a owl:Class .
+o:InventoryMovement a owl:Class .
+o:source_id a owl:ObjectProperty ; rdfs:range o:SourceDocument .
+o:model_id a owl:ObjectProperty ; rdfs:range o:ProductModel .
+o:revision_id a owl:ObjectProperty ; rdfs:range o:ProductRevision .
+o:configuration_id a owl:ObjectProperty ; rdfs:range o:Configuration .
+o:component_id a owl:ObjectProperty ; rdfs:range o:ComponentModel .
+o:unit_id a owl:ObjectProperty ; rdfs:range o:ProductUnit .
+o:lot_id a owl:ObjectProperty ; rdfs:range o:ComponentLot .
+o:evidence a owl:ObjectProperty ; rdfs:range o:Evidence .
+o:ProductModel owl:disjointWith o:ProductUnit, o:ComponentModel, o:ComponentLot .
+o:ComponentModel owl:disjointWith o:ComponentLot .
+# Required fields, identity, time and approvals are enforced by Python, not OWL inference.

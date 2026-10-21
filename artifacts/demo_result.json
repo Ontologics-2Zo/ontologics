@@ -1,0 +1,1302 @@
+{
+  "contract_version": "0.1.0",
+  "mode": "development demonstration; scripted human identities, not real operational approval",
+  "source_verification": [
+    {
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "bom_rows": 74,
+      "design_positions": 128,
+      "unknown_population_rows": 11,
+      "checks": [
+        "source_sha256",
+        "exact_header",
+        "positive_integer_quantity",
+        "quantity_equals_position_count",
+        "unique_positions",
+        "PDF_identity_header_and_U6_visual_check"
+      ],
+      "limitations": [
+        "NA/NS/Opened population semantics not confirmed",
+        "ODS sheet metadata conflict retained",
+        "No global component identity or compatibility inferred",
+        "Not every BOM row visually checked against PDF"
+      ]
+    },
+    {
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "bom_rows": 74,
+      "design_positions": 128,
+      "unknown_population_rows": 12,
+      "checks": [
+        "source_sha256",
+        "exact_header",
+        "positive_integer_quantity",
+        "quantity_equals_position_count",
+        "unique_positions",
+        "PDF_identity_header_and_U6_visual_check"
+      ],
+      "limitations": [
+        "NA/NS/Opened population semantics not confirmed",
+        "ODS sheet metadata conflict retained",
+        "No global component identity or compatibility inferred",
+        "Not every BOM row visually checked against PDF"
+      ]
+    }
+  ],
+  "seed_version": 1,
+  "registered_version": 2,
+  "supplemented_version": 3,
+  "registration": {
+    "draft_id": "a7c68301-e0d9-4d3b-b287-e66de1493f14",
+    "version": 1,
+    "status": "approved",
+    "node_count": 150
+  },
+  "registration_review_comparison": {
+    "ok": true,
+    "data": {
+      "left": "config:esp32-poe:L:WROOM",
+      "right": "config:esp32-poe:L1:WROOM",
+      "changes": [
+        {
+          "position": "R50",
+          "before": {
+            "component": "130k/R0402",
+            "population": "populated",
+            "package": "R0402",
+            "raw_value": "130k/R0402",
+            "evidence": [
+              "evidence:olimex-L-wroom:row-21"
+            ],
+            "item_id": "bom:esp32-poe:L:WROOM:row-21"
+          },
+          "after": {
+            "component": "NA(130k/R0402)",
+            "population": "unknown",
+            "package": "R0402",
+            "raw_value": "NA(130k/R0402)",
+            "evidence": [
+              "evidence:olimex-L1-wroom:row-69"
+            ],
+            "item_id": "bom:esp32-poe:L1:WROOM:row-69"
+          }
+        },
+        {
+          "position": "R51",
+          "before": {
+            "component": "10k/R0402",
+            "population": "populated",
+            "package": "R0402",
+            "raw_value": "10k/R0402",
+            "evidence": [
+              "evidence:olimex-L-wroom:row-14"
+            ],
+            "item_id": "bom:esp32-poe:L:WROOM:row-14"
+          },
+          "after": {
+            "component": "NA(10k/R0402)",
+            "population": "unknown",
+            "package": "R0402",
+            "raw_value": "NA(10k/R0402)",
+            "evidence": [
+              "evidence:olimex-L1-wroom:row-73"
+            ],
+            "item_id": "bom:esp32-poe:L1:WROOM:row-73"
+          }
+        },
+        {
+          "position": "R6",
+          "before": {
+            "component": "2.2k/R0402",
+            "population": "populated",
+            "package": "R0402",
+            "raw_value": "2.2k/R0402",
+            "evidence": [
+              "evidence:olimex-L-wroom:row-9"
+            ],
+            "item_id": "bom:esp32-poe:L:WROOM:row-9"
+          },
+          "after": {
+            "component": "10k/R0402",
+            "population": "populated",
+            "package": "R0402",
+            "raw_value": "10k/R0402",
+            "evidence": [
+              "evidence:olimex-L1-wroom:row-14"
+            ],
+            "item_id": "bom:esp32-poe:L1:WROOM:row-14"
+          }
+        },
+        {
+          "position": "U2",
+          "before": {
+            "component": "TPS2376D(SO-8)",
+            "population": "populated",
+            "package": "SOIC-8",
+            "raw_value": "TPS2376D(SO-8)",
+            "evidence": [
+              "evidence:olimex-L-wroom:row-57"
+            ],
+            "item_id": "bom:esp32-poe:L:WROOM:row-57"
+          },
+          "after": {
+            "component": "TPS2375D(SO-8)",
+            "population": "populated",
+            "package": "SOIC-8",
+            "raw_value": "TPS2375D(SO-8)",
+            "evidence": [
+              "evidence:olimex-L1-wroom:row-56"
+            ],
+            "item_id": "bom:esp32-poe:L1:WROOM:row-56"
+          }
+        }
+      ],
+      "is_preview": true,
+      "draft_id": "a7c68301-e0d9-4d3b-b287-e66de1493f14",
+      "draft_version": 1,
+      "comparison_basis": "source descriptions by reference designator; not electrical equivalence"
+    },
+    "evidence": [
+      "evidence:olimex-L-wroom:row-14",
+      "evidence:olimex-L-wroom:row-21",
+      "evidence:olimex-L-wroom:row-57",
+      "evidence:olimex-L-wroom:row-9",
+      "evidence:olimex-L1-wroom:row-14",
+      "evidence:olimex-L1-wroom:row-56",
+      "evidence:olimex-L1-wroom:row-69",
+      "evidence:olimex-L1-wroom:row-73"
+    ],
+    "data_version": 1,
+    "schema_version": "graph-0.1",
+    "rule_version": "temporal-0.1",
+    "contract_version": "0.1.0",
+    "warnings": [
+      {
+        "code": "UNAPPLIED_PREVIEW"
+      }
+    ],
+    "conflicts": [],
+    "errors": [],
+    "run_id": "bc262b36-1a29-4962-a6c9-030581e129f2"
+  },
+  "approval_before_apply": [
+    {
+      "code": "APPROVAL_REQUIRED",
+      "message": "An exact approved draft version is required"
+    }
+  ],
+  "duplicate_registration": [
+    {
+      "code": "NO_CHANGES",
+      "message": "The exact content already exists; reuse the existing registration"
+    }
+  ],
+  "replay": [
+    {
+      "code": "IDEMPOTENT_REPLAY",
+      "original_run_id": "73b77e03-28d1-4b2f-9a27-a5badfe1e9b2"
+    }
+  ],
+  "before": {
+    "A": {
+      "ok": true,
+      "data": {
+        "query": {
+          "mode": "A",
+          "lot_id": "lot:demo:lan8710:L07",
+          "unit_ids": [
+            "unit:U104",
+            "unit:U105",
+            "unit:U106",
+            "unit:U107"
+          ],
+          "at": "2026-09-20T01:00:00Z"
+        },
+        "rule_version": "temporal-0.1",
+        "results": [
+          {
+            "unit_id": "unit:U104",
+            "status": "needs_confirmation",
+            "reasons": [
+              "removal_or_later_installation_state_unknown",
+              "history_scope_incomplete"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [
+              "mount:U104:U4:1"
+            ],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U105",
+            "status": "included",
+            "reasons": [
+              "installation_condition_confirmed",
+              "history_scope_incomplete"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [
+              {
+                "installation_id": "mount:U105:U4:1",
+                "start": "2026-09-05T00:00:00Z",
+                "end": "2026-09-20T15:00:00Z",
+                "end_status": "confirmed_until",
+                "proof": "confirmed_interval"
+              }
+            ],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U106",
+            "status": "needs_confirmation",
+            "reasons": [
+              "history_scope_incomplete"
+            ],
+            "evidence": [],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U107",
+            "status": "excluded",
+            "reasons": [
+              "no_matching_installation_in_complete_history"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": true
+          }
+        ]
+      },
+      "evidence": [
+        "evidence:demo:initial"
+      ],
+      "data_version": 2,
+      "schema_version": "graph-0.1",
+      "rule_version": "temporal-0.1",
+      "contract_version": "0.1.0",
+      "warnings": [],
+      "conflicts": [],
+      "errors": [],
+      "run_id": "9bf53bc0-4640-4ecd-b663-5cb0ed18fe8e"
+    },
+    "B": {
+      "ok": true,
+      "data": {
+        "query": {
+          "mode": "B",
+          "lot_id": "lot:demo:lan8710:L07",
+          "unit_ids": [
+            "unit:U104",
+            "unit:U105",
+            "unit:U106",
+            "unit:U107"
+          ],
+          "start": "2026-08-31T15:00:00Z",
+          "end": "2026-09-20T15:00:00Z",
+          "period_meaning": "installation_overlap"
+        },
+        "rule_version": "temporal-0.1",
+        "results": [
+          {
+            "unit_id": "unit:U104",
+            "status": "needs_confirmation",
+            "reasons": [
+              "removal_or_later_installation_state_unknown",
+              "history_scope_incomplete"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [
+              "mount:U104:U4:1"
+            ],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U105",
+            "status": "included",
+            "reasons": [
+              "installation_condition_confirmed",
+              "history_scope_incomplete"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [
+              {
+                "installation_id": "mount:U105:U4:1",
+                "start": "2026-09-05T00:00:00Z",
+                "end": "2026-09-20T15:00:00Z",
+                "end_status": "confirmed_until",
+                "proof": "confirmed_interval"
+              }
+            ],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U106",
+            "status": "needs_confirmation",
+            "reasons": [
+              "history_scope_incomplete"
+            ],
+            "evidence": [],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U107",
+            "status": "excluded",
+            "reasons": [
+              "no_matching_installation_in_complete_history"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": true
+          }
+        ]
+      },
+      "evidence": [
+        "evidence:demo:initial"
+      ],
+      "data_version": 2,
+      "schema_version": "graph-0.1",
+      "rule_version": "temporal-0.1",
+      "contract_version": "0.1.0",
+      "warnings": [],
+      "conflicts": [],
+      "errors": [],
+      "run_id": "3dd6c835-6956-4510-b4a2-8d1792b4f735"
+    }
+  },
+  "after": {
+    "A": {
+      "ok": true,
+      "data": {
+        "query": {
+          "mode": "A",
+          "lot_id": "lot:demo:lan8710:L07",
+          "unit_ids": [
+            "unit:U104",
+            "unit:U105",
+            "unit:U106",
+            "unit:U107"
+          ],
+          "at": "2026-09-20T01:00:00Z"
+        },
+        "rule_version": "temporal-0.1",
+        "results": [
+          {
+            "unit_id": "unit:U104",
+            "status": "excluded",
+            "reasons": [
+              "no_matching_installation_in_complete_history"
+            ],
+            "evidence": [
+              "evidence:demo:initial",
+              "evidence:demo:supplement"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": true
+          },
+          {
+            "unit_id": "unit:U105",
+            "status": "included",
+            "reasons": [
+              "installation_condition_confirmed",
+              "history_scope_incomplete"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [
+              {
+                "installation_id": "mount:U105:U4:1",
+                "start": "2026-09-05T00:00:00Z",
+                "end": "2026-09-20T15:00:00Z",
+                "end_status": "confirmed_until",
+                "proof": "confirmed_interval"
+              }
+            ],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U106",
+            "status": "needs_confirmation",
+            "reasons": [
+              "history_scope_incomplete"
+            ],
+            "evidence": [],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U107",
+            "status": "excluded",
+            "reasons": [
+              "no_matching_installation_in_complete_history"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": true
+          }
+        ]
+      },
+      "evidence": [
+        "evidence:demo:initial",
+        "evidence:demo:supplement"
+      ],
+      "data_version": 3,
+      "schema_version": "graph-0.1",
+      "rule_version": "temporal-0.1",
+      "contract_version": "0.1.0",
+      "warnings": [],
+      "conflicts": [],
+      "errors": [],
+      "run_id": "56694db0-d0f9-49b1-90ce-abb36f717c49"
+    },
+    "B": {
+      "ok": true,
+      "data": {
+        "query": {
+          "mode": "B",
+          "lot_id": "lot:demo:lan8710:L07",
+          "unit_ids": [
+            "unit:U104",
+            "unit:U105",
+            "unit:U106",
+            "unit:U107"
+          ],
+          "start": "2026-08-31T15:00:00Z",
+          "end": "2026-09-20T15:00:00Z",
+          "period_meaning": "installation_overlap"
+        },
+        "rule_version": "temporal-0.1",
+        "results": [
+          {
+            "unit_id": "unit:U104",
+            "status": "included",
+            "reasons": [
+              "installation_condition_confirmed"
+            ],
+            "evidence": [
+              "evidence:demo:initial",
+              "evidence:demo:supplement"
+            ],
+            "matched_intervals": [
+              {
+                "installation_id": "mount:U104:U4:1",
+                "start": "2026-08-20T00:00:00Z",
+                "end": "2026-09-12T00:00:00Z",
+                "end_status": "removed",
+                "proof": "confirmed_interval"
+              }
+            ],
+            "unresolved_intervals": [],
+            "coverage_complete": true
+          },
+          {
+            "unit_id": "unit:U105",
+            "status": "included",
+            "reasons": [
+              "installation_condition_confirmed",
+              "history_scope_incomplete"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [
+              {
+                "installation_id": "mount:U105:U4:1",
+                "start": "2026-09-05T00:00:00Z",
+                "end": "2026-09-20T15:00:00Z",
+                "end_status": "confirmed_until",
+                "proof": "confirmed_interval"
+              }
+            ],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U106",
+            "status": "needs_confirmation",
+            "reasons": [
+              "history_scope_incomplete"
+            ],
+            "evidence": [],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": false
+          },
+          {
+            "unit_id": "unit:U107",
+            "status": "excluded",
+            "reasons": [
+              "no_matching_installation_in_complete_history"
+            ],
+            "evidence": [
+              "evidence:demo:initial"
+            ],
+            "matched_intervals": [],
+            "unresolved_intervals": [],
+            "coverage_complete": true
+          }
+        ]
+      },
+      "evidence": [
+        "evidence:demo:initial",
+        "evidence:demo:supplement"
+      ],
+      "data_version": 3,
+      "schema_version": "graph-0.1",
+      "rule_version": "temporal-0.1",
+      "contract_version": "0.1.0",
+      "warnings": [],
+      "conflicts": [],
+      "errors": [],
+      "run_id": "2c77d9af-a81f-4b42-9244-f5d6e2a44001"
+    }
+  },
+  "same_condition_comparisons": {
+    "A": {
+      "ok": true,
+      "data": {
+        "query": {
+          "lot_id": "lot:demo:lan8710:L07",
+          "unit_ids": [
+            "unit:U104",
+            "unit:U105",
+            "unit:U106",
+            "unit:U107"
+          ],
+          "mode": "A",
+          "at": "2026-09-20T10:00:00+09:00"
+        },
+        "before_version": 2,
+        "after_version": 3,
+        "before": {
+          "query": {
+            "mode": "A",
+            "lot_id": "lot:demo:lan8710:L07",
+            "unit_ids": [
+              "unit:U104",
+              "unit:U105",
+              "unit:U106",
+              "unit:U107"
+            ],
+            "at": "2026-09-20T01:00:00Z"
+          },
+          "rule_version": "temporal-0.1",
+          "results": [
+            {
+              "unit_id": "unit:U104",
+              "status": "needs_confirmation",
+              "reasons": [
+                "removal_or_later_installation_state_unknown",
+                "history_scope_incomplete"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [
+                "mount:U104:U4:1"
+              ],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U105",
+              "status": "included",
+              "reasons": [
+                "installation_condition_confirmed",
+                "history_scope_incomplete"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [
+                {
+                  "installation_id": "mount:U105:U4:1",
+                  "start": "2026-09-05T00:00:00Z",
+                  "end": "2026-09-20T15:00:00Z",
+                  "end_status": "confirmed_until",
+                  "proof": "confirmed_interval"
+                }
+              ],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U106",
+              "status": "needs_confirmation",
+              "reasons": [
+                "history_scope_incomplete"
+              ],
+              "evidence": [],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U107",
+              "status": "excluded",
+              "reasons": [
+                "no_matching_installation_in_complete_history"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": true
+            }
+          ]
+        },
+        "after": {
+          "query": {
+            "mode": "A",
+            "lot_id": "lot:demo:lan8710:L07",
+            "unit_ids": [
+              "unit:U104",
+              "unit:U105",
+              "unit:U106",
+              "unit:U107"
+            ],
+            "at": "2026-09-20T01:00:00Z"
+          },
+          "rule_version": "temporal-0.1",
+          "results": [
+            {
+              "unit_id": "unit:U104",
+              "status": "excluded",
+              "reasons": [
+                "no_matching_installation_in_complete_history"
+              ],
+              "evidence": [
+                "evidence:demo:initial",
+                "evidence:demo:supplement"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": true
+            },
+            {
+              "unit_id": "unit:U105",
+              "status": "included",
+              "reasons": [
+                "installation_condition_confirmed",
+                "history_scope_incomplete"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [
+                {
+                  "installation_id": "mount:U105:U4:1",
+                  "start": "2026-09-05T00:00:00Z",
+                  "end": "2026-09-20T15:00:00Z",
+                  "end_status": "confirmed_until",
+                  "proof": "confirmed_interval"
+                }
+              ],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U106",
+              "status": "needs_confirmation",
+              "reasons": [
+                "history_scope_incomplete"
+              ],
+              "evidence": [],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U107",
+              "status": "excluded",
+              "reasons": [
+                "no_matching_installation_in_complete_history"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": true
+            }
+          ]
+        },
+        "condition_hash": "b69002027e2070c7ac829712d2e78e771494d81fbbfc06dc2a3840c6a394c690"
+      },
+      "evidence": [
+        "evidence:demo:initial",
+        "evidence:demo:supplement"
+      ],
+      "data_version": 3,
+      "schema_version": "graph-0.1",
+      "rule_version": "temporal-0.1",
+      "contract_version": "0.1.0",
+      "warnings": [],
+      "conflicts": [],
+      "errors": [],
+      "run_id": "5d79239c-bfae-4e4a-9454-097a79a24f17"
+    },
+    "B": {
+      "ok": true,
+      "data": {
+        "query": {
+          "lot_id": "lot:demo:lan8710:L07",
+          "unit_ids": [
+            "unit:U104",
+            "unit:U105",
+            "unit:U106",
+            "unit:U107"
+          ],
+          "mode": "B",
+          "start": "2026-09-01T00:00:00+09:00",
+          "end": "2026-09-21T00:00:00+09:00"
+        },
+        "before_version": 2,
+        "after_version": 3,
+        "before": {
+          "query": {
+            "mode": "B",
+            "lot_id": "lot:demo:lan8710:L07",
+            "unit_ids": [
+              "unit:U104",
+              "unit:U105",
+              "unit:U106",
+              "unit:U107"
+            ],
+            "start": "2026-08-31T15:00:00Z",
+            "end": "2026-09-20T15:00:00Z",
+            "period_meaning": "installation_overlap"
+          },
+          "rule_version": "temporal-0.1",
+          "results": [
+            {
+              "unit_id": "unit:U104",
+              "status": "needs_confirmation",
+              "reasons": [
+                "removal_or_later_installation_state_unknown",
+                "history_scope_incomplete"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [
+                "mount:U104:U4:1"
+              ],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U105",
+              "status": "included",
+              "reasons": [
+                "installation_condition_confirmed",
+                "history_scope_incomplete"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [
+                {
+                  "installation_id": "mount:U105:U4:1",
+                  "start": "2026-09-05T00:00:00Z",
+                  "end": "2026-09-20T15:00:00Z",
+                  "end_status": "confirmed_until",
+                  "proof": "confirmed_interval"
+                }
+              ],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U106",
+              "status": "needs_confirmation",
+              "reasons": [
+                "history_scope_incomplete"
+              ],
+              "evidence": [],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U107",
+              "status": "excluded",
+              "reasons": [
+                "no_matching_installation_in_complete_history"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": true
+            }
+          ]
+        },
+        "after": {
+          "query": {
+            "mode": "B",
+            "lot_id": "lot:demo:lan8710:L07",
+            "unit_ids": [
+              "unit:U104",
+              "unit:U105",
+              "unit:U106",
+              "unit:U107"
+            ],
+            "start": "2026-08-31T15:00:00Z",
+            "end": "2026-09-20T15:00:00Z",
+            "period_meaning": "installation_overlap"
+          },
+          "rule_version": "temporal-0.1",
+          "results": [
+            {
+              "unit_id": "unit:U104",
+              "status": "included",
+              "reasons": [
+                "installation_condition_confirmed"
+              ],
+              "evidence": [
+                "evidence:demo:initial",
+                "evidence:demo:supplement"
+              ],
+              "matched_intervals": [
+                {
+                  "installation_id": "mount:U104:U4:1",
+                  "start": "2026-08-20T00:00:00Z",
+                  "end": "2026-09-12T00:00:00Z",
+                  "end_status": "removed",
+                  "proof": "confirmed_interval"
+                }
+              ],
+              "unresolved_intervals": [],
+              "coverage_complete": true
+            },
+            {
+              "unit_id": "unit:U105",
+              "status": "included",
+              "reasons": [
+                "installation_condition_confirmed",
+                "history_scope_incomplete"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [
+                {
+                  "installation_id": "mount:U105:U4:1",
+                  "start": "2026-09-05T00:00:00Z",
+                  "end": "2026-09-20T15:00:00Z",
+                  "end_status": "confirmed_until",
+                  "proof": "confirmed_interval"
+                }
+              ],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U106",
+              "status": "needs_confirmation",
+              "reasons": [
+                "history_scope_incomplete"
+              ],
+              "evidence": [],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": false
+            },
+            {
+              "unit_id": "unit:U107",
+              "status": "excluded",
+              "reasons": [
+                "no_matching_installation_in_complete_history"
+              ],
+              "evidence": [
+                "evidence:demo:initial"
+              ],
+              "matched_intervals": [],
+              "unresolved_intervals": [],
+              "coverage_complete": true
+            }
+          ]
+        },
+        "condition_hash": "7ba3ef6e6347562eb9c00d55ad85e9a5a63d7aad2313f5b30c73fd7d18d7f908"
+      },
+      "evidence": [
+        "evidence:demo:initial",
+        "evidence:demo:supplement"
+      ],
+      "data_version": 3,
+      "schema_version": "graph-0.1",
+      "rule_version": "temporal-0.1",
+      "contract_version": "0.1.0",
+      "warnings": [],
+      "conflicts": [],
+      "errors": [],
+      "run_id": "5893bea6-4376-4fe2-b93b-cc5c7b0d6b86"
+    }
+  },
+  "configuration_differences": {
+    "left": "config:esp32-poe:L:WROOM",
+    "right": "config:esp32-poe:L1:WROOM",
+    "changes": [
+      {
+        "position": "R50",
+        "before": {
+          "component": "130k/R0402",
+          "population": "populated",
+          "package": "R0402",
+          "raw_value": "130k/R0402",
+          "evidence": [
+            "evidence:olimex-L-wroom:row-21"
+          ],
+          "item_id": "bom:esp32-poe:L:WROOM:row-21"
+        },
+        "after": {
+          "component": "NA(130k/R0402)",
+          "population": "unknown",
+          "package": "R0402",
+          "raw_value": "NA(130k/R0402)",
+          "evidence": [
+            "evidence:olimex-L1-wroom:row-69"
+          ],
+          "item_id": "bom:esp32-poe:L1:WROOM:row-69"
+        }
+      },
+      {
+        "position": "R51",
+        "before": {
+          "component": "10k/R0402",
+          "population": "populated",
+          "package": "R0402",
+          "raw_value": "10k/R0402",
+          "evidence": [
+            "evidence:olimex-L-wroom:row-14"
+          ],
+          "item_id": "bom:esp32-poe:L:WROOM:row-14"
+        },
+        "after": {
+          "component": "NA(10k/R0402)",
+          "population": "unknown",
+          "package": "R0402",
+          "raw_value": "NA(10k/R0402)",
+          "evidence": [
+            "evidence:olimex-L1-wroom:row-73"
+          ],
+          "item_id": "bom:esp32-poe:L1:WROOM:row-73"
+        }
+      },
+      {
+        "position": "R6",
+        "before": {
+          "component": "2.2k/R0402",
+          "population": "populated",
+          "package": "R0402",
+          "raw_value": "2.2k/R0402",
+          "evidence": [
+            "evidence:olimex-L-wroom:row-9"
+          ],
+          "item_id": "bom:esp32-poe:L:WROOM:row-9"
+        },
+        "after": {
+          "component": "10k/R0402",
+          "population": "populated",
+          "package": "R0402",
+          "raw_value": "10k/R0402",
+          "evidence": [
+            "evidence:olimex-L1-wroom:row-14"
+          ],
+          "item_id": "bom:esp32-poe:L1:WROOM:row-14"
+        }
+      },
+      {
+        "position": "U2",
+        "before": {
+          "component": "TPS2376D(SO-8)",
+          "population": "populated",
+          "package": "SOIC-8",
+          "raw_value": "TPS2376D(SO-8)",
+          "evidence": [
+            "evidence:olimex-L-wroom:row-57"
+          ],
+          "item_id": "bom:esp32-poe:L:WROOM:row-57"
+        },
+        "after": {
+          "component": "TPS2375D(SO-8)",
+          "population": "populated",
+          "package": "SOIC-8",
+          "raw_value": "TPS2375D(SO-8)",
+          "evidence": [
+            "evidence:olimex-L1-wroom:row-56"
+          ],
+          "item_id": "bom:esp32-poe:L1:WROOM:row-56"
+        }
+      }
+    ],
+    "is_preview": false,
+    "draft_id": null,
+    "draft_version": null,
+    "comparison_basis": "source descriptions by reference designator; not electrical equivalence"
+  },
+  "audit": [
+    {
+      "id": "aba9aa4d-8908-4175-8716-3cfb0797ddf4",
+      "actor": "seed-admin",
+      "tool": "bootstrap",
+      "request_hash": "11ce940e6384a2cd44ccc6f81cdc09a84891f97459387521844f26302cd360c8",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.085371+00:00",
+      "finished_at": "2026-10-21T15:17:30.091580+00:00",
+      "data_version": 1,
+      "error_code": null
+    },
+    {
+      "id": "e2a0eaad-6f66-4a83-889b-97d12d988dc9",
+      "actor": "product-agent",
+      "tool": "prepare_draft",
+      "request_hash": "4f0fdd901a30b41ea84bf636283c95375988d736027f0b28446a961ffeb03e2a",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.091667+00:00",
+      "finished_at": "2026-10-21T15:17:30.100455+00:00",
+      "data_version": 1,
+      "error_code": null
+    },
+    {
+      "id": "bc262b36-1a29-4962-a6c9-030581e129f2",
+      "actor": "product-agent",
+      "tool": "compare_configurations",
+      "request_hash": "a79b3109bb3d42184e9c082c04f4e1a4754abe1fcdce8e6fd0e3e4506930ed53",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.100503+00:00",
+      "finished_at": "2026-10-21T15:17:30.106985+00:00",
+      "data_version": 1,
+      "error_code": null
+    },
+    {
+      "id": "652c7a58-598a-4985-af65-ef3189e74d38",
+      "actor": "workflow",
+      "tool": "apply",
+      "request_hash": "44f16ad7ec1ca4a7023dec728819cdd8e5568803c484e78af693ba126acd78cb",
+      "status": "failed",
+      "started_at": "2026-10-21T15:17:30.107024+00:00",
+      "finished_at": "2026-10-21T15:17:30.107701+00:00",
+      "data_version": 1,
+      "error_code": "APPROVAL_REQUIRED"
+    },
+    {
+      "id": "7f8f8315-2a62-4d86-856d-d2521e4cb8ac",
+      "actor": "reviewer",
+      "tool": "review",
+      "request_hash": "515ffe05920721c1ed2625fd8d2d318331af9370b8eeda5afaa33941f43e3bd3",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.107736+00:00",
+      "finished_at": "2026-10-21T15:17:30.113929+00:00",
+      "data_version": 1,
+      "error_code": null
+    },
+    {
+      "id": "38689010-74e5-4d61-8d01-2ce6dbd39659",
+      "actor": "workflow",
+      "tool": "apply",
+      "request_hash": "44f16ad7ec1ca4a7023dec728819cdd8e5568803c484e78af693ba126acd78cb",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.113956+00:00",
+      "finished_at": "2026-10-21T15:17:30.120827+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "93b4ee15-4de1-43b7-bdbe-e9dd8677f91f",
+      "actor": "product-agent",
+      "tool": "prepare_draft",
+      "request_hash": "4f0fdd901a30b41ea84bf636283c95375988d736027f0b28446a961ffeb03e2a",
+      "status": "failed",
+      "started_at": "2026-10-21T15:17:30.120927+00:00",
+      "finished_at": "2026-10-21T15:17:30.127500+00:00",
+      "data_version": 2,
+      "error_code": "NO_CHANGES"
+    },
+    {
+      "id": "9bf53bc0-4640-4ecd-b663-5cb0ed18fe8e",
+      "actor": "product-agent",
+      "tool": "investigate",
+      "request_hash": "a25a3c72d52ad4fdec354b34ca72d3673d9bda59cb020bc30fbfc4f023f02131",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.128931+00:00",
+      "finished_at": "2026-10-21T15:17:30.129690+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "3dd6c835-6956-4510-b4a2-8d1792b4f735",
+      "actor": "product-agent",
+      "tool": "investigate",
+      "request_hash": "222b4fb7cc9b8ad7f7dba1ead46d071934ec8d6b6c65f36f252840ffab8469a5",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.129714+00:00",
+      "finished_at": "2026-10-21T15:17:30.130574+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "4bf788aa-3b51-4f4d-a0cd-6f43563540b3",
+      "actor": "product-agent",
+      "tool": "prepare_draft",
+      "request_hash": "4f4660be79a153206f4be07cbd5b27a980d408570093887bdafbfdb7b1f36e00",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.130606+00:00",
+      "finished_at": "2026-10-21T15:17:30.136699+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "778cfd01-4bcc-4525-b539-4731a5c53bcf",
+      "actor": "reviewer",
+      "tool": "review",
+      "request_hash": "e7adade10115f8be00fc9d83ef7f1373ccd9dc69ed549db942e9f9cb08c05f32",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.136759+00:00",
+      "finished_at": "2026-10-21T15:17:30.136907+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "602dee8e-41e3-4e4c-a5c6-9a8b21f9d5ae",
+      "actor": "product-agent",
+      "tool": "prepare_draft",
+      "request_hash": "3e1e45c100ad6b2579e92e0b9ef02d21843d25d4a5eacec79fb5f6abdcbb53f9",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.136927+00:00",
+      "finished_at": "2026-10-21T15:17:30.142993+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "9f1cefab-1d60-4442-bfe7-1db217f68bf9",
+      "actor": "reviewer",
+      "tool": "review",
+      "request_hash": "cfd9481a1210820882e178ec9ed7ed0e4ecb41c7de3925e4c078fee10f497395",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.143026+00:00",
+      "finished_at": "2026-10-21T15:17:30.148741+00:00",
+      "data_version": 2,
+      "error_code": null
+    },
+    {
+      "id": "73b77e03-28d1-4b2f-9a27-a5badfe1e9b2",
+      "actor": "workflow",
+      "tool": "apply",
+      "request_hash": "d83fa5475bdb50aa50dfae19e937588b6f844d55074afc54100ee34bfc0f212e",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.148763+00:00",
+      "finished_at": "2026-10-21T15:17:30.155437+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "fd5ce94c-6405-412e-b29b-5e5c254e5221",
+      "actor": "workflow",
+      "tool": "apply",
+      "request_hash": "d83fa5475bdb50aa50dfae19e937588b6f844d55074afc54100ee34bfc0f212e",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.155468+00:00",
+      "finished_at": "2026-10-21T15:17:30.155498+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "56694db0-d0f9-49b1-90ce-abb36f717c49",
+      "actor": "product-agent",
+      "tool": "investigate",
+      "request_hash": "a25a3c72d52ad4fdec354b34ca72d3673d9bda59cb020bc30fbfc4f023f02131",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.155519+00:00",
+      "finished_at": "2026-10-21T15:17:30.156304+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "2c77d9af-a81f-4b42-9244-f5d6e2a44001",
+      "actor": "product-agent",
+      "tool": "investigate",
+      "request_hash": "222b4fb7cc9b8ad7f7dba1ead46d071934ec8d6b6c65f36f252840ffab8469a5",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.156319+00:00",
+      "finished_at": "2026-10-21T15:17:30.157070+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "5d79239c-bfae-4e4a-9454-097a79a24f17",
+      "actor": "product-agent",
+      "tool": "compare_investigation",
+      "request_hash": "9a2d6a84a330253c3c6cc9e8ce35edeee0c8821ff3daa234892dacfc8481ca1b",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.157126+00:00",
+      "finished_at": "2026-10-21T15:17:30.158670+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "5893bea6-4376-4fe2-b93b-cc5c7b0d6b86",
+      "actor": "product-agent",
+      "tool": "compare_investigation",
+      "request_hash": "01b7e88ed346054f17de473053e742a69546b2381dfdb0946462175fb50e8c9a",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.158697+00:00",
+      "finished_at": "2026-10-21T15:17:30.160202+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "e7ae5f4a-875c-457b-9745-c02d5d4fcc23",
+      "actor": "product-agent",
+      "tool": "compare_configurations",
+      "request_hash": "2288d64af9f962ce241ff2a8a28dc2e05105db1d6d372dbf341c4da5d7aa343f",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.160228+00:00",
+      "finished_at": "2026-10-21T15:17:30.161080+00:00",
+      "data_version": 3,
+      "error_code": null
+    },
+    {
+      "id": "d5894d0f-067f-4ea8-8826-174705690d9e",
+      "actor": "product-agent",
+      "tool": "export_graph",
+      "request_hash": "4d3e8cdf9dba017b8ad5f6a5ad31264b391115a2c3831e52d3260a49deb0574a",
+      "status": "succeeded",
+      "started_at": "2026-10-21T15:17:30.161099+00:00",
+      "finished_at": "2026-10-21T15:17:30.163110+00:00",
+      "data_version": 3,
+      "error_code": null
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import json
 import uuid
 
 from .service import AgentGateway, DomainError
+from .database import in_transaction
 
 
 def _json(value):
@@ -63,24 +64,12 @@ class ModelRuntime:
     def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False):
         if not isinstance(config, ModelConfig) or not callable(provider):
             raise ValueError("A ModelConfig and callable provider are required")
-        if service.db.in_transaction:
+        if in_transaction(service.db):
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
         self.config = config
         self.capture_tool_trace = bool(capture_tool_trace)
         self._gateway = AgentGateway(service, actor)
-        service.db.executescript("""
-        CREATE TABLE IF NOT EXISTS runtime_runs(
-            id TEXT PRIMARY KEY, actor TEXT NOT NULL, model TEXT NOT NULL,
-            config TEXT NOT NULL, status TEXT NOT NULL, started_at TEXT NOT NULL,
-            finished_at TEXT, prompt_hash TEXT, output_hash TEXT, error TEXT);
-        CREATE TABLE IF NOT EXISTS runtime_steps(
-            id TEXT PRIMARY KEY, runtime_id TEXT NOT NULL REFERENCES runtime_runs(id),
-            step INTEGER NOT NULL, kind TEXT NOT NULL, tool_name TEXT,
-            attempt INTEGER NOT NULL, status TEXT NOT NULL, input_hash TEXT NOT NULL,
-            output_hash TEXT, tool_run_ids TEXT NOT NULL, started_at TEXT NOT NULL,
-            finished_at TEXT, error TEXT);
-        """)
 
     def _bounded_json(self, value, limit, code):
         try:
@@ -151,21 +140,21 @@ class ModelRuntime:
         db = self._service.db
         for attempt in range(1, self.config.max_attempts + 1):
             sid, now = str(uuid.uuid4()), self._service.now()
-            db.execute("INSERT INTO runtime_steps VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            db.execute("INSERT INTO runtime_steps(id,runtime_id,step,kind,tool_name,attempt,status,input_hash,output_hash,tool_run_ids,started_at,finished_at,error) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                        (sid, runtime_id, step, kind, tool_name, attempt, "running", _hash(request), None, "[]", now, None, None))
             response = None
             try:
-                # There is deliberately no open SQLite transaction around callbacks.
-                if db.in_transaction:
+                # There is deliberately no open database transaction around callbacks.
+                if in_transaction(db):
                     raise _Failure("TRANSACTION_BOUNDARY", "Callback cannot run inside a transaction")
                 response = invoke()
                 normalized = validate(response)
-                db.execute("UPDATE runtime_steps SET status=?,output_hash=?,tool_run_ids=?,finished_at=? WHERE id=?",
+                db.execute("UPDATE runtime_steps SET status=%s,output_hash=%s,tool_run_ids=%s,finished_at=%s WHERE id=%s",
                            ("completed", _hash(normalized), _json(self._tool_ids(response) if kind == "tool" else []), self._service.now(), sid))
                 return normalized
             except (TimeoutError, ConnectionError) as exc:
                 error = {"code": "TRANSIENT_" + kind.upper() + "_ERROR", "error_type": type(exc).__name__}
-                db.execute("UPDATE runtime_steps SET status=?,finished_at=?,error=? WHERE id=?",
+                db.execute("UPDATE runtime_steps SET status=%s,finished_at=%s,error=%s WHERE id=%s",
                            ("failed", self._service.now(), _json(error), sid))
                 if attempt == self.config.max_attempts:
                     raise _Failure(error["code"], "Transient retry budget exhausted", type(exc).__name__) from None
@@ -173,26 +162,26 @@ class ModelRuntime:
                 failure = (exc if isinstance(exc, _Failure) else
                            _Failure(exc.code, "Provider or common tool reported failure") if isinstance(exc, DomainError) else
                            _Failure(kind.upper() + "_ERROR", "Callback failed", type(exc).__name__))
-                db.execute("UPDATE runtime_steps SET status=?,tool_run_ids=?,finished_at=?,error=? WHERE id=?",
+                db.execute("UPDATE runtime_steps SET status=%s,tool_run_ids=%s,finished_at=%s,error=%s WHERE id=%s",
                            ("failed", _json(self._tool_ids(response) if kind == "tool" else []), self._service.now(), _json(failure.error), sid))
                 raise failure from None
 
     def run(self, messages):
         """Run finite model/tool steps; final text is returned but not persisted."""
-        if self._service.db.in_transaction:
+        if in_transaction(self._service.db):
             raise ValueError("Runtime cannot run inside a transaction")
         run_id, db = str(uuid.uuid4()), self._service.db
         config = asdict(self.config)
         if callable(getattr(self._provider, 'public_config', None)):
             config['provider'] = self._provider.public_config()
-        db.execute("INSERT INTO runtime_runs VALUES(?,?,?,?,?,?,?,?,?,?)",
+        db.execute("INSERT INTO runtime_runs VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                    (run_id, self._actor, self.config.model, _json(config), "running", self._service.now(), None, None, None, None))
         status, text, error, steps = "failed", "", None, 0
         trace = []
         try:
             self._service._require(self._actor, "read")
             history = self._messages(messages)
-            db.execute("UPDATE runtime_runs SET prompt_hash=? WHERE id=?", (_hash(history), run_id))
+            db.execute("UPDATE runtime_runs SET prompt_hash=%s WHERE id=%s", (_hash(history), run_id))
             for step in range(1, self.config.max_steps + 1):
                 steps = step
                 self._bounded_json(history, self.config.max_context_bytes, "CONTEXT_LIMIT")
@@ -222,9 +211,9 @@ class ModelRuntime:
             error = {"code": exc.code, "message": "Bound identity lacks permission"}
         except Exception as exc:
             error = {"code": "RUNTIME_ERROR", "message": "Runtime failed", "error_type": type(exc).__name__}
-        db.execute("UPDATE runtime_runs SET status=?,finished_at=?,output_hash=?,error=? WHERE id=?",
+        db.execute("UPDATE runtime_runs SET status=%s,finished_at=%s,output_hash=%s,error=%s WHERE id=%s",
                    (status, self._service.now(), _hash(text) if status == "completed" else None, _json(error) if error else None, run_id))
-        tool_ids = sorted({tid for row in db.execute("SELECT tool_run_ids FROM runtime_steps WHERE runtime_id=?", (run_id,)) for tid in json.loads(row[0])})
+        tool_ids = sorted({tid for row in db.execute("SELECT tool_run_ids FROM runtime_steps WHERE runtime_id=%s", (run_id,)) for tid in json.loads(row['tool_run_ids'])})
         result = {"ok": status == "completed", "run_id": run_id, "status": status, "text": text,
                 "model": self.config.model, "steps": steps, "tool_run_ids": tool_ids, "error": error}
         if self.capture_tool_trace:

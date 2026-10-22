@@ -2,6 +2,7 @@ import io
 import json
 import tempfile
 import unittest
+from tests.db import database_for_test
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 
@@ -49,6 +50,7 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual('Bearer '+SECRET,req.get_header('Authorization'))
         self.assertEqual(MODEL,payload['model']);self.assertFalse(payload['store'])
         self.assertEqual({'effort':'none'},payload['reasoning'])
+        self.assertFalse(payload['parallel_tool_calls'])
         self.assertEqual(30,timeout)
         self.assertNotIn(SECRET,repr(p.settings)+json.dumps(p.public_config())+json.dumps(p.calls))
 
@@ -136,7 +138,7 @@ class ProviderTests(unittest.TestCase):
 
     def test_safe_provider_error_code_and_config_persist_in_runtime(self):
         p,t=self.provider([HTTPError(ENDPOINT,401,SECRET,{},io.BytesIO(SECRET.encode()))])
-        service=Service(principals={'agent':{'kind':'agent','roles':['read']}})
+        service=Service(database_for_test(self), principals={'agent':{'kind':'agent','roles':['read']}})
         try:
             result=ModelRuntime(service,'agent',p,config=ModelConfig(model=MODEL)).run([{'role':'user','content':'hi'}])
             self.assertEqual('OPENAI_AUTH_FAILED',result['error']['code'])
@@ -148,7 +150,7 @@ class ProviderTests(unittest.TestCase):
 
     def test_transient_retry_is_bounded_by_existing_runtime(self):
         p,t=self.provider([TimeoutError(),response([text()])])
-        service=Service(principals={'agent':{'kind':'agent','roles':['read']}})
+        service=Service(database_for_test(self), principals={'agent':{'kind':'agent','roles':['read']}})
         try:
             result=ModelRuntime(service,'agent',p,config=ModelConfig(model=MODEL)).run([{'role':'user','content':'hi'}])
             self.assertTrue(result['ok']);self.assertEqual(2,len(t.requests))

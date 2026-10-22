@@ -4,6 +4,7 @@ The importer prepares candidate graph nodes. It does not approve or persist them
 ODS cells and source hashes remain the evidence; component keys are source scoped.
 """
 from __future__ import annotations
+from . import __version__
 
 import hashlib
 import json
@@ -170,7 +171,7 @@ def build_catalog(root: str | Path | None = None) -> dict:
             "checks": ["source_sha256", "exact_header", "positive_integer_quantity", "quantity_equals_position_count", "unique_positions", "PDF_identity_header_and_U6_visual_check"],
             "limitations": ["NA/NS/Opened population semantics not confirmed", "ODS sheet metadata conflict retained", "No global component identity or compatibility inferred", "Not every BOM row visually checked against PDF"],
         })
-    return {"contract_version": "0.1.0", "nodes": nodes, "verification": summary}
+    return {"contract_version": __version__, "nodes": nodes, "verification": summary}
 
 
 if __name__ == "__main__":

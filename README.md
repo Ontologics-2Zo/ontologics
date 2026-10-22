@@ -1,20 +1,42 @@
-# Ontologics 공통 기반 v0.1.0
+# Ontologics 공통 기반 v0.2.0 — PostgreSQL + pgvector
 
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
 
 ## 시작
 
-Python 3.10 이상에서 저장소 루트를 작업 디렉터리로 사용한다. 다음 오프라인 실행은 외부 패키지·모델 키·DB 서버·MCP 서버가 필요 없다.
+Python 3.10+와 PostgreSQL + pgvector가 필요하다. SQLite·메모리 저장 fallback은 없다. 아래 Compose는 로컬 DB를 편하게 시작하는 방법이며, 이미 pgvector가 설치된 PostgreSQL 서버가 있으면 `DATABASE_URL`만 연결해도 된다. 별도 Agent 서버·MCP는 필요 없다.
 
 ```bash
-python3 -m unittest discover -v
-python3 -m ontologics.demo
-python3 -m examples.agent_tools
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+# 새 환경에서만 복사. 기존 .env.local이 있으면 아래 DB 항목만 추가한다.
+cp -n .env.example .env.local
 ```
 
-첫 명령은 원본·시간·권한·승인·실패·중복·모델 호출부 계약을 검증한다. 두 번째는 **실제 ODS 파싱 → L1 등록안 → 개발용 사람 역할 검토 → 승인 반영 → 조사 → 보완 요청·수정 → 재승인 → 동일 조건 재조회**를 실행한다. 예제의 승인자는 테스트용 신원이며 실제 업무 승인을 받았다는 뜻은 아니다.
+`.env.local`의 `POSTGRES_PASSWORD`와 `DATABASE_URL` 안의 비밀번호를 같은 로컬 값으로 바꾼다. 값은 Git·채팅에 넣지 않는다. 예시의 `replace-local-password`는 배포용 비밀값이 아니다.
 
-기본 DB는 메모리다. 영속 데이터로 확인하려면 새 파일 경로로 `python3 -m ontologics.demo --db /tmp/ontologics-demo.sqlite`를 실행한다. 이미 다른 자료로 초기화한 DB는 다시 시드하지 않는다. 전체 예제 재실행에는 새 경로를 사용하고, 개별 변경의 재시도에는 같은 `request_key`를 사용한다.
+```dotenv
+POSTGRES_PASSWORD=replace-local-password
+DATABASE_URL=postgresql://ontologics:replace-local-password@127.0.0.1:55432/ontologics
+ONTOLOGICS_DB_SCHEMA=ontologics
+```
+
+```bash
+docker compose --env-file .env.local up -d --wait
+python -m unittest discover -v
+python -m ontologics.demo
+python -m examples.cq_check
+python -m examples.agent_tools
+```
+
+테스트·데모·CQ 확인에는 모델 키가 필요 없다. 테스트는 `test_<UUID>` 스키마만 만들고 정리한다. 필요하면 `TEST_DATABASE_URL`로 별도 시험 DB를 지정한다. 전체 테스트는 실제 PostgreSQL을 사용하며 DB가 없을 때 성공으로 건너뛰지 않는다. CI도 같은 pgvector 이미지에서 실행한다.
+
+데모는 **실제 ODS 파싱 → L1 등록 초안 → 개발용 사람 역할 검토 → 승인 반영 → 조사 → 보완 요청·수정 → 재승인 → 같은 조건 재조회**를 실행한다. 승인은 시험용 신원으로 실행되며 실제 운영 승인 이력이 아니다.
+
+데모와 CQ 명령은 매번 새 `demo_<UUID>` 스키마를 만들고 이름을 출력한다. 특정 실행을 보존하려면 `python -m ontologics.demo --schema demo_team_001`처럼 아직 비어 있는 이름을 지정한다. 공통 앱은 `Service(principals=...)`로 환경의 `ONTOLOGICS_DB_SCHEMA`에 연결한다. `Service(database=DatabaseSettings(...), principals=...)`로 명시할 수도 있다. URI나 비밀번호를 출력·공유하지 않는다.
+
+`docker compose --env-file .env.local stop`은 DB만 정지하고 데이터를 보존한다. 데이터는 Git 밖의 Docker named volume에 있다. 기존 SQLite 파일은 삭제하거나 자동 이전하지 않는다. 대표 그래프는 보존된 원본과 기존 승인 데모로 재생성하며, 과거 SQLite 실행 로그·미승인 초안은 새 DB로 복사하지 않는다.
 
 ## 확인할 결과
 
@@ -24,7 +46,7 @@ python3 -m examples.agent_tools
 - U106은 계속 `needs_confirmation`, 충분한 부재 근거가 있는 U107은 `excluded`.
 - 데이터 버전은 1(개발 시드) → 2(L1 승인 등록) → 3(U104 승인 보완).
 
-결과는 `artifacts/demo_result.json`, T-box는 `ontology/tbox.ttl`, 실행 마지막 시점 A-box는 `data/initial_graph.jsonld`에 기록된다. 마지막 파일은 초기 인계용 그래프이며 시나리오 실행 후의 버전 3이다. 실행마다 ID·실행 시각은 달라질 수 있지만 업무 판정은 같다. 원본에서 `data/catalog.json`을 다시 만들려면 `python3 -m ontologics.ingest`를 실행한다.
+일반 실행 결과는 Git에서 제외된 `artifacts/local/demo_result.json`, CQ 결과는 `artifacts/local/cq_postgres.json`에 기록된다. 공유 검증은 [CQ 결과](artifacts/cq_postgres_verification.json)에서 확인한다. T-box와 인계 A-box를 의도적으로 갱신할 때만 `python -m ontologics.demo --export-graph`를 사용한다. 대상은 `ontology/tbox.ttl`과 `data/initial_graph.jsonld`다. 마지막 파일은 초기 인계용 그래프이며 시나리오 실행 후의 버전 3이다. 실행마다 ID·실행 시각은 달라질 수 있지만 업무 판정은 같다. 원본에서 `data/catalog.json`을 다시 만들려면 `python3 -m ontologics.ingest`를 실행한다.
 
 ## 실제 LLM 실행과 동료 개발 시작
 
@@ -45,9 +67,9 @@ python3 -m examples.llm_agents --role product
 python3 -m examples.llm_agents --role quality
 ```
 
-한 명령만 골라 실행하면 된다. 설정 우선순위는 프로세스 환경변수 → 선택한 파일이다. 기본 파일은 `.env.local`, 없으면 `.env`이며 `--env-file 경로`로 지정할 수 있다. 파일은 위 네 항목의 `KEY=value`만 읽고 셸로 실행하지 않는다. 모델명을 다르게 지정하면 명시적으로 실패한다.
+한 명령만 골라 실행하면 된다. 설정 우선순위는 프로세스 환경변수 → `.env.local` → `.env`다. `--env-file 경로`를 쓰면 해당 파일과 프로세스 환경만 사용한다. 모델·DB 설정은 `KEY=value` 데이터로 읽으며 셸로 실행하지 않는다. 모델명을 다르게 지정하면 명시적으로 실패한다.
 
-매 실행은 `artifacts/llm_runs/run-<시각>-<ID>/`에 역할별 새 SQLite와 `report.json`을 남긴다. 보고서에는 모델 호출 상태·토큰 수·실제 도구 입력/출력·최종 답·자동검사·원본 URL/위치가 있다. 키와 HTTP 오류 원문은 기록하지 않는다. 로컬 실행 DB·보고서·환경 파일은 Git에서 제외한다. 재실행은 별개의 시드/업무 예제이며 운영 변경의 자동 재시도가 아니다.
+매 실행은 PostgreSQL에 역할별 새 `llm_<role>_<UUID>` 스키마를 만들고, `artifacts/llm_runs/run-<시각>-<ID>/report.json`에 그 이름과 결과를 남긴다. 보고서에는 모델 호출 상태·토큰 수·실제 도구 입력/출력·최종 답·자동검사·원본 URL/위치가 있다. 키와 HTTP 오류 원문은 기록하지 않는다. 로컬 실행 DB·보고서·환경 파일은 Git에서 제외한다. 재실행은 별개의 시드/업무 예제이며 운영 변경의 자동 재시도가 아니다.
 
 | 실행 | 기대 결과 | 동료가 수정할 위치 |
 | --- | --- | --- |
@@ -57,13 +79,21 @@ python3 -m examples.llm_agents --role quality
 
 Quality 버전 2/3은 **모델 호출 전 호스트가 기존 데모 승인 경로로 준비한 시험 데이터**다. LLM 작성 초안을 자동 승인하는 기능이 아니다. Product 예제는 대표 두 행의 초안 작성까지이며, 전체 S2 등록·보완·승인 흐름은 위 오프라인 데모에서 확인한다.
 
-실제 연결은 역할별 1회, API 응답 총 7회·모델 선택 도구 총 10회로 확인했다. [검증 요약](artifacts/llm_verification.json)에 원문 최종 답·도구 조건·근거와 제한을 보존한다. 자동검사는 조건·상태·근거 ID·미확인 필드·확정 데이터 불변을 검사한다. 자유문은 별도 검토 에이전트가 해당 2개 답만 대조했다. 광범위한 추출·대화·공격 대응 품질 평가는 아니다. Quality 원본 URL/행 위치는 호스트가 인용 ID로 찾아 붙였으며 모델이 PDF 원문을 직접 검토한 결과가 아니다.
+PostgreSQL 전환의 실제 API 결과와 실패·수정 이력은 [검증 요약](artifacts/llm_verification.json)에 기록한다. 자동검사는 조건·상태·근거 ID·미확인 필드·확정 데이터 불변을 검사하며 일반적인 Agent 정확도 점수가 아니다. 모델이 원본 PDF를 직접 검토한 결과도 아니다. 정확한 시각·offset은 task/tool trace를 기준으로 표시한다.
 
-오류가 나면 `report.json`의 `roles[].runtime.error`와 `roles[].provider_calls`를 확인한다. 실행 전 설정 오류는 최상위 `error`에 있다. 키 누락·인증·모델 접근·입력 오류는 즉시 종료하고, timeout·연결 실패·429·5xx만 기존 런타임에서 최대 2회 시도한다. 단계당 최대 4도구·실행당 최대 8모델 단계다. 성공한 초안은 이후 실패해도 미승인 상태로 남는다. 오류 코드·구체적 입출력은 [TOOLS](docs/TOOLS.md#실모델-예제의-입출력)에서 확인한다.
+오류가 나면 `report.json`의 `roles[].runtime.error`와 `roles[].provider_calls`를 확인한다. 실행 전 설정 오류는 최상위 `error`에 있다. 키 누락·인증·모델 접근·입력 오류는 즉시 종료하고, timeout·연결 실패·429·5xx만 기존 런타임에서 최대 2회 시도한다. provider는 `parallel_tool_calls=false`로 한 번에 한 도구를 요청하며, 예제는 최대 12모델 단계다. 공통 런타임의 배치 검증·호출 제한은 유지한다. 성공한 초안은 이후 실패해도 미승인 상태로 남는다. 오류 코드·구체적 입출력은 [TOOLS](docs/TOOLS.md#실모델-예제의-입출력)에서 확인한다.
+
+## pgvector 근거 검색을 연결하는 위치
+
+`ontologics/retrieval.py`의 `EvidenceIndex`는 승인된 데이터 버전의 Evidence·SourceDocument·연결된 사실을 텍스트로 제공하고, 호스트가 만든 임베딩을 PostgreSQL `vector` 열에 저장·검색한다. 모델 이름·차원·내용 해시·데이터 버전을 구분하고 실제/가상 필터와 원본 locator를 반환한다. 원본은 파일로 보존하고, 그래프·초안·승인·실행 기록·벡터의 영속 저장은 PostgreSQL 한 곳에 둔다.
+
+`python -m examples.cq_check`에 실행 가능한 `documents → index → search` 예제가 있다. 이 예제의 3차원 벡터는 SQL 동작을 확인하는 시험값이다. **임베딩 API, 자연어 의미 검색, RAG 답변 품질까지 검증한 것은 아니다.** 동료는 같은 임베딩 모델로 문서와 질문을 벡터화해 이 접점에 연결할 수 있다. LLM에게 벡터를 직접 만들어 내도록 시키지 않는다.
+
+`index`는 호스트의 별도 `index` 권한이며 AgentGateway에 공개하지 않는다. `search`도 호스트 retriever가 신원을 고정해 감싼 뒤 Agent에 연결한다. 기존 Product/Quality 도구 목록은 그대로다. 검색 결과의 `candidate_only=true`는 근거 후보임을 뜻하며, ID 동일성·A/B 판정·승인을 대체하지 않는다. 작은 데이터에 맞춘 정확 검색이며 ANN 성능 최적화는 하지 않았다.
 
 ## 저장소 공유 상태
 
-비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. 2026-10-22에 `main`을 push했고 `origin/main`을 추적한다. 공통 기반 구현 기준 커밋은 `07eddb82a8c15dcde9965c3de4345db2a932605a`, 초기 v0.1.0 기준은 `2fdc0159c8cf5ba694e5d8bd51136d77b1bc42b4`다. 공유 상태 문서 갱신까지 포함한 커밋은 `git rev-parse HEAD`로 확인한다. 비공개 저장소 접근 권한이 있는 동료가 clone할 수 있다.
+비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. 2026-10-22에 `main`을 push했고 `origin/main`을 추적한다. 공통 기반 구현 기준 커밋은 `07eddb82a8c15dcde9965c3de4345db2a932605a`, 초기 v0.1.0 기준은 `2fdc0159c8cf5ba694e5d8bd51136d77b1bc42b4`다. PostgreSQL 전환은 `codex/postgresql-pgvector` 브랜치의 PR로 제공한다. 검토·병합 전 main은 기존 기준을 유지한다. 사용 중인 기준 커밋은 `git rev-parse HEAD`로 확인한다. 비공개 저장소 접근 권한이 있는 동료가 clone할 수 있다.
 
 ## 개발 기준
 

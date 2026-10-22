@@ -63,7 +63,7 @@ Quality 버전 2/3은 **모델 호출 전 호스트가 기존 데모 승인 경�
 
 ## 저장소 공유 상태
 
-현재 **로컬 전용이며 동료에게 push된 저장소가 없다**. 브랜치는 `main`, 기존 기준은 태그 `v0.1.0` / 커밋 `2fdc0159c8cf5ba694e5d8bd51136d77b1bc42b4`다. 이번 인계 변경의 정확한 커밋은 `git rev-parse HEAD`로 확인한다. 원격 URL·upstream은 설정되지 않았다. 동료에게 원격 clone 주소를 제공하려면 사용할 원격 저장소를 정하고 이 브랜치를 공유해야 한다.
+비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. 2026-10-22에 `main`을 push했고 `origin/main`을 추적한다. 공통 기반 구현 기준 커밋은 `07eddb82a8c15dcde9965c3de4345db2a932605a`, 초기 v0.1.0 기준은 `2fdc0159c8cf5ba694e5d8bd51136d77b1bc42b4`다. 공유 상태 문서 갱신까지 포함한 커밋은 `git rev-parse HEAD`로 확인한다. 비공개 저장소 접근 권한이 있는 동료가 clone할 수 있다.
 
 ## 개발 기준
 

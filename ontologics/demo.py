@@ -2,6 +2,8 @@
 import argparse
 import hashlib
 import json
+import uuid
+from . import __version__
 from pathlib import Path
 from .ingest import build_catalog
 from .model import ROOT, tbox_turtle
@@ -57,7 +59,7 @@ def must(response):
     if not response['ok']: raise RuntimeError(json.dumps(response['errors'], ensure_ascii=False))
     return response
 
-def run_demo(db_path=':memory:'):
+def run_demo(database=None, *, schema=None):
     catalog = build_catalog(ROOT)
     nodes = catalog['nodes']
     fictional, supplement = fixture_nodes()
@@ -66,9 +68,11 @@ def run_demo(db_path=':memory:'):
            n.get('configuration_id') == CONFIG_L1 or n['id'].startswith('component:olimex-L1-wroom:')]
     new_ids = {n['id'] for n in new}
     seed = [n for n in nodes if n['id'] not in new_ids] + fictional
-    svc = Service(db_path, principals=PRINCIPALS)
+    svc = Service(database, schema=schema or ('demo_' + uuid.uuid4().hex if database is None else None), principals=PRINCIPALS)
     gateway = AgentGateway(svc, 'product-agent')
     try:
+        if svc._version() != 0:
+            raise ValueError('Demo requires a fresh schema; choose a new --schema')
         seeded = must(svc.bootstrap('seed-admin', seed, request_key='seed-v1'))
         registration = must(gateway.call('prepare_draft', {'operations': [{'op': 'put', 'node': n} for n in new], 'request_key': 'register-L1'}))
         d = registration['data']; did, dv = d['draft_id'], d['draft_version']
@@ -101,7 +105,7 @@ def run_demo(db_path=':memory:'):
         assert after['A']['data']['results'][0]['status'] == 'excluded'
         assert after['B']['data']['results'][0]['status'] == 'included'
         summary = {
-            'contract_version': '0.1.0', 'mode': 'development demonstration; scripted human identities, not real operational approval',
+            'contract_version': __version__, 'database_schema': svc.schema, 'storage': 'postgresql+pgvector', 'mode': 'development demonstration; scripted human identities, not real operational approval',
             'source_verification': catalog['verification'], 'seed_version': seeded['data_version'],
             'registered_version': applied['data_version'], 'supplemented_version': applied2['data_version'],
             'registration': {'draft_id': did, 'version': dv, 'status': reviewed['data']['status'], 'node_count': len(new)},
@@ -115,15 +119,17 @@ def run_demo(db_path=':memory:'):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--db', default=':memory:', help='Must be new/empty; default in-memory')
-    parser.add_argument('--output', default='artifacts/demo_result.json')
+    parser.add_argument('--schema', default=None, help='Fresh PostgreSQL schema; default unique demo_<id>')
+    parser.add_argument('--output', default='artifacts/local/demo_result.json')
+    parser.add_argument('--export-graph', action='store_true', help='Regenerate checked-in T-box/graph explicitly')
     args = parser.parse_args()
-    summary, graph = run_demo(args.db)
+    summary, graph = run_demo(schema=args.schema)
     output = Path(args.output); output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n')
-    (ROOT / 'ontology/tbox.ttl').write_text(tbox_turtle())
-    (ROOT / 'data/initial_graph.jsonld').write_text(json.dumps(graph, ensure_ascii=False, indent=2) + '\n')
-    print(json.dumps({'output': str(output), 'versions': [summary[k] for k in ('seed_version', 'registered_version', 'supplemented_version')],
+    if args.export_graph:
+        (ROOT / 'ontology/tbox.ttl').write_text(tbox_turtle())
+        (ROOT / 'data/initial_graph.jsonld').write_text(json.dumps(graph, ensure_ascii=False, indent=2) + '\n')
+    print(json.dumps({'schema': summary['database_schema'], 'output': str(output), 'versions': [summary[k] for k in ('seed_version', 'registered_version', 'supplemented_version')],
         'U104': {phase: {m: summary[phase][m]['data']['results'][0]['status'] for m in ('A', 'B')} for phase in ('before', 'after')},
         'changed_positions': [c['position'] for c in summary['configuration_differences']['changes']]}, ensure_ascii=False, indent=2))
 

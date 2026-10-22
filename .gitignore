@@ -7,3 +7,10 @@ __pycache__/
 .env.*
 !.env.example
 artifacts/llm_runs/
+
+.idea/
+*.egg-info/
+*.dump
+*.backup
+.pgdata/
+artifacts/local/

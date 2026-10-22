@@ -9,7 +9,7 @@
 - 원본은 `data/sources/`에 무변경 보관하고 해시·원본 위치·라이선스를 유지한다. 정규화 결과만 바꾼다.
 - 새로운 근거는 새 SourceDocument/Evidence ID를 쓴다. 사실 정정은 새 초안·승인·데이터 버전으로 남긴다.
 - 관련 업무 결과 단위로 변경하고 기존 문서를 갱신한다. 근거·시간·권한 검증을 생략하지 않되 문서·도구·프레임워크를 불필요하게 늘리지 않는다.
-- Python 3.10+, 표준 라이브러리로 실행한다. 모델 키·환경 파일·SQLite 실행 DB를 커밋하지 않는다.
+- Python 3.10+, PostgreSQL + pgvector와 psycopg 3를 사용한다. SQLite fallback을 도입하지 않는다. 모델 키·DB 접속 비밀값·환경 파일·DB 덤프·실행 원문을 커밋하지 않는다.
 - 변경 영향에 맞는 `python3 -m unittest tests.test_<영역> -v`와 최종 `python3 -m unittest discover -v`를 실행한다. 계약·시나리오 변경 시 `python3 -m ontologics.demo`와 호출 예제도 확인한다.
 - `model.py`의 SCHEMA가 T-box 생성 기준이다. 계약을 바꾸면 스키마·규칙·문서·대표 데이터·검증과 버전을 함께 검토한다.
 - `PROJECT_STATUS.md`에 완료 근거, 미검증, 다음 행동을 남긴다. 개발 시드·테스트 대역·실제 운영 성공을 구분한다.

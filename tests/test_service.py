@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from tests.db import database_for_test
 
 from ontologics.service import AgentGateway, Service
 
@@ -35,7 +36,7 @@ class ServiceWorkflowTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.temp.name) / 'service.sqlite'
+        self.db_path = database_for_test(self)
         self.service = Service(self.db_path, principals=PRINCIPALS)
         self.seed = self.service.bootstrap('developer', self.seed_nodes, request_key='seed')
         self.assertTrue(self.seed['ok'], self.seed)
@@ -199,7 +200,7 @@ class ServiceWorkflowTests(unittest.TestCase):
     def test_mutations_require_non_null_idempotency_keys(self):
         ops = [{'op': 'put', 'node': n} for n in self.registration_nodes]
         self.error_is(self.service.prepare_draft('author', ops, request_key=None), 'INVALID_REQUEST_KEY')
-        self.assertEqual(0, self.service.db.execute('SELECT COUNT(*) FROM drafts').fetchone()[0])
+        self.assertEqual(0, self.service.db.execute('SELECT COUNT(*) FROM drafts').fetchone()['count'])
         draft = self.draft()
         self.approve(draft)
         result = self.service.apply('reviewer', draft['data']['draft_id'], 1, request_key=None)
@@ -212,7 +213,7 @@ class ServiceWorkflowTests(unittest.TestCase):
         next(n for n in invalid if n['type'] == 'BOMItem')['quantity'] = float('nan')
         result = self.service.prepare_draft('author', [{'op': 'put', 'node': n} for n in invalid], request_key='nan-input')
         self.error_is(result, 'INVALID_INPUT')
-        self.assertEqual(0, self.service.db.execute('SELECT COUNT(*) FROM drafts').fetchone()[0])
+        self.assertEqual(0, self.service.db.execute('SELECT COUNT(*) FROM drafts').fetchone()['count'])
         self.assertEqual(self.seed['data_version'], self.service.lookup('reader')['data_version'])
         self.error_is(self.service.configuration('reader', RIGHT), 'NOT_FOUND')
         audit = self.service.run_history('developer')['data']
@@ -276,14 +277,16 @@ class ServiceWorkflowTests(unittest.TestCase):
     def test_failure_rolls_back_snapshot_and_retry_applies_once(self):
         draft = self.draft()
         self.approve(draft)
-        self.service.db.execute("""CREATE TRIGGER simulate_failure BEFORE UPDATE OF status ON drafts
-            WHEN NEW.status = 'applied' BEGIN SELECT RAISE(ABORT, 'simulated interruption'); END""")
+        self.service.db.execute("""CREATE FUNCTION simulate_failure_fn() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN RAISE EXCEPTION 'simulated interruption'; END; $$;
+            CREATE TRIGGER simulate_failure BEFORE UPDATE OF status ON drafts
+            FOR EACH ROW WHEN (NEW.status = 'applied') EXECUTE FUNCTION simulate_failure_fn()""")
         failed = self.apply(draft)
         self.error_is(failed, 'STORAGE_ERROR')
         self.assertEqual(self.seed['data_version'], self.service.lookup('reader')['data_version'])
         self.assertEqual('approved', self.service.get_draft('reader', draft['data']['draft_id'], 1)['data']['status'])
         self.error_is(self.service.configuration('reader', RIGHT), 'NOT_FOUND')
-        self.service.db.execute('DROP TRIGGER simulate_failure')
+        self.service.db.execute('DROP TRIGGER simulate_failure ON drafts')
         retry = self.apply(draft)
         self.assertTrue(retry['ok'], retry)
         self.assertEqual(self.seed['data_version'] + 1, retry['data_version'])
@@ -354,7 +357,7 @@ class ServiceWorkflowTests(unittest.TestCase):
         from ontologics.demo import fixture_nodes, example_queries
         fictional, supplement = fixture_nodes()
         self.service.close()
-        self.service = Service(':memory:', principals=PRINCIPALS)
+        self.service = Service(database_for_test(self), principals=PRINCIPALS)
         seeded = self.service.bootstrap('developer', self.catalog + fictional, request_key='operating-seed')
         self.assertTrue(seeded['ok'], seeded)
         queries = example_queries()
@@ -397,7 +400,7 @@ class ServiceWorkflowTests(unittest.TestCase):
         installation = next(n for n in fictional if n['type'] == 'Installation' and n['unit_id'] == 'unit:U105')
         installation['conflict'] = True
         self.service.close()
-        self.service = Service(':memory:', principals=PRINCIPALS)
+        self.service = Service(database_for_test(self), principals=PRINCIPALS)
         seeded = self.service.bootstrap('developer', self.catalog + fictional, request_key='conflict-seed')
         self.assertTrue(seeded['ok'], seeded)
         result = self.service.investigate('reader', example_queries()['A'])

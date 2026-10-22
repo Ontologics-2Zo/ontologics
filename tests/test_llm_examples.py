@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from tests.db import database_for_test
 
 from examples.llm_agents import (evaluate_product, evaluate_quality, example_principals,
     quality_task, run_role, setup_product, _json_answer)
@@ -25,7 +26,7 @@ class ExampleChecks(unittest.TestCase):
             def __call__(self,**_):return {'text':'{"answers":null}','tool_calls':[]}
         with tempfile.TemporaryDirectory() as temp:
             report=run_role('product',OpenAISettings('fake-test-key'),Path(temp),
-                provider_factory=lambda *_:InvalidAnswer(),execution_mode='test_double')
+                provider_factory=lambda *_:InvalidAnswer(),execution_mode='test_double',database=database_for_test(self))
         self.assertTrue(report['runtime']['ok'])
         self.assertFalse(report['evaluation']['automatic_pass'])
         self.assertIsNone(report['answer'])
@@ -35,7 +36,7 @@ class ExampleChecks(unittest.TestCase):
 
     def test_product_draft_evidence_and_unknown_checks_use_real_common_tools(self):
         with tempfile.TemporaryDirectory() as temp:
-            service,selected=setup_product(Path(temp)/'product.sqlite')
+            service,selected=setup_product(database_for_test(self))
             try:
                 args={'operations':[{'op':'put','node':n} for n in selected],'request_key':'test-example'}
                 prepared=must(service.prepare_draft('product-agent',**args))
@@ -49,6 +50,12 @@ class ExampleChecks(unittest.TestCase):
                     {'name':'prepare_draft','arguments':args,'result':prepared},
                     {'name':'validate_draft','arguments':validation,'result':checked}]}
                 self.assertTrue(all(evaluate_product(service,selected,result,1)[0].values()))
+                correct_unknowns=copy.deepcopy(answer['unknowns'])
+                known=next(n for n in selected if n['population']=='populated')
+                answer['unknowns'].append({'node_id':known['id'],'field':'population','value':'unknown','reason':'incorrect downgrade'})
+                result['text']=json.dumps(answer)
+                self.assertFalse(evaluate_product(service,selected,result,1)[0]['unknown_population_explicit'])
+                answer['unknowns']=correct_unknowns
                 answer['unknowns']=[];answer['evidence'].append('evidence:invented')
                 result['text']=json.dumps(answer)
                 checks,_=evaluate_product(service,selected,result,1)
@@ -59,7 +66,7 @@ class ExampleChecks(unittest.TestCase):
 
     def test_quality_checks_reject_fabricated_citation_and_changed_time(self):
         with tempfile.TemporaryDirectory() as temp:
-            db=Path(temp)/'quality.sqlite'
+            db=database_for_test(self)
             summary,_=run_demo(db)
             service=Service(db,principals=example_principals())
             try:

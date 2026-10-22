@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from tests.db import database_for_test
+from ontologics.database import in_transaction
 
 from ontologics.runtime import ModelConfig, ModelRuntime
 from ontologics.service import Service
@@ -12,7 +14,7 @@ from ontologics.service import Service
 class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.path = Path(self.temp.name) / "runtime.sqlite"
+        self.path = database_for_test(self)
         self.service = Service(self.path, principals={
             "agent": {"kind": "agent", "roles": ["read", "draft"]},
             "reviewer": {"kind": "human", "roles": ["read", "review", "apply"]},
@@ -27,12 +29,12 @@ class RuntimeTests(unittest.TestCase):
         return ModelRuntime(self.service, "agent", provider, config=ModelConfig(model="fixed-test-model", **config))
 
     def steps(self, result):
-        return [dict(r) for r in self.service.db.execute("SELECT * FROM runtime_steps WHERE runtime_id=? ORDER BY rowid", (result["run_id"],))]
+        return [dict(r) for r in self.service.db.execute("SELECT * FROM runtime_steps WHERE runtime_id=%s ORDER BY sequence", (result["run_id"],))]
 
     def test_fixed_model_tool_sequence_and_persistent_private_trace(self):
         seen = []
         def provider(*, model, messages):
-            self.assertFalse(self.service.db.in_transaction)
+            self.assertFalse(in_transaction(self.service.db))
             seen.append({"model": model, "messages": copy.deepcopy(messages)})
             messages[0]["content"] = "adapter mutation must not escape"
             if len(seen) == 1:
@@ -50,13 +52,13 @@ class RuntimeTests(unittest.TestCase):
         trace = self.steps(result)
         self.assertEqual(["model", "tool", "model"], [x["kind"] for x in trace])
         self.assertTrue(all(x["finished_at"] for x in trace))
-        persisted = dict(self.service.db.execute("SELECT * FROM runtime_runs WHERE id=?", (result["run_id"],)).fetchone())
+        persisted = dict(self.service.db.execute("SELECT * FROM runtime_runs WHERE id=%s", (result["run_id"],)).fetchone())
         self.assertEqual("fixed-test-model", json.loads(persisted["config"])["model"])
         self.assertNotIn("private request 937", json.dumps(persisted))
         self.assertNotIn("No registered products.", json.dumps(persisted))
         self.service.close()
         self.service = Service(self.path, principals={"agent": {"kind": "agent", "roles": ["read", "draft"]}})
-        self.assertEqual("completed", self.service.db.execute("SELECT status FROM runtime_runs WHERE id=?", (result["run_id"],)).fetchone()[0])
+        self.assertEqual("completed", self.service.db.execute("SELECT status FROM runtime_runs WHERE id=%s", (result["run_id"],)).fetchone()['status'])
 
     def test_transient_model_failure_retries_exactly_once(self):
         calls = []
@@ -106,7 +108,7 @@ class RuntimeTests(unittest.TestCase):
                 result = self.runtime(lambda **kw: {"text": "", "tool_calls": [call]}).run(self.messages)
                 self.assertEqual(code, result["error"]["code"])
                 self.assertEqual([], result["tool_run_ids"])
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()[0])
+        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
 
     def test_whole_batch_validation_precedes_any_tool_execution(self):
         response = {"text": "", "tool_calls": [
@@ -115,7 +117,7 @@ class RuntimeTests(unittest.TestCase):
         ]}
         result = self.runtime(lambda **kw: response).run(self.messages)
         self.assertEqual("TOOL_NOT_ALLOWED", result["error"]["code"])
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM runs").fetchone()[0])
+        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM runs").fetchone()['count'])
 
     def test_malformed_oversized_and_model_override_responses_are_rejected(self):
         responses = [
@@ -174,7 +176,7 @@ class RuntimeTests(unittest.TestCase):
         result = self.runtime(provider).run(self.messages)
         self.assertTrue(result["ok"], result)
         self.assertEqual(tool_attempts[0], tool_attempts[1])
-        self.assertEqual(1, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()[0])
+        self.assertEqual(1, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
         self.assertEqual(0, self.service._version())
         self.assertEqual(2, len(result["tool_run_ids"]))
         tool_steps = [x for x in self.steps(result) if x["kind"] == "tool"]

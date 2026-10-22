@@ -59,7 +59,7 @@ class OpenAISettings:
                     if not line or line.startswith('#'): continue
                     name, sep, value = line.partition('=')
                     name, value = name.strip(), value.strip()
-                    if not sep or name not in _ENV_KEYS: raise ValueError()
+                    if not sep or name not in _ENV_KEYS | {'DATABASE_URL', 'ONTOLOGICS_DB_SCHEMA', 'POSTGRES_PASSWORD', 'POSTGRES_PORT', 'TEST_DATABASE_URL'}: raise ValueError()
                     if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
                         value = value[1:-1]
                     values[name] = value
@@ -78,7 +78,7 @@ class OpenAISettings:
     def public_config(self):
         return {'provider': 'openai', 'endpoint': ENDPOINT, 'model': self.model,
                 'timeout_seconds': self.timeout_seconds, 'max_output_tokens': self.max_output_tokens,
-                'reasoning_effort': 'none', 'store': False}
+                'reasoning_effort': 'none', 'store': False, 'parallel_tool_calls': False}
 
 class _NoRedirect(request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -162,7 +162,7 @@ class OpenAIProvider:
         if model != self.settings.model: raise ProviderError('OPENAI_MODEL_MISMATCH', 'Runtime and provider models must match')
         if len(self.calls) >= 32: raise ProviderError('OPENAI_CALL_LIMIT', 'Use one bounded provider instance per run')
         payload = {'model': model, 'input': self._input(messages), 'tools': self.tools,
-                   'tool_choice': 'auto', 'parallel_tool_calls': True, 'store': False,
+                   'tool_choice': 'auto', 'parallel_tool_calls': False, 'store': False,
                    'reasoning': {'effort': 'none'}, 'include': ['reasoning.encrypted_content'],
                    'max_output_tokens': self.settings.max_output_tokens}
         data = canonical(payload).encode()

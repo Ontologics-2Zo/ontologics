@@ -1,12 +1,13 @@
 """Run from repo root: python3 -m examples.agent_tools (no model/SDK required)."""
 import json
+import uuid
 from ontologics.demo import PRINCIPALS, CONFIG_L, example_queries, fixture_nodes, must
 from ontologics.ingest import build_catalog
 from ontologics.service import AgentGateway, Service
 
 
 def main():
-    service = Service(principals=PRINCIPALS)
+    service = Service(schema='tools_' + uuid.uuid4().hex, principals=PRINCIPALS)
     try:
         operations, supplement = fixture_nodes()
         must(service.bootstrap('seed-admin', build_catalog()['nodes'] + operations, request_key='example-seed'))

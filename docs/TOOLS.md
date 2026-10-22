@@ -1,10 +1,10 @@
-# 공통 도구 계약 0.1.0
+# 공통 도구 계약 0.2.0
 
 Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 기준이며 별도 서비스 배포가 필요 없다. `Service`는 신뢰된 호스트 애플리케이션, `AgentGateway`는 서비스 Agent에 공개하는 도구 경계다. `examples/agent_tools.py`와 `ontologics/demo.py`는 실행 가능한 예제다.
 
 ## 그래프·저장·시간
 
-[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. [ontology/tbox.ttl](../ontology/tbox.ttl)은 여기서 생성한 OWL/RDFS 클래스·관계 정의이며 자동 추론 엔진이나 SHACL 구현은 아니다. [data/catalog.json](../data/catalog.json)은 실제 원본 정규화 노드, [data/initial_graph.jsonld](../data/initial_graph.jsonld)는 실제·가상 관계를 ID로 연결한 인계용 JSON-LD A-box(데모 버전 3)다. SQLite의 `snapshots`에 정규화 노드 묶음을 불변 데이터 버전으로 저장한다. 작은 기준 데이터에 맞춘 저장이며 대규모 그래프 최적화·SPARQL 서버는 포함하지 않는다.
+[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. [ontology/tbox.ttl](../ontology/tbox.ttl)은 여기서 생성한 OWL/RDFS 클래스·관계 정의이며 자동 추론 엔진이나 SHACL 구현은 아니다. [data/catalog.json](../data/catalog.json)은 실제 원본 정규화 노드, [data/initial_graph.jsonld](../data/initial_graph.jsonld)는 실제·가상 관계를 ID로 연결한 인계용 JSON-LD A-box(데모 버전 3)다. PostgreSQL의 `snapshots.nodes` JSONB에 정규화 노드 묶음을 불변 데이터 버전으로 저장한다. 작은 기준 데이터에 맞춘 저장이며 대규모 그래프 최적화·SPARQL 서버는 포함하지 않는다.
 
 모든 노드는 `id`, `type`, `origin`, `evidence`를 가진다. `origin`은 `real` 또는 `synthetic`이고 `evidence`는 Evidence ID 목록이다. SourceDocument/Evidence 외의 사실은 근거가 필수다.
 
@@ -37,7 +37,37 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 | CQ07·08 보완·전후 비교 | 같은 query로 `snapshots`의 버전별 Installation/HistoryCoverage와 근거 비교. 초안·승인은 그래프 관계가 아닌 `drafts`, `review_events` 업무 기록. `preview_investigation`, `compare_investigation`, 호스트 `review/apply` |
 | CQ10 사용처 | `ComponentModel ← BOMItem.component_id`, 그 항목의 `configuration_id → Configuration.revision_id → ProductRevision.model_id → ProductModel`. `component_usage`; 정확한 원본 범위 ID만 조회 |
 
-원본 파일·고정 커밋·해시·검증 기록은 [manifest](../data/sources/manifest.json), BOM 행 위치는 catalog의 Evidence `locator`에 있다. L/L1 WROOM ODS 전체의 구조·수량·위치는 검증했고 PDF는 표제/U6 모듈 식별 대조까지만 했다. 미확인 실장, 개정 간 품목 동일성, PDF 전체 148행 대조의 남은 범위는 [PROJECT_STATUS](../PROJECT_STATUS.md#미검증-자료구현-한계환경-제약)에 모은다.
+원본 파일·고정 커밋·해시·검증 기록은 [manifest](../data/sources/manifest.json), BOM 행 위치는 catalog의 Evidence `locator`에 있다. L/L1 WROOM ODS 전체의 구조·수량·위치는 검증했고 PDF는 표제/U6 모듈 식별 대조까지만 했다. 미확인 실장, 개정 간 품목 동일성, PDF 전체 148행 대조의 남은 범위는 [PROJECT_STATUS](../PROJECT_STATUS.md#남은-제한결정)에 모은다.
+
+### PostgreSQL 저장과 pgvector 검색
+
+사용자 요청으로 v0.2.0부터 PostgreSQL + pgvector만 사용한다. 그래프 `graph-0.1`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
+
+`database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
+
+도구 호출은 같은 DB/schema의 transaction advisory lock으로 직렬화한다. 조회 본문·반환 버전, 동시 반영의 기준 버전, 요청 키 재생을 한 경계에서 유지한다. 외부에서 연 트랜잭션 안의 Service 호출은 `TRANSACTION_BOUNDARY`로 거부하고 호출자 트랜잭션을 건드리지 않는다. SQL/잠금 제한은 30초/10초, 접속 제한은 10초다. DB 장애로 실패 기록도 저장하지 못하면 `AUDIT_NOT_RECORDED`와 `data_version=null`을 반환한다. DB 전체 장애·프로세스 강제 종료 시 감사 로그의 완전성을 보장하지 않는다.
+
+`EvidenceIndex(service, actor, model=..., dimensions=...)`는 공통 호스트용 검색 접점이다.
+
+| 호출 | 입력 | 출력·경계 |
+| --- | --- | --- |
+| `documents(evidence_ids, version=...)` | 기존 Evidence ID 목록, 데이터 버전 | 임베딩할 원문 기반 text·content_hash, 응답 data_version. read 권한 |
+| `index(entries, version=..., request_key=...)` | 각 entry의 evidence_id/content_hash/embedding | 고정 모델·차원·버전별 불변 벡터 캐시. 별도 index 권한, 동일 요청 키 재생. 그래프 버전 변경 없음 |
+| `search(embedding, version=..., origin=..., limit=5)` | 같은 모델의 질문 벡터, 데이터 버전·real/synthetic 필터 | 후보별 Evidence ID·원본·locator·사실·similarity. `candidate_only=true`, 완전 탐색 여부를 주장하지 않음 |
+
+```python
+index = EvidenceIndex(service, 'host-indexer', model='chosen-embedding-model', dimensions=1536)
+# host-indexer: read/index; 신원은 호스트에서 주입
+report = index.documents(['evidence:olimex-L-wroom:row-55'], version=3)
+document = report['data']['documents'][0]
+# embedding = 호스트의 임베딩 provider(document['text'])  # DB 트랜잭션 밖
+# index.index([{'evidence_id': document['evidence_id'],
+#   'content_hash': document['content_hash'], 'embedding': embedding}],
+#   version=report['data_version'], request_key='index-row55-v3')
+# candidates = index.search(question_embedding, version=3, origin='real')
+```
+
+실제 실행되는 수치 벡터 예제는 `examples/cq_check.py`에 있다. 반환 예: `data.candidates[0].evidence=["evidence:olimex-L-wroom:row-55"]`, `origin="real"`, `data.candidate_only=true`. 현재는 정확 cosine 검색이며 특정 임베딩 API·자연어 RAG 품질 평가는 미구현이다. 검색 결과는 장착·동일 부품·승인 사실을 확정하지 않는다. index/search 객체 자체나 DB를 LLM에 공개하지 말고, 후속 host retriever가 text→embedding→search를 감싸도록 한다.
 
 ## 공통 반환·오류
 
@@ -49,7 +79,7 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
   "data_version": 3,
   "schema_version": "graph-0.1",
   "rule_version": "temporal-0.1",
-  "contract_version": "0.1.0",
+  "contract_version": "0.2.0",
   "warnings": [],
   "conflicts": [],
   "errors": [],
@@ -114,7 +144,7 @@ service.review('reviewer', draft_id, revised_version,
 service.apply('workflow', draft_id, revised_version, request_key='apply-002')
 ```
 
-검토 decision은 approve/request_changes/reject다. 작성자와 승인자가 달라야 하고 승인자는 `kind=human`, `roles`에 review가 있어야 한다. `apply`는 별도 apply 권한이며 승인된 버전·hash·기준 버전·현재 검증을 다시 검사한다. 의존 변경과 스냅샷·승인 상태·중복 방지 결과는 한 SQLite 트랜잭션으로 반영한다. 중간 실패는 전부 롤백한다.
+검토 decision은 approve/request_changes/reject다. 작성자와 승인자가 달라야 하고 승인자는 `kind=human`, `roles`에 review가 있어야 한다. `apply`는 별도 apply 권한이며 승인된 버전·hash·기준 버전·현재 검증을 다시 검사한다. 의존 변경과 스냅샷·승인 상태·중복 방지 결과는 한 PostgreSQL 트랜잭션으로 반영한다. 중간 실패는 전부 롤백한다.
 
 초안 상태는 awaiting_review / needs_changes / approved / applied / superseded / rejected다. 실행 상태 succeeded/failed는 별도 `runs`에 기록한다. `review_events`는 검토 결정을 추가 기록하며 새 검토나 초안 수정으로 이전 의견을 지우지 않는다. `run_history`는 audit 권한이 있는 호스트만 사용한다.
 
@@ -124,9 +154,9 @@ UI는 초안 버전·변경 전후·근거 위치·검증·미확인과 승인/�
 
 ## 모델 호출 접점
 
-`runtime.py`의 `ModelRuntime`과 기존 gateway·SQLite 실행 기록을 재사용한다. `openai_provider.py`는 OpenAI Responses API 고정 endpoint와 `gpt-5.4-mini-2026-03-17`만 사용한다. 원래 API `call_id`와 출력 항목(있는 경우 암호화된 reasoning 상태)을 보존해 후속 tool 결과를 연결한다. 도구 스키마는 `tool_specs.py`에 있으며 optional·이종 노드 필드를 위해 `strict=false`로 전달하고 공통 코드가 실제 입력을 검증한다. [공식 function calling 계약](https://developers.openai.com/api/docs/guides/function-calling)을 따른다.
+`runtime.py`의 `ModelRuntime`과 기존 gateway·PostgreSQL 실행 기록을 재사용한다. `openai_provider.py`는 OpenAI Responses API 고정 endpoint와 `gpt-5.4-mini-2026-03-17`만 사용한다. `parallel_tool_calls=false`로 순차 도구 실행을 요청한다. 원래 API `call_id`와 출력 항목(있는 경우 암호화된 reasoning 상태)을 보존해 후속 tool 결과를 연결한다. 도구 스키마는 `tool_specs.py`에 있으며 optional·이종 노드 필드를 위해 `strict=false`로 전달하고 공통 코드가 실제 입력을 검증한다. [공식 function calling 계약](https://developers.openai.com/api/docs/guides/function-calling)을 따른다.
 
-`OpenAISettings.from_environment(환경파일)` → `OpenAIProvider(settings, PRODUCT_TOOLS 또는 QUALITY_TOOLS)` → `ModelRuntime(service, 호스트가 정한 신원, provider, config=ModelConfig(model=settings.model, max_steps=8))` 순서다. 실행마다 새 provider를 만든다. 예제 실행·네 환경변수·설정 우선순위는 [README](../README.md#실제-llm-실행과-동료-개발-시작)에 있다. 기본 timeout 30초, 응답 한도 4096토큰이며 설정 가능 범위는 각각 1~60초, 256~8192토큰이다. 실행 전체 wall-clock 제한이나 강제 종료 복구는 없다.
+`OpenAISettings.from_environment(환경파일)` → `OpenAIProvider(settings, PRODUCT_TOOLS 또는 QUALITY_TOOLS)` → `ModelRuntime(service, 호스트가 정한 신원, provider, config=ModelConfig(model=settings.model, max_steps=12))` 순서다. 실행마다 새 provider를 만든다. 예제 실행·모델·DB 환경변수·설정 우선순위는 [README](../README.md#실제-llm-실행과-동료-개발-시작)에 있다. 기본 timeout 30초, 응답 한도 4096토큰이며 설정 가능 범위는 각각 1~60초, 256~8192토큰이다. 실행 전체 wall-clock 제한이나 강제 종료 복구는 없다.
 
 Product에는 lookup/configuration/compare_configurations/prepare_draft/get_draft/validate_draft, Quality에는 lookup/component_usage/investigate/compare_investigation만 노출한다. 승인·반영·bootstrap·신원 선택은 두 목록 모두에 없다. 문서 안 지시문을 데이터로 처리하라는 역할 지침과 별개로, 실제 권한은 공통 코드가 강제한다.
 

@@ -1,78 +1,69 @@
 # PROJECT_STATUS
 
-기준일: 2026-10-22, Asia/Seoul. 공통 계약·코드 버전 **v0.1.0**, 그래프 `graph-0.1`, 시간 규칙 `temporal-0.1`.
+기준일: **2026-10-23, Asia/Seoul**. 공통 코드·도구 계약 **v0.2.0**, 그래프 `graph-0.1`, 시간 규칙 `temporal-0.1`.
 
-## 현재 큰 단계
+## 현재 단계
 
-**단계 2 공통 기준 v0.1.0 위에 고정 모델 연결과 Product/Quality 최소 실행·인계 예제를 마련했다. 동료는 단계 3의 담당 Agent 개발을 시작할 수 있다.** 역할별 전체 Agent·UI·운영 인증까지 완료한 상태는 아니다. 서비스 범위는 S1 문제 상황 분석 및 생산·사용 이력 보완, S2 기존 구성 기준에 연결한 제품 등록을 그대로 유지한다. 공통 그래프·도구 계약과 승인 권한은 변경하지 않았다.
+**동료의 Agent 개발 기반을 PostgreSQL + pgvector 전용으로 전환했다.** 그래프 스냅샷·초안·승인·실행·모델 호출 기록과 벡터를 같은 PostgreSQL에 저장하며 SQLite·메모리 fallback은 없다. PostgreSQL 17.11 + pgvector 0.8.7에서 공통 CQ와 Product/Quality 최소 실모델 예제를 확인했다. 별도 Agent 서버·MCP·모델 라우터는 추가하지 않았다.
 
-시작할 때 작업 폴더에는 프로젝트 파일·설정·Git 저장소가 없었다. 재사용할 코드는 없었으며, 사용자 제공 v2 두 문서를 `docs/reference/`에 그대로 보존했다. 이를 바탕으로 PRD·CQ·결정을 `docs/SERVICE_SPEC.md`에 통합하고 로컬 Git 저장소를 초기화했다. 이후 사용자가 만든 비공개 GitHub 저장소에 main을 공유했다. 서비스 배포는 하지 않았다.
+S1 문제 조사·생산/사용 이력 보완과 S2 기존 구성 기준 등록·검토·승인 전체 범위를 유지한다. O01~O08, 실제/가상 경계, A/B 의미, 작성·승인 분리와 Agent 승인 금지는 그대로다. v0.2.0은 저장소 생성자·필수 DB 설정의 변경을 알리는 계약 버전이며 제품 의미·그래프 클래스가 바뀐 것은 아니다.
 
-## 완료 결과와 실행 근거
+## 완료 근거
 
 | 업무 결과 | 완료 범위 | 확인 근거 |
 | --- | --- | --- |
-| 공통 서비스·협업 기준 | 전체 S1/S2·CQ01~10·검토/보완/승인, 실제/가상 구분, O01~O08 결정, 개발/서비스 Agent 경계 | `docs/SERVICE_SPEC.md`, `AGENTS.md`, `docs/AGENT_RUNTIME.md` |
-| 실제 자료 구조화 | OLIMEX L·L1 WROOM BOM 각각 74행·128개 참조 위치. 원본 그대로 보관, SHA-256·공식 Git blob 대조, 행/셀 근거. 실제 근거 노드 460개 | `data/sources/manifest.json`, `data/catalog.json`, `ontologics/ingest.py`, `tests/test_ingest.py` |
-| T-box·초기 그래프 | 제품/개정/구성/부품/BOM/보드/로트/장착/이력범위/입출고/원본/근거 관계. 실제·가상 결합 474노드 | `ontologics/model.py`, 생성된 `ontology/tbox.ttl`, `data/initial_graph.jsonld` |
-| S2 실제 등록 흐름 | 기존 L 구성에서 L1 원본 파싱→초안→기존 구성과 미반영 차이 비교→사람 역할 검토→승인 버전 반영→구성 조회. 반복 접수와 다른 개정 구분 | `python3 -m ontologics.demo`, `artifacts/demo_result.json`, `tests/test_service.py` |
-| S1 조사·보완 흐름 | 명시한 제품 집합의 A/B 조회, 근거 부족·충돌, 미반영 예상 조회, 보완 요청·수정·재승인, 같은 조건 전후 비교 | `tests/test_temporal.py`, `tests/test_service.py`, 데모 결과 |
-| 공통 검증·권한 | 필수값/타입/참조/원본 무결성/실제·가상/장착-BOM 일치, 미허용 고장·검사·가동 필드 차단, 신원 입력 위조·자기승인·Agent 승인 차단 | `tests/test_model.py`, `tests/test_service.py` |
-| 실행·실패·중복 방지 | SQLite 데이터 스냅샷, 불변 초안 버전·hash, 누적 검토 이력, 실행 성공·실패, 낡은 기준 거부, 원자 반영·중간 실패 롤백·요청 키 재시도 | 서비스 통합 테스트의 실패 주입·재개 검증 |
-| Agent 공통 호출부·실제 provider | 기존 신원 고정 gateway·실행 기록에 OpenAI Responses API 고정 모델 `gpt-5.4-mini-2026-03-17` 연결. timeout, 호출/크기 제한, 일시 오류 최대 2회 시도, 모델 호출과 도구 실행 연결 | `ontologics/openai_provider.py`, `runtime.py`, `tool_specs.py`, provider/runtime 테스트와 실제 API 기록 |
-| 동료 실행 예제 | 오프라인 예제 유지. 실제 모델은 Product의 근거 있는 대표 2행 초안, Quality의 U104 보완 전후 A/B 설명까지 | `python3 -m examples.agent_tools`, `python3 -m examples.llm_agents --role both`, [실행 검증 요약](artifacts/llm_verification.json) |
+| PostgreSQL 전용 저장 | JSONB 그래프/초안/요청 재생, 승인·실행·runtime 기록, 스키마 분리, 영속 재접속 | `ontologics/database.py`, `service.py`, `runtime.py`, `compose.yaml` |
+| 원자 반영·동시 요청 | DB/schema별 transaction advisory lock. 같은 요청 동시 실행은 한 초안·한 반영, 서로 다른 승인안의 동시 반영은 한 성공·한 STALE_BASE. 실패 주입 후 전체 롤백·같은 키 재시도 | `tests/test_postgres.py`, `tests/test_service.py` |
+| 시간·근거·권한 | 정확한 A/B 조건·제품 집합·승인된 데이터 버전 비교, Evidence/SourceDocument 연결·해시, 자기 승인·Agent 승인 차단 | 기존 model/temporal/service 테스트, `examples/cq_check.py` |
+| pgvector 저장·검색 | 모델·차원·근거 내용 hash·데이터 버전별 불변 벡터 캐시, real/synthetic 필터, 원본·locator 포함 근거 후보 반환. 확정 그래프 변경 없음 | `ontologics/retrieval.py`, PostgreSQL 실제 cosine SQL 시험, [CQ 검증 결과](artifacts/cq_postgres_verification.json) |
+| 동료 실행 환경 | psycopg 3, 고정 DB 이미지·localhost 포트·볼륨·healthcheck, DB/모델 환경 예시. 테스트별 독립 schema, 실제 DB CI workflow | `README.md`, `.env.example`, `.github/workflows/tests.yml` |
+| 기존 공개 자료·온톨로지 | L/L1 WROOM 각각 74행·128위치. 실제 근거 노드 460개, 데모 최종 그래프 474개. T-box·대표 그래프의 의미와 원본은 유지 | `data/catalog.json`, `data/initial_graph.jsonld`, `ontology/tbox.ttl`, `data/sources/manifest.json` |
+| 실제 모델 호출 | 동일 고정 모델에서 Product 대표 2행 초안, Quality U104 A/B 보완 전후 설명. PG에 실행 기록 저장, 확정 데이터 불변 | [실모델 검증 요약](artifacts/llm_verification.json) |
 
-기존 v0.1.0의 74개 테스트에 provider·실행 예제 회귀 검사 16개를 추가해 **90개 모두 통과**했다. `python3 -m unittest discover -v`의 결과는 [artifacts/test_results.txt](artifacts/test_results.txt)에 기록했다. `python3 -m ontologics.demo --output /tmp/ontologics-provider-demo.json`과 `python3 -m examples.agent_tools`도 성공했으며 버전 1→2→3, U104 A/B 전후 결과와 기존 구성 차이 4곳을 재확인했다. Python 3.10.15, 외부 런타임 패키지 없이 실행했다. 테스트 대역 검증과 아래 실제 API 실행은 별도 근거다.
+전체 **96개 테스트 통과**(로컬 Python 3.13.5). 결과는 [artifacts/test_results.txt](artifacts/test_results.txt). `python -m ontologics.demo`, `python -m examples.agent_tools`, `python -m examples.cq_check`도 실제 DB에서 성공했다. CI는 Python 3.10과 동일 PostgreSQL/pgvector 이미지로 전체 테스트·CQ·호출 예제를 실행하도록 구성했다. 원격 CI 실행 결과는 PR의 Checks에서 별도로 확인한다.
 
-### 실제 연결과 이번 검토의 범위
+`artifacts/demo_result.json`의 기존 로컬 변경은 이번 작업에서 덮어쓰거나 커밋하지 않았다. 새 일반 실행 결과는 ignored `artifacts/local/`에 생성한다. 원본 파일과 해시는 변경하지 않았다. 시각화·용어 사전·개인 인계 자료는 Git에 추가하지 않았다.
 
-2026-10-22 00:54 KST에 실제 모델로 **Product 1회(API 응답 4회·도구 5회), Quality 1회(API 응답 3회·도구 5회)**를 완료했다. 해당 2개 결과의 자동검사는 모두 통과했다. 로컬 원문은 `artifacts/llm_runs/run-20261021T155428Z-544671/report.json`이며 Git에는 공유 가능한 [검증 요약](artifacts/llm_verification.json)만 포함한다.
+## CQ 판단 결과
 
-- Product: 이미 파싱한 L1 U4/54행과 R50/69행을 실제 모델이 기존 ID·원문·근거로 초안화했다. `validate_draft` 통과, R50 실장 `unknown`, `needs_human_review=true`, 확정 버전 1 유지. 전체 PDF/BOM 자동 추출이나 승인 등록 완료는 아니다.
-- Quality: U104/L07과 정확한 A/B 시각·버전 2→3을 지정해 `compare_investigation` 두 번, 실제 설계 `component_usage` 한 번 등을 호출했다. A 미확인→조건상 제외, B 미확인→포함과 실제/가상 근거를 설명했다. 데이터 버전 3 유지. 버전 2/3은 기존 호스트 데모의 사람 역할 대역으로 미리 만든 시험 상태이며 실제 사람이 운영 보완안을 승인한 기록이 아니다.
-- 별도 읽기 전용 검토 에이전트가 실제 두 답의 자유문을 도구 trace와 대조했다. 시간 의미·원본/가상 경계·미확인·권한·보고 범위에 차단 문제는 발견하지 못했다. Quality가 Evidence 개별 조회를 생략한 점, 원본 URL/행 위치는 호스트 resolver가 붙인 점, 정확한 경계/offset은 task/trace로 전달해야 하는 점을 제한으로 남겼다.
-- 검토 중 발견한 잘못된 최종 JSON으로 평가가 중단되는 문제, 존재하지 않는 추가 근거 ID를 통과시키는 문제, 잘못된 API content/usage로 호출 상태가 `started`에 남는 문제를 수정하고 회귀 검사를 추가했다.
-- 자동검사는 도구 조건·구조화 답·근거 ID·미확인·확정 버전 불변을 확인한다. 자유문은 위 두 답만 검토했다. 반복 실행 성공률·범용 추출·긴 대화·prompt injection·다양한 실패 상황에 대한 Agent 품질 평가는 아직 수행하지 않았다.
+[검증 결과](artifacts/cq_postgres_verification.json)의 `checks`는 모두 통과했다. CQ09는 제안/미구현으로 남겼으며, CQ10은 정확한 원본 범위 부품 ID의 사용처만 검증했다.
 
-개발 시드·사람 역할 대역과 실제 운영 승인을 구별한다. 데모는 버전 1(개발 시드) → 2(L1 승인 경로 테스트) → 3(U104 보완 승인 경로 테스트)로 진행한다. JSON-LD 인계 그래프는 이 마지막 버전의 상태다. 실제 사람이 운영 변경안을 승인한 사례는 아니다.
+- CQ01~03: 모델·개정·변형, 74행·128위치, 실장 미확인 L 11행/L1 12행, 구성 차이 R50·R51·R6·U2와 근거 유지.
+- CQ04: 중복 등록 NO_CHANGES와 승인 반영 요청 재생, 별도 통합 테스트에서 동일 키 충돌·동시 요청·재접속 확인.
+- CQ05~08: 아래 제품별 판정, 정확한 질문·시간대·반개구간·버전 2→3·보완 근거 유지. 미확인 정보를 채워 넣지 않음.
+- CQ10: L LAN8710 근거 55행과 L1 54행의 별도 부품 ID·U4 사용처 유지. 개정 간 동일성·대체 가능성을 자동으로 확정하지 않음.
 
-| 대표 조회 | 보완 전 | 제거·이력 범위 보완 후 |
-| --- | --- | --- |
-| U104 A: 2026-09-20 10:00+09:00 | 추가 확인 | 조건상 제외 |
-| U104 B: 09-01 00:00 ≤ t < 09-21 00:00+09:00 | 추가 확인 | 포함 |
-| U105 A/B: 유한 장착 확인 근거 | 포함 | 포함 |
-| U106 A/B: 이력 부족 | 추가 확인 | 추가 확인 |
-| U107 A/B: 완전 이력에서 해당 장착 없음 | 조건상 제외 | 조건상 제외 |
+A=`2026-09-20T10:00:00+09:00`, B=`[2026-09-01T00:00:00+09:00, 2026-09-21T00:00:00+09:00)`, 로트=`lot:demo:lan8710:L07`, 대상 U104~U107이다. 응답의 UTC 정상화 시각도 직접 확인했다.
 
-실제 구성의 원문 차이는 R50·R51·R6·U2 네 위치다. 설계 변경 이유·부품의 전기적 호환성을 확인한 결과가 아니다.
+| 보드 | 보완 전 A/B | 보완 후 A | 보완 후 B |
+| --- | --- | --- | --- |
+| U104 | 추가 확인 / 추가 확인 | 조건상 제외 | 포함 |
+| U105 | 포함 / 포함 | 포함 | 포함 |
+| U106 | 추가 확인 / 추가 확인 | 추가 확인 | 추가 확인 |
+| U107 | 조건상 제외 / 조건상 제외 | 조건상 제외 | 조건상 제외 |
 
-## 확정한 내용·남은 결정
+U104는 제거·완전 이력의 새 가상 근거로 판정이 바뀐다. U105의 나머지 미확인 이력 설명은 유지하며 U106에 존재하지 않는 근거를 붙이지 않는다. 포함은 고장 원인·실제 가동을 뜻하지 않고 제외는 안전 판정이 아니다. 데모의 1→2→3 버전은 개발 시드와 사람 역할 대역의 승인 경로 시험이며 실제 운영 승인이 아니다.
 
-사용자가 이 작업에서 **O01~O08의 추천 기준을 모두 채택**했다. 개별 제품은 보드 한 대, B는 장착 구간 겹침·시작 포함/끝 제외, 작성자와 승인자 분리·의존 변경 묶음 승인이다. 실제 초기 자료는 L/L1 WROOM, 검증된 구성만 지원하며 부품은 원본 범위 식별자를 유지한다. 개별 보드·로트는 구성에 연결된 운영 기록 업무에서 등록한다. 확정일과 이유·영향은 `docs/SERVICE_SPEC.md` 결정표에 있다.
+## 실모델 재검증과 별도 검토
 
-**이번 최소 연동·인계 완료를 막는 사용자 결정은 없다.** 모델/provider는 위 고정 연결을 사용하며 비공개 원격 저장소도 연결했다. 운영 통합에는 인증 체계와 실제 승인 담당자를 연결해야 한다. CQ09 자재 필요/재고 비교는 제안 상태이며 전체 생산 가능 판정은 범위 밖이다. 추가 Agent·OpenRouter·자동 라우팅·대규모 실행 플랫폼의 필요는 아직 확인되지 않았다.
+최종 성공 사례는 Product 1개·Quality 1개, API 응답 총 12회·모델 선택 도구 총 10회다. Product는 U4 populated와 R50 unknown을 정확한 원문·ID·행 근거로 초안화하고 `awaiting_review`, 확정 데이터 버전 1에서 멈췄다. Quality는 U104/L07의 A/B·버전 2→3을 정확히 호출하고 실제 BOM과 가상 운영 근거를 구분했으며 변경 도구를 호출하지 않았다.
 
-## 미검증 자료·구현 한계·환경 제약
+최종 성공 전 **역할 실행 4개가 실패**했다. 초안 ID 혼동, 한 번에 너무 많은 도구 호출, 조회 버전 0 추정, 확인된 U4 실장 상태를 unknown으로 바꾼 문제다. 실패에서도 확정 데이터는 유지됐다. provider의 순차 호출, 새 초안 ID 생략 지침, 입력 data_version·파서 population 명시로 수정했다. 잘못 추가한 미확인 주장도 평가기가 거부하도록 보강했다. 실패를 성공률 계산에서 숨기지 않으며, 반복 실행 신뢰도·범용 추출·긴 대화 품질은 아직 검증하지 않았다.
 
-- ODS의 오래된 시트명과 파일명 충돌은 대응 PDF 표제·U6 모듈 행으로 확인하고 경고를 보존했다. **PDF의 148개 BOM 행 전부를 개별 시각 대조하지 않았다.** ODS의 모든 행은 구조·수량·위치·해시 검증을 했다.
-- `NA`·`NS`·`Opened`의 공식 조립 정책은 미확인이다. L 11행·L1 12행을 `population=unknown`으로 남겨 확정 실장·조달 계산에 사용하지 않는다. 다른 옵션·변형 조합을 지원한다고 주장하지 않는다.
-- 현재 제품 페이지 사양과 과거 BOM의 설명 차이는 개정별 근거로 분리했다. 매뉴얼 원본은 확보했으나 모든 사양·과거 개정 적용성을 구조화·대조한 것은 아니다.
-- CQ10은 정확한 원본 범위의 부품 ID 사용처 조회까지다. 다른 개정의 같은 부품 표기를 통합하는 검토된 대응표·MPN 동일성·대체 호환성은 없다.
-- 임의 PDF/OCR/새 형식의 자동 추출은 없다. 현재 실제 ODS 형식의 재현 가능한 파서다. 범용 사양 추출·대화 품질은 동료의 Agent 구현·평가가 필요하다.
-- 실제 LLM 최소 연결은 위 두 사례에서 확인했고 호출별 토큰 수·경과 시간을 기록했다. 이를 일반적인 정확도·비용·지연 성능 평가로 해석하지 않는다. UI·로그인·운영 인증·실제 사람 승인은 미연결이다. provider timeout은 구현했으며 강제 종료 후 자동 복구는 없다.
-- SQLite와 Python 객체는 신뢰된 호스트 내부 경계다. DB 파일·코드에 직접 접근하는 로컬 개발자까지 격리하지 않는다. Agent에 Service 객체·DB 연결·신원 설정을 공개하면 안 된다.
-- 그래프는 버전별 전체 스냅샷이며 고급 OWL 추론·SHACL·SPARQL·대규모 동시성/성능 시험은 없다. 충돌은 설치 기록 전체를 보수적으로 미확정 처리하며 구간 분할 해결은 없다.
-- 날짜만 있는 자료는 명시적 사건 시각으로 자동 변환하지 않는다. 보완 자료가 필요하다. 자료가 없다는 이유로 제품을 제외하지 않는다.
-- 첫 실제 모델 시도는 제한 네트워크에서 연결 실패했으며 안전한 오류 기록·종료를 확인했다. 허용된 네트워크 실행으로 재시도해 위 성공 결과를 얻었다. 다른 개발 환경의 키·모델 접근·네트워크는 각자 확인해야 한다. 환경 파일·키·실행 SQLite는 커밋하지 않는다. 새 Skill은 반복 필요가 확인되지 않아 만들지 않았다.
+별도 읽기 전용 검토자가 코드와 최종 두 답의 도구 trace를 대조했다. 발견한 큰 정수 벡터 오류 처리와 외부 트랜잭션 침범 문제를 수정하고 회귀검사를 추가했다. 재검토에서 추가 차단 문제는 없었다. Quality 자유문 B는 날짜 단위로 축약하므로 정확한 시간·끝 제외 조건은 task/trace와 함께 보여줘야 한다. 원본 URL/hash/locator는 호스트 resolver가 붙이며 Quality의 직접 Evidence 열람 성공으로 계산하지 않는다.
 
-## 저장소·push 상태
+## 남은 제한·결정
 
-2026-10-22에 사용자가 지정한 **비공개** [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics)에 `main`을 push했다. `origin`은 `https://github.com/Ontologics-2Zo/ontologics.git`, 추적 브랜치는 `origin/main`이다. 최초 push 후 원격 main이 공통 기반 구현 커밋 `07eddb82a8c15dcde9965c3de4345db2a932605a`와 일치함을 확인했다. 초기 v0.1.0 기준 커밋은 `2fdc0159c8cf5ba694e5d8bd51136d77b1bc42b4`다. 공유 상태 문서 갱신까지 포함한 인계 기준은 `main`의 HEAD이며 `git rev-parse HEAD`와 `git ls-remote origin refs/heads/main`으로 대조할 수 있다. 저장소를 새로 생성하거나 공개 설정으로 변경하지 않았다.
+- pgvector는 **실제 DB 저장·수치 벡터 cosine 검색**까지 확인했다. 임베딩 API 연결, 자연어 의미 검색, RAG 응답 품질은 아직 구현·평가하지 않았다. 검색 결과는 `candidate_only`이며 정확한 ID·시간·승인 도구를 대체하지 않는다.
+- 원본의 NA·NS·Opened 조립 정책, 개정 간 부품 동일성/호환성, PDF 148행 전체 시각 대조는 미확인이다. ODS 전체 구조·수량·위치와 PDF 표제/U6 대상 식별 검증 범위는 유지한다.
+- 임의 PDF/OCR 추출, 전체 Agent·UI·운영 인증·실제 사람 승인 연결은 미완료다. 기존 호스트의 테스트 신원을 외부 API 입력으로 받지 않는다.
+- 과거 SQLite 파일은 삭제하지 않았고 실행 로그·미승인 초안을 PostgreSQL로 자동 이전하지 않았다. 대표 데이터는 보존 원본·기존 시드/승인 데모로 새 PG schema에 생성했다.
+- Docker의 DB 소유자 설정은 로컬 개발용이다. 운영 최소권한 DB 계정·백업/복구·배포는 별도 통합 과제다. DB 자격증명이나 Python 객체를 가진 개발자까지 격리하지 않는다.
+- 한 schema의 호출을 직렬화하는 작은 기준 데이터 구조다. 고급 OWL 추론·SPARQL·ANN 인덱스·대규모 성능 검증은 없다. DB 전체 장애·강제 종료 시 실행 기록의 완전성/자동 복구를 보장하지 않는다.
+- **이번 PostgreSQL 전환·CQ 확인·PR 제출을 막는 사용자 결정은 없다.** 다음 의미 검색 업무에서 임베딩 모델·검색 평가 사례를 정하고 기존 호스트 검색 접점에 연결하면 된다. CQ09 채택과 실제 승인자 인증 연결은 이후 결정이다.
 
-## 동료가 지금 시작할 범위와 다음 작업
+## 공유 상태와 다음 작업
 
-Product 담당자는 `examples/llm_agents.py`의 `PRODUCT_PROMPT/product_task/evaluate_product`에서 추출·등록/보완 대화·검증 설명을 확장하고, Quality 담당자는 `QUALITY_PROMPT/quality_task/evaluate_quality`에서 자연어 A/B 조건 해석·보완 요청·판정 설명을 확장할 수 있다. 공통 provider·gateway·시간 계산·승인 경로는 재사용한다. 기존 전체 S1/S2 범위는 `docs/SERVICE_SPEC.md`를 유지하며 다른 역할 전체 구현을 선행 조건으로 만들지 않는다.
+저장소: 비공개 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics). 전환 브랜치는 `codex/postgresql-pgvector`, PR 대상은 `main`이다. 전환 전 기준은 `70700775d271f95732ffb9d73363aa480aebf608`. PR 병합 전 main은 기존 v0.1.0 기반을 유지한다. 현재 체크아웃 기준 커밋은 `git rev-parse HEAD`로 확인한다.
 
-실행 명령·비밀값 없는 환경변수 예시는 [README](README.md#실제-llm-실행과-동료-개발-시작), 도구 입출력·기대 값·T-box/A-box와 대표 CQ 관계 경로는 [TOOLS](docs/TOOLS.md)에서 찾는다.
-
-**다음 작업:** 각 담당자가 공유된 실행 예제를 바탕으로 실제 담당 입력·대화 사례를 추가하고 기대 결과를 정해 평가한다. 공통 쪽 다음 통합은 인증된 사람의 검토·보완·승인 UI와 기존 `review/apply` 연결이다. 미확인 실장·품목 대응·PDF 전체 대조는 필요한 기능의 근거 보완 과제로 남긴다. 이번 최소 provider·인계 업무를 넘어 추가 기능을 선행 구현하지 않는다.
+동료는 README의 DB 시작→테스트→데모→CQ 확인 순서로 실행한다. Product/Quality 담당은 `examples/llm_agents.py`의 역할 prompt·task·평가를 확장하고, 검색 담당은 `EvidenceIndex.documents/index/search`에 임베딩 provider를 연결한다. ID·시간·검증·승인 로직은 공통 코드를 재사용한다. 다음 공통 통합은 인증된 사람의 검토·보완·승인 UI이며, 추가 Agent·OpenRouter·자동 모델 라우팅을 선행 조건으로 만들지 않는다.

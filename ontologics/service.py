@@ -1,7 +1,8 @@
 """In-process shared tools. Host-bound identities, immutable drafts, atomic application."""
 from __future__ import annotations
 import json
-import sqlite3
+import psycopg
+from .database import DatabaseSettings, connect, in_transaction, lock_store
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,37 +22,25 @@ class Service:
     Principals are supplied by the host's authentication adapter. Demo identities do
     not constitute production authentication. AgentGateway exposes no review/apply.
     """
-    def __init__(self, db_path=':memory:', *, principals):
+    def __init__(self, database=None, *, principals, schema=None):
         self.principals = json.loads(json.dumps(principals))
-        self.db = sqlite3.connect(str(db_path), isolation_level=None, timeout=10)
-        self.db.row_factory = sqlite3.Row
-        self.db.executescript('''
-        PRAGMA foreign_keys=ON;
-        CREATE TABLE IF NOT EXISTS snapshots(version INTEGER PRIMARY KEY, nodes TEXT NOT NULL, created_at TEXT NOT NULL, reason TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS drafts(id TEXT NOT NULL, version INTEGER NOT NULL, author TEXT NOT NULL, base_version INTEGER NOT NULL,
-          operations TEXT NOT NULL, content_hash TEXT NOT NULL, status TEXT NOT NULL, reviewer TEXT, review_note TEXT,
-          applied_version INTEGER, created_at TEXT NOT NULL, PRIMARY KEY(id,version));
-        CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, actor TEXT NOT NULL, tool TEXT NOT NULL, request_hash TEXT NOT NULL,
-          status TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT, data_version INTEGER, error_code TEXT);
-        CREATE TABLE IF NOT EXISTS requests(actor TEXT NOT NULL, request_key TEXT NOT NULL, request_hash TEXT NOT NULL,
-          response TEXT NOT NULL, PRIMARY KEY(actor,request_key));
-        CREATE TABLE IF NOT EXISTS review_events(id TEXT PRIMARY KEY, draft_id TEXT NOT NULL, draft_version INTEGER NOT NULL,
-          content_hash TEXT NOT NULL, actor TEXT NOT NULL, decision TEXT NOT NULL, note TEXT NOT NULL, created_at TEXT NOT NULL);
-        ''')
-        if not self.db.execute('SELECT 1 FROM snapshots LIMIT 1').fetchone():
-            self.db.execute('INSERT INTO snapshots VALUES(0,?,?,?)', ('[]', self.now(), 'empty'))
+        settings = (database if isinstance(database, DatabaseSettings) else
+                    DatabaseSettings(database, schema or 'ontologics') if database is not None else
+                    DatabaseSettings.from_environment(schema=schema))
+        self.schema = settings.schema
+        self.db = connect(settings)
 
     @staticmethod
     def now(): return datetime.now(timezone.utc).isoformat()
     def close(self): self.db.close()
-    def _version(self): return self.db.execute('SELECT MAX(version) FROM snapshots').fetchone()[0]
+    def _version(self): return self.db.execute('SELECT MAX(version) FROM snapshots').fetchone()['max']
     def _nodes(self, version=None):
         version = self._version() if version is None else version
         if isinstance(version, bool) or not isinstance(version, int) or version < 0:
             raise DomainError('INVALID_VERSION', 'Data version must be a nonnegative integer')
-        row = self.db.execute('SELECT nodes FROM snapshots WHERE version=?', (version,)).fetchone()
+        row = self.db.execute('SELECT nodes FROM snapshots WHERE version=%s', (version,)).fetchone()
         if row is None: raise DomainError('VERSION_NOT_FOUND', 'Unknown data version')
-        return json.loads(row[0])
+        return row['nodes']
     def _require(self, actor, permission):
         principal = self.principals.get(actor, {})
         roles = principal.get('roles', [])
@@ -90,44 +79,60 @@ class Service:
         return sorted(ids)
     def _run(self, actor, tool, args, action, *, permission='read', request_key=None):
         run_id, started = str(uuid.uuid4()), self.now()
+        if not self.db.closed and in_transaction(self.db):
+            # Never commit or roll back a transaction owned by the caller.
+            return {'ok': False, 'data': None, 'evidence': [], 'data_version': None,
+                'schema_version': SCHEMA_VERSION, 'rule_version': RULE_VERSION, 'contract_version': __version__,
+                'warnings': [{'code': 'AUDIT_NOT_RECORDED'}], 'conflicts': [],
+                'errors': [{'code': 'TRANSACTION_BOUNDARY', 'message': 'Call shared tools outside caller transactions'}], 'run_id': run_id}
         request_hash = digest({'tool': tool, 'invalid_input': True})
         try:
             serialized = canonical({'tool': tool, 'args': args})
             if len(serialized.encode()) > 8_000_000:
                 raise DomainError('INPUT_TOO_LARGE', 'Tool input exceeds 8 MB')
             request_hash = digest({'tool': tool, 'args': args})
-            self.db.execute('BEGIN IMMEDIATE')
+            self.db.execute('BEGIN')
+            lock_store(self.db, self.schema)
             self._require(actor, permission)
-            if permission in ('draft', 'review', 'apply', 'seed') and request_key is None:
+            if permission in ('draft', 'review', 'apply', 'seed', 'index') and request_key is None:
                 raise DomainError('INVALID_REQUEST_KEY', 'All mutations require an idempotency key')
             if request_key is not None:
                 if not isinstance(request_key, str) or not 1 <= len(request_key) <= 200:
                     raise DomainError('INVALID_REQUEST_KEY', 'Use a nonempty key of at most 200 characters')
-                previous = self.db.execute('SELECT * FROM requests WHERE actor=? AND request_key=?', (actor, request_key)).fetchone()
+                previous = self.db.execute('SELECT * FROM requests WHERE actor=%s AND request_key=%s', (actor, request_key)).fetchone()
                 if previous:
                     if previous['request_hash'] != request_hash:
                         raise DomainError('IDEMPOTENCY_CONFLICT', 'This key was already used for different input')
-                    result = json.loads(previous['response'])
+                    result = previous['response']
                     result['warnings'].append({'code': 'IDEMPOTENT_REPLAY', 'original_run_id': result['run_id']})
                     result['run_id'] = run_id
                 else:
                     result = action()
                     result['run_id'] = run_id
-                    self.db.execute('INSERT INTO requests VALUES(?,?,?,?)', (actor, request_key, request_hash, canonical(result)))
+                    self.db.execute('INSERT INTO requests VALUES(%s,%s,%s,%s)', (actor, request_key, request_hash, canonical(result)))
             else:
                 result = action(); result['run_id'] = run_id
-            self.db.execute('INSERT INTO runs VALUES(?,?,?,?,?,?,?,?,?)',
+            self.db.execute('INSERT INTO runs(id,actor,tool,request_hash,status,started_at,finished_at,data_version,error_code) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
                 (run_id, actor, tool, request_hash, 'succeeded', started, self.now(), result['data_version'], None))
             self.db.execute('COMMIT')
             return result
-        except (DomainError, ValueError, TypeError, KeyError, sqlite3.Error) as exc:
-            if self.db.in_transaction: self.db.execute('ROLLBACK')
-            code = exc.code if isinstance(exc, DomainError) else ('STORAGE_ERROR' if isinstance(exc, sqlite3.Error) else 'INVALID_INPUT')
-            err = {'code': code, 'message': str(exc)}
+        except (DomainError, ValueError, TypeError, KeyError, psycopg.Error) as exc:
+            if not self.db.closed and in_transaction(self.db):
+                try: self.db.execute('ROLLBACK')
+                except psycopg.Error: pass
+            code = exc.code if isinstance(exc, DomainError) else ('STORAGE_ERROR' if isinstance(exc, psycopg.Error) else 'INVALID_INPUT')
+            err = {'code': code, 'message': 'PostgreSQL operation failed' if isinstance(exc, psycopg.Error) else str(exc)}
             if isinstance(exc, DomainError) and exc.details is not None: err['details'] = exc.details
-            result = self._envelope(ok=False, error=err, run_id=run_id)
-            self.db.execute('INSERT INTO runs VALUES(?,?,?,?,?,?,?,?,?)',
-                (run_id, actor, tool, request_hash, 'failed', started, self.now(), result['data_version'], code))
+            try:
+                result = self._envelope(ok=False, error=err, run_id=run_id)
+                self.db.execute('INSERT INTO runs(id,actor,tool,request_hash,status,started_at,finished_at,data_version,error_code) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                    (run_id, actor, tool, request_hash, 'failed', started, self.now(), result['data_version'], code))
+            except psycopg.Error:
+                result = {'ok': False, 'data': None, 'evidence': [], 'data_version': None,
+                    'schema_version': SCHEMA_VERSION, 'rule_version': RULE_VERSION, 'contract_version': __version__,
+                    'warnings': [{'code': 'AUDIT_NOT_RECORDED'}], 'conflicts': [],
+                    'errors': [{'code': 'STORAGE_ERROR', 'message': 'PostgreSQL unavailable; audit persistence unconfirmed'}], 'run_id': run_id}
+
             return result
 
     def bootstrap(self, actor, nodes, *, request_key):
@@ -136,7 +141,7 @@ class Service:
             if self._version() != 0 or self._nodes(): raise DomainError('SEED_NOT_EMPTY', 'Seed can only initialize an empty development database')
             report = validate_graph(nodes)
             if not report['valid']: raise DomainError('VALIDATION_FAILED', 'Invalid seed', report)
-            self.db.execute('INSERT INTO snapshots VALUES(1,?,?,?)', (canonical(nodes), self.now(), 'development_seed'))
+            self.db.execute('INSERT INTO snapshots VALUES(1,%s,%s,%s)', (canonical(nodes), self.now(), 'development_seed'))
             return self._envelope(ok=True, data={'node_count': len(nodes), 'mode': 'development_seed'}, warnings=report['warnings'])
         return self._run(actor, 'bootstrap', {'nodes': nodes}, act, permission='seed', request_key=request_key)
 
@@ -253,14 +258,14 @@ class Service:
             raise DomainError('INVALID_DRAFT_ID', 'Draft ID must be nonempty text')
         if isinstance(version, bool) or not isinstance(version, int) or version < 1:
             raise DomainError('INVALID_VERSION', 'Draft version must be a positive integer')
-        row = self.db.execute('SELECT * FROM drafts WHERE id=? AND version=?', (draft_id, version)).fetchone()
+        row = self.db.execute('SELECT * FROM drafts WHERE id=%s AND version=%s', (draft_id, version)).fetchone()
         if not row: raise DomainError('DRAFT_NOT_FOUND', 'Unknown draft version')
-        if latest and self.db.execute('SELECT MAX(version) FROM drafts WHERE id=?', (draft_id,)).fetchone()[0] != version:
+        if latest and self.db.execute('SELECT MAX(version) FROM drafts WHERE id=%s', (draft_id,)).fetchone()['max'] != version:
             raise DomainError('SUPERSEDED_DRAFT', 'A newer draft version exists')
-        d = dict(row); d['operations'] = json.loads(d['operations'])
+        d = dict(row)
         if digest(d['operations']) != d['content_hash']: raise DomainError('DRAFT_INTEGRITY', 'Draft content hash mismatch')
         d['review_history'] = [dict(event) for event in self.db.execute(
-            'SELECT * FROM review_events WHERE draft_id=? AND draft_version=? ORDER BY rowid', (draft_id, version))]
+            'SELECT * FROM review_events WHERE draft_id=%s AND draft_version=%s ORDER BY sequence', (draft_id, version))]
         return d
 
     def prepare_draft(self, actor, operations, *, request_key, draft_id=None, expected_version=None):
@@ -275,9 +280,9 @@ class Service:
                 if old['author'] != actor: raise DomainError('DRAFT_OWNER_REQUIRED', 'Only the original author may revise this draft')
                 if old['status'] in ('applied', 'rejected'): raise DomainError('DRAFT_CLOSED', 'Create a new proposal for a closed draft')
                 dv = old['version'] + 1
-                self.db.execute('UPDATE drafts SET status=? WHERE id=? AND version=?', ('superseded', did, old['version']))
+                self.db.execute('UPDATE drafts SET status=%s WHERE id=%s AND version=%s', ('superseded', did, old['version']))
             status = 'awaiting_review' if report['valid'] else 'needs_changes'
-            self.db.execute('INSERT INTO drafts VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+            self.db.execute('INSERT INTO drafts VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
                 (did, dv, actor, base, canonical(operations), digest(operations), status, None, None, None, self.now()))
             return self._envelope(ok=True, data={'draft_id': did, 'draft_version': dv, 'base_version': base,
                 'status': status, 'content_hash': digest(operations), 'changes': changes, 'validation': report}, warnings=report['warnings'])
@@ -330,9 +335,9 @@ class Service:
                 report = validate_graph(nodes)
                 if not report['valid']: raise DomainError('VALIDATION_FAILED', 'Correct draft before approval', report)
             status = {'approve': 'approved', 'request_changes': 'needs_changes', 'reject': 'rejected'}[decision]
-            self.db.execute('INSERT INTO review_events VALUES(?,?,?,?,?,?,?,?)',
+            self.db.execute('INSERT INTO review_events(id,draft_id,draft_version,content_hash,actor,decision,note,created_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s)',
                 (str(uuid.uuid4()), draft_id, version, d['content_hash'], actor, decision, note, self.now()))
-            self.db.execute('UPDATE drafts SET status=?,reviewer=?,review_note=? WHERE id=? AND version=?', (status, actor, note, draft_id, version))
+            self.db.execute('UPDATE drafts SET status=%s,reviewer=%s,review_note=%s WHERE id=%s AND version=%s', (status, actor, note, draft_id, version))
             return self._envelope(ok=True, data={'draft_id': draft_id, 'draft_version': version, 'status': status, 'reviewer': actor, 'content_hash': d['content_hash']})
         return self._run(actor, 'review', {'draft_id': draft_id, 'version': version, 'decision': decision, 'note': note}, act,
                          permission='review', request_key=request_key)
@@ -352,13 +357,13 @@ class Service:
             report = validate_graph(nodes)
             if not report['valid']: raise DomainError('VALIDATION_FAILED', 'Revalidation failed', report)
             next_version = self._version() + 1
-            self.db.execute('INSERT INTO snapshots VALUES(?,?,?,?)', (next_version, canonical(nodes), self.now(), 'approved:' + draft_id + ':' + str(version)))
-            self.db.execute('UPDATE drafts SET status=?,applied_version=? WHERE id=? AND version=?', ('applied', next_version, draft_id, version))
+            self.db.execute('INSERT INTO snapshots VALUES(%s,%s,%s,%s)', (next_version, canonical(nodes), self.now(), 'approved:' + draft_id + ':' + str(version)))
+            self.db.execute('UPDATE drafts SET status=%s,applied_version=%s WHERE id=%s AND version=%s', ('applied', next_version, draft_id, version))
             return self._envelope(ok=True, data={'draft_id': draft_id, 'draft_version': version, 'status': 'applied', 'applied_version': next_version})
         return self._run(actor, 'apply', {'draft_id': draft_id, 'version': version}, act, permission='apply', request_key=request_key)
 
     def run_history(self, actor):
-        return self._run(actor, 'run_history', {}, lambda: self._envelope(ok=True, data=[dict(row) for row in self.db.execute('SELECT * FROM runs ORDER BY rowid')]), permission='audit')
+        return self._run(actor, 'run_history', {}, lambda: self._envelope(ok=True, data=[dict(row) for row in self.db.execute('SELECT * FROM runs ORDER BY sequence')]), permission='audit')
 
 class AgentGateway:
     """Host binds identity once. Actor, review, apply and seed are not tool inputs."""

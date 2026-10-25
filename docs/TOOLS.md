@@ -39,9 +39,11 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 
 원본 파일·고정 커밋·해시·검증 기록은 [manifest](../data/sources/manifest.json), BOM 행 위치는 catalog의 Evidence `locator`에 있다. L/L1 WROOM ODS 전체의 구조·수량·위치는 검증했고 PDF는 표제/U6 모듈 식별 대조까지만 했다. 미확인 실장, 개정 간 품목 동일성, PDF 전체 148행 대조의 남은 범위는 [PROJECT_STATUS](../PROJECT_STATUS.md#남은-제한결정)에 모은다.
 
+Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답의 `data_version`은 서로 다른 기준이다. 현재 `compare_configurations`는 등록된 구성의 차이를, `component_usage`는 정확한 원본 범위 부품 ID의 사용처를 조회한다. 원격 Git 이력 자동 수집·임의 과거 커밋 복원·개정 간 품목 동일성 판정은 구현된 도구로 제공하지 않는다. 설계와 운영 이력의 업무상 구분은 [PRD](SERVICE_SPEC.md#설계-이력과-운영-이력을-연결할-때)를 따른다.
+
 ### PostgreSQL 저장과 pgvector 검색
 
-사용자 요청으로 v0.2.0부터 PostgreSQL + pgvector만 사용한다. 그래프 `graph-0.1`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
+사용자 요청으로 v0.2.0의 현재 구현과 1차 서비스는 PostgreSQL + pgvector만 사용한다. 후속 RDF/Neo4j 통합은 아래 별도 설계이며 현재 저장 경로나 API를 바꾸지 않는다. 그래프 `graph-0.1`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
 
 `database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
 
@@ -68,6 +70,31 @@ document = report['data']['documents'][0]
 ```
 
 실제 실행되는 수치 벡터 예제는 `examples/cq_check.py`에 있다. 반환 예: `data.candidates[0].evidence=["evidence:olimex-L-wroom:row-55"]`, `origin="real"`, `data.candidate_only=true`. 현재는 정확 cosine 검색이며 특정 임베딩 API·자연어 RAG 품질 평가는 미구현이다. 검색 결과는 장착·동일 부품·승인 사실을 확정하지 않는다. index/search 객체 자체나 DB를 LLM에 공개하지 말고, 후속 host retriever가 text→embedding→search를 감싸도록 한다.
+
+### 후속 통합·배포 설계 (미구현)
+
+아래는 [PRD의 별도 목표](SERVICE_SPEC.md#별도-통합-목표-a--rdfowlshaclsparql--neo4j)를 위한 설계 요구다. 현재 공통 API·DB 스키마·Agent 권한을 변경하거나 이미 제공되는 기능으로 설명하지 않는다. 통합 목표 A와 배포 목표 B는 서로 독립적으로 진행·검증하며 현재 1차 서비스의 선행 조건이 아니다.
+
+**통합 목표 A의 데이터 흐름:** 기존 승인·반영 경로의 PostgreSQL 데이터 버전 → RDF/OWL 표현과 SHACL 검증 → SPARQL 조회·Neo4j 조회용 그래프 적재 → 동일 버전의 검증·동기화가 완료된 조회 대상만 공개한다. 스키마 매핑과 저장소별 완료 상태를 관리하는 구현은 후속 작업이다.
+
+- 현재 `model.py`의 SCHEMA 기준과 각 표현의 매핑을 맞추고 공통 노드 ID, SourceDocument/Evidence, locator·hash·origin, 데이터·스키마·규칙 버전과 승인 이력을 보존한다. 설계 개정·초안 버전·데이터 버전을 혼동하지 않는다. SHACL은 구조·관계 검증을 추가하며 기존 시간·동일성·승인 규칙을 임의로 대체하지 않는다.
+- Agent는 기존 공통 경로로 초안을 제출한다. 승인·반영된 버전만 동기화 대상으로 삼고, 각 조회에 필요한 저장소의 적재·검증 완료 버전을 확인한다. 미완료 적재·혼합 버전은 정상 결과로 공개하지 않고 해당 대상의 동기화 대기/실패를 알린다. 이전 완료 버전을 제공할 경우에도 실제 버전을 표시하고 요청 버전을 조용히 바꾸지 않는다.
+- 동기화 기록에 대상 버전·원본 식별·내용 hash·완료/실패·재시도를 연결하고, 동일 버전 재시도의 중복·부분 적재·중단 후 재개를 검증한다. 현재 PostgreSQL 트랜잭션과 advisory lock은 RDF/Neo4j까지 원자 반영을 보장하지 않는다. 승인 성공과 각 조회 저장소의 공개 가능 상태는 구분한다.
+- 동일한 CQ 입력·대상 집합·원본·승인된 데이터 버전·시간 규칙으로 PostgreSQL/SPARQL/Neo4j 결과를 대조한다. 관계·근거·실제/가상 구분과 A/B 경계·포함/제외/미확인·충돌 의미를 검증하며, CQ09 제안 및 CQ10 원본 범위 부분 지원을 임의로 확장하지 않는다.
+
+**배포 목표 B의 구성별 책임:**
+
+| 구성 | 설계·검증 책임 |
+| --- | --- |
+| CPU EC2 | 사용자 업무 인터페이스, 호스트 인증·권한, Agent·공통 도구 실행, 모델 API 연결, 실행 로그·장애 대응. 외부 모델 API를 사용하며 자체 GPU 서버는 기본 필수가 아님 |
+| RDS PostgreSQL·pgvector | 그래프 스냅샷·초안·승인·실행 기록·벡터의 영속 저장, 확장·접속·권한 설정, 백업·복구 후 버전·근거 일관성 검증 |
+| S3 | 무변경 원본과 원본 버전·hash·위치·라이선스 보존, 인증된 읽기·접근 제한, 복구 가능한 원본 보관 |
+| 외부 LLM·임베딩 API | 기존 provider·retriever 접점 활용, 비밀값 관리, 모델·임베딩 차원·버전 기록, 실패·재시도와 실제 API 호출 검증 |
+| RDF/SPARQL·Neo4j 병용 시 | 각 저장소의 배포 위치·접근 권한·백업/복원·동기화 실행 주체·공개 버전 책임을 별도로 명시. AWS 기본 서비스 배포의 필수 선행 구성은 아님 |
+
+현재 SourceDocument 검증은 `model.py`에서 로컬 `data/` 파일을 읽어 SHA-256을 대조한다. S3 도입 시 원본 접근 어댑터와 검증 경로를 보완해 실제 객체 바이트의 hash와 원본 ID·버전·근거 위치를 확인해야 한다. 객체 누락·접근 실패·hash 불일치는 검증 실패로 처리하고, S3 URL이나 ETag만으로 기존 SHA-256 검증을 대신하지 않는다. 이 설계는 현재 `path` 계약을 즉시 바꾸는 것이 아니다.
+
+AWS 완료 검증은 실제 환경의 S1/S2 전체 업무, 인증·권한, 영속성, 외부 API, 로그·장애 복구와 백업 복원을 포함한다. RDF/Neo4j를 병용하면 복구 이후에도 동일 승인 버전의 조회 공개 조건을 다시 검증한다. 엔진·배포 크기, 매핑·동기화 구현, 인증 수단과 백업 주기·복구 목표 등 세부 설정은 해당 구현에서 구체화한다.
 
 ## 공통 반환·오류
 

@@ -61,12 +61,21 @@ class ModelRuntime:
     A killed process may leave a run as running; automatic crash recovery is not
     provided by this small adapter.
     """
-    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False):
+    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False,
+                 allowed_tools=None):
         if not isinstance(config, ModelConfig) or not callable(provider):
             raise ValueError("A ModelConfig and callable provider are required")
+        if allowed_tools is None:
+            allowed_tools = tuple(AgentGateway.ALLOWED)
+        if (not isinstance(allowed_tools, (list, tuple))
+                or any(not isinstance(name, str) or not name for name in allowed_tools)
+                or len(set(allowed_tools)) != len(allowed_tools)
+                or not set(allowed_tools) <= AgentGateway.ALLOWED):
+            raise ValueError("allowed_tools must be a unique list or tuple of exposed tool names")
         if in_transaction(service.db):
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
+        self._allowed_tools = frozenset(allowed_tools)
         self.config = config
         self.capture_tool_trace = bool(capture_tool_trace)
         self._gateway = AgentGateway(service, actor)
@@ -106,8 +115,8 @@ class ModelRuntime:
         for call in calls:
             if not isinstance(call, dict) or set(call) != {"name", "arguments"}:
                 raise _Failure("INVALID_TOOL_CALL", "Each call needs name and arguments only")
-            if not isinstance(call["name"], str) or call["name"] not in AgentGateway.ALLOWED:
-                raise _Failure("TOOL_NOT_ALLOWED", "Tool is not exposed to service Agents")
+            if not isinstance(call["name"], str) or call["name"] not in self._allowed_tools:
+                raise _Failure("TOOL_NOT_ALLOWED", "Tool is not exposed to this Agent role")
             arguments = call["arguments"]
             if not isinstance(arguments, dict) or "actor" in arguments or "principals" in arguments:
                 raise _Failure("INVALID_TOOL_ARGUMENTS", "Identity is bound by the host")
@@ -172,6 +181,7 @@ class ModelRuntime:
             raise ValueError("Runtime cannot run inside a transaction")
         run_id, db = str(uuid.uuid4()), self._service.db
         config = asdict(self.config)
+        config['allowed_tools'] = sorted(self._allowed_tools)
         if callable(getattr(self._provider, 'public_config', None)):
             config['provider'] = self._provider.public_config()
         db.execute("INSERT INTO runtime_runs VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",

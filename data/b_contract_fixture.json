@@ -1,0 +1,44 @@
+{
+  "source": {
+    "id": "source:demo:B-01:contract-v1",
+    "type": "SourceDocument",
+    "origin": "synthetic",
+    "evidence": [],
+    "url": "urn:ontologics:demo:contract:B-01:v1",
+    "path": "data/sources/b_demo_contract_01.md",
+    "sha256": "bbe0b4a2ad05bcb14e0eb477f90d9ae5f25c67a706a906e606b8e8023eda67ae",
+    "version": "B-01-v1",
+    "license": "Project synthetic development fixture; no actual transaction records. Newly authored for this project's development, tests and demonstrations; not OLIMEX material.",
+    "collected_at": "2026-10-26T16:21:44+09:00",
+    "kind": "synthetic_contract"
+  },
+  "evidence": [
+    {
+      "id": "evidence:demo:B-01:contract",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:B-01:contract-v1",
+      "locator": "계약 표 / 계약 번호, 우리 회사 식별, 고객사; lines 11-13",
+      "description": "Synthetic B-01 contract: company DEMO-B and customer 가상고객사 A are separate fields. This is not evidence of an OLIMEX transaction."
+    },
+    {
+      "id": "evidence:demo:B-01:item",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:B-01:contract-v1",
+      "locator": "계약 표 / 제품 모델, 설계 개정, 구성, 계약 항목 번호, 계약 수량, 수량 단위; lines 15-20",
+      "description": "Synthetic contract item 1 promises 1000 piece of ESP32-POE / L / WROOM. Existing real configuration identification remains a separate source."
+    },
+    {
+      "id": "evidence:demo:B-01:round",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:B-01:contract-v1",
+      "locator": "계약 표 / 납품 회차, 회차 약속 수량, 납품 기한, 기한 기준, 납품 장소; lines 21-25; 읽는 기준 / piece and customer-arrival deadline",
+      "description": "Synthetic round 1 promises 1000 piece at 가상고객사 A 수령창고 by 2026-10-27T15:00:00+09:00, customer arrival inclusive. No inventory, production or arrival fact is asserted."
+    }
+  ]
+}

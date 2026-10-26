@@ -178,11 +178,15 @@ class OpenAIProvider:
                 if len(raw) > 2_000_000: raise ProviderError('OPENAI_RESPONSE_TOO_LARGE', 'Provider response exceeded 2 MB')
             try: body = json.loads(raw)
             except (ValueError, UnicodeError): raise ProviderError('OPENAI_RESPONSE_INVALID', 'Provider response was not JSON') from None
-            normalized = self._normalize(body)
-            if not isinstance(body.get('usage',{}),dict):
+            if not isinstance(body, dict) or not isinstance(body.get('usage', {}), dict):
                 raise ProviderError('OPENAI_RESPONSE_INVALID', 'Invalid response usage')
-            event.update(status='completed', response_id=_safe_id(body.get('id')),
-                usage={k: v for k, v in body.get('usage', {}).items() if k in ('input_tokens', 'output_tokens', 'total_tokens') and type(v) is int})
+            # A response can consume tokens even when incomplete or rejected by
+            # our tool/model validator. Preserve safe accounting before validation.
+            event.update(response_id=_safe_id(body.get('id')),
+                usage={k: v for k, v in body.get('usage', {}).items()
+                       if k in ('input_tokens', 'output_tokens', 'total_tokens') and type(v) is int and v >= 0})
+            normalized = self._normalize(body)
+            event['status'] = 'completed'
             assistant = {'role': 'assistant', 'content': normalized['text'], 'tool_calls': normalized['tool_calls']}
             self._outputs[digest(messages + [assistant])] = body['output']
             return normalized

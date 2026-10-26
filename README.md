@@ -1,6 +1,24 @@
-# Ontologics 공통 기반 v0.2.0 — PostgreSQL + pgvector
+# Ontologics 공통 기반 v0.4.0 — PostgreSQL + pgvector
 
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
+
+v0.4.0은 B-CQ01의 계약·회차에 B-CQ02의 완성 보드 재고·생산 작업·배정·운송과 확인 범위를 연결해, 명시한 버전·관측 시점의 6상태 물량 현황을 조회한다(`graph-0.3`). B-CQ01과 별도로 B-CQ02의 읽기 전용 현황 역할도 기존 런타임에 연결한다. 생산·도착 예측과 납품 가능성 판단은 후속 범위다. 기존 장착 이력·승인·PostgreSQL 계약은 유지한다.
+
+## B-CQ02 물량 현황 예제
+
+```bash
+python -m examples.b_fulfillment --output artifacts/local/b_cq02_task08/example.json
+```
+
+LLM 없이 새 PostgreSQL 스키마에서 초안·검증·개발용 사람 검토 대역·반영·버전별 조회를 실행한다. 가상 B-01 1회차의 10시 현황은 납품 완료100·운송 중150·창고250·생산 중300·준비 완료100·대기100대다. 잔여 약속900대와 미배정0대를 구분한다. 자료가 없으면 0 대신 미확인으로 반환한다. [자료 규칙·도구·제한](docs/TOOLS.md#b-cq02-물량-현황-조회)을 따른다. 이 예제는 실제 업무 승인이나 Agent 모델 검증이 아니다.
+
+현황 Agent 연결은 기본적으로 API 없는 대역 실행이다.
+
+```bash
+python -m examples.b_fulfillment_agent --provider scripted --output artifacts/local/b_cq02_task09/scripted-new.json
+```
+
+실제 호출은 같은 명령에 `--provider openai`와 새 출력 경로를 명시한다. 고정 모델·정상 사례 하나·최대 API4회·재시도 없음·요청당 출력1024토큰으로 제한한다. 원문/근거를 읽는 모델 설명을 검사하며 수량은 공통 도구가 계산한다. 이전 보고서는 덮어쓰지 않는다. [연결·평가 계약](docs/TOOLS.md#b-cq02-agent-연결과-평가)을 따른다.
 
 ## 시작
 
@@ -47,6 +65,29 @@ python -m examples.agent_tools
 - 데이터 버전은 1(개발 시드) → 2(L1 승인 등록) → 3(U104 승인 보완).
 
 일반 실행 결과는 Git에서 제외된 `artifacts/local/demo_result.json`, CQ 결과는 `artifacts/local/cq_postgres.json`에 기록된다. 공유 검증은 [CQ 결과](artifacts/cq_postgres_verification.json)에서 확인한다. T-box와 인계 A-box를 의도적으로 갱신할 때만 `python -m ontologics.demo --export-graph`를 사용한다. 대상은 `ontology/tbox.ttl`과 `data/initial_graph.jsonld`다. 마지막 파일은 초기 인계용 그래프이며 시나리오 실행 후의 버전 3이다. 실행마다 ID·실행 시각은 달라질 수 있지만 업무 판정은 같다. 원본에서 `data/catalog.json`을 다시 만들려면 `python3 -m ontologics.ingest`를 실행한다.
+
+## B-CQ01 계약 약속 확인
+
+```bash
+python -m examples.b_contract
+```
+
+새 `b_cq01_<UUID>` PostgreSQL 스키마에서 기존 실제 설계 시드 → 가정 계약 초안·검증 → 승인 전 반영 차단 → 개발용 사람 역할 검토 → 버전 2 등록 → 약속·근거 조회를 실행한다. 모델 키 없이 공통 함수를 직접 호출하는 예제이며 실제 운영 승인이나 LLM 실행이 아니다.
+
+기대 답은 가상고객사 A에 ESP32-POE Rev L WROOM 보드 1000대를 `2026-10-27T15:00:00+09:00`까지 고객 창고에 도착시키는 약속이다. 현재 이행 가능성은 `fulfillment_assessed=false`다. 해시가 고정된 원문과 근거 메타데이터, 독립 정답은 [TOOLS](docs/TOOLS.md#b-cq01-계약-접수와-약속-조회)에 연결한다. 수량·기한 누락/모호함은 보완, 잘못된 숫자/참조는 검증 실패로 처리한다.
+
+보고서는 Git 제외 `artifacts/local/task08/b_cq01.json`에 남는다. 필요할 때만 `python -m examples.b_contract --export-graph`로 [B 대표 그래프](data/b_contract_graph.jsonld)와 공통 T-box를 재생성한다. 기존 `data/initial_graph.jsonld`·OLIMEX 원본·부품 입출고 예제는 보존한다. 첫 추출 형식은 고정된 Markdown 표의 항목 1개/회차 1개이며 범용 계약서 파서는 아니다.
+
+B 역할 연결 예제는 다음과 같다. 기존 런타임·provider를 재사용하며 별도 서버가 필요하지 않다.
+
+```bash
+python -m examples.b_agent --provider scripted
+python -m examples.b_agent --provider openai --output artifacts/local/task09/b_agent_live.json
+```
+
+기본 `scripted`는 연결 시험용 대역이다. 실제 LLM 품질을 검증하지 않는다. `openai`는 로컬 키를 검증한 뒤 기존 고정 모델을 실제 호출한다. `--mode intake`는 원문·기존 구성·근거 조회 → 계약 3노드 초안 → 검증 → 사람 검토 대기, `--mode promise`는 개발용 호스트가 미리 확정한 자료의 회차 → 약속·근거·미확인 설명이다. `both`가 기본이며 두 모드는 별도 새 DB 스키마를 사용한다. 모델 초안을 자동 승인하지 않는다.
+
+결과는 Git 제외 `artifacts/local/task09/b_agent.json`에 기록된다(`--output`으로 변경 가능). 실모델 실행에는 별도 경로를 권장한다. 키 누락은 DB 접수·API 호출 전에 `OPENAI_KEY_MISSING`으로 중단하며 대역 통과와 실모델 완료를 구별한다. 자동 평가는 원문 파서·독립 정답·실제 도구 기록·저장된 초안을 대조한다. 자유문 설명 전체와 임의 계약 PDF/OCR의 품질을 보증하지 않는다. 모드별 도구 권한과 입력/출력은 [TOOLS](docs/TOOLS.md#b-agent-연결-예제-task-09)를 따른다.
 
 ## 실제 LLM 실행과 동료 개발 시작
 

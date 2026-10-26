@@ -19,6 +19,10 @@ _DEFINITIONS = {
         obj({'node_id': TEXT, 'kind': {'type': 'string', 'enum': list(SCHEMA)}, 'version': VERSION})),
     'configuration': ('Read product, revision, configuration, BOM and source-scoped components; unknown population is not populated.',
         obj({'configuration_id': TEXT, 'version': VERSION}, ['configuration_id'])),
+    'delivery_round': ('Read one synthetic contract promise in an explicit data version: customer, configuration, quantity, arrival deadline and destination with evidence. Does not assess fulfillment feasibility.',
+        obj({'delivery_round_id': TEXT, 'version': VERSION}, ['delivery_round_id', 'version'])),
+    'fulfillment_status': ('Read one exact source-backed fulfillment snapshot at explicit as_of and data version. Count delivered, in-transit, warehouse and unfinished production allocations once; missing coverage is unknown, never zero. Does not forecast future fulfillment.',
+        obj({'delivery_round_id': TEXT, 'as_of': TEXT, 'version': VERSION}, ['delivery_round_id', 'as_of', 'version'])),
     'component_usage': ('Find BOM use of one exact source-scoped component ID, without cross-revision identity inference.',
         obj({'component_id': TEXT, 'version': VERSION}, ['component_id'])),
     'compare_configurations': ('Compare source descriptions by position; not electrical compatibility. Draft comparison is unapplied preview.',
@@ -42,6 +46,9 @@ _DEFINITIONS = {
 
 PRODUCT_TOOLS = ('lookup', 'configuration', 'compare_configurations', 'prepare_draft', 'get_draft', 'validate_draft')
 QUALITY_TOOLS = ('lookup', 'component_usage', 'investigate', 'compare_investigation')
+B_INTAKE_TOOLS = ('lookup', 'prepare_draft', 'get_draft', 'validate_draft')
+B_PROMISE_TOOLS = ('lookup', 'delivery_round')
+B_FULFILLMENT_TOOLS = ('fulfillment_status', 'lookup')
 
 def function_tools(names):
     """Non-strict JSON schemas retain optional and heterogeneous graph fields.

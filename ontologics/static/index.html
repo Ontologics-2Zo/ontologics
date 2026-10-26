@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Ontologics · 제조 제품정보 서비스</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 이동</a>
+<div class="shell">
+  <aside class="sidebar" aria-label="서비스 메뉴">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">O</span><div><strong>Ontologics</strong><small>제조 제품정보 서비스</small></div></div>
+    <p class="nav-caption">업무 공간</p>
+    <nav id="navigation">
+      <button type="button" data-view="home"><span>01</span>업무 현황</button>
+      <button type="button" data-view="product"><span>02</span>제품 구성·BOM 등록</button>
+      <button type="button" data-view="history"><span>03</span>개별 보드·부품 로트 이력</button>
+      <button type="button" data-view="investigation" class="active" aria-current="page"><span>04</span>로트 장착 이력 조회</button>
+      <button type="button" data-view="review"><span>05</span>등록·변경안 검토 및 승인</button>
+      <button type="button" data-view="evidence"><span>06</span>기술 문서·근거 조회</button>
+    </nav>
+    <div class="sidebar-note"><strong>S1·S2 업무 연결</strong><p>조회 → 보완 초안 → 별도 검토 → 승인 버전 반영 → 같은 조건 비교</p><p>등록·변경안의 승인과 반영은 공통 호스트가 처리합니다.</p></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div class="development-identity"><div><span class="dev-badge">개발 환경</span><span id="identity">서버 신원 확인 중…</span><small id="identity-permissions">서버 권한 확인 중…</small></div><label class="development-user-label" for="dev-user-select">개발 사용자 · 로그인 아님<select id="dev-user-select" disabled aria-describedby="identity-permissions"><option value="">서버 사용자 목록 확인 중…</option></select></label></div><div class="version-label" id="current-version">데이터 버전 확인 중</div></header>
+    <div class="dev-notice" id="development-notice">로그인 없는 개발 신원입니다. 실제 사용자 인증 완료를 의미하지 않습니다. 보드·로트·장착/제거 기록은 시연용 가상 데이터입니다.</div>
+    <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
+    <div class="content-grid">
+      <main id="main" tabindex="-1">
+        <section id="view-investigation" class="view">
+          <div class="page-heading"><div><p class="eyebrow">S1 · 로트 장착 이력 조회</p><h1>부품 로트 사용처·장착 이력 조사</h1><p>대상 보드와 시간 조건을 정하고, 근거가 있는 장착 이력과 추가 확인할 부분을 구분합니다.</p></div><span class="pill neutral">고장·불량 판정 기능 아님</span></div>
+          <section class="card" aria-labelledby="conditions-title">
+            <div class="section-heading"><h2 id="conditions-title"><span class="step">1</span>조사 조건 설정</h2><span class="muted">명시적 시각·시간대</span></div>
+            <form id="query-form">
+              <div class="form-grid">
+                <label class="wide">대상 보드 집합<input id="unit-ids" name="unit_ids" required autocomplete="off" placeholder="unit:U104, unit:U105"><small>보드 ID를 쉼표로 구분합니다. 조회 대상 집합을 명시해야 합니다.</small></label>
+                <label class="wide">부품 로트 ID<input id="lot-id" name="lot_id" required autocomplete="off" placeholder="lot:demo:lan8710:L07"></label>
+                <label class="wide">기준 시점 장착 상태 확인(A)<input id="query-at" name="at" required type="text" placeholder="2026-09-20T10:00:00+09:00"><small>예: +09:00을 포함한 ISO 시각. 날짜만 입력하면 조회할 수 없습니다.</small></label>
+                <label>조사 기간 시작(B · 포함)<input id="query-start" name="start" required type="text" placeholder="2026-09-01T00:00:00+09:00"></label>
+                <label>조사 기간 종료(B · 제외)<input id="query-end" name="end" required type="text" placeholder="2026-09-21T00:00:00+09:00"></label>
+              </div>
+              <p class="hint">B는 장착 구간과 조사 기간이 겹치는 이력입니다. 시작 포함·끝 제외 <code>[start,end)</code>이며, 실제 가동 시간은 추론하지 않습니다.</p>
+              <div class="actions"><button id="query-submit" class="primary" type="submit">장착 이력 조회</button><span id="query-note" class="muted">A와 B는 동일 데이터 버전으로 조회합니다.</span></div>
+            </form>
+          </section>
+          <section id="results-card" class="card" aria-labelledby="results-title" hidden>
+            <div class="section-heading"><h2 id="results-title"><span class="step">2</span>장착 이력 조회 결과</h2><span id="result-version" class="pill neutral"></span></div>
+            <div id="condition-summary" class="condition-summary"></div>
+            <div class="legend"><p><span class="pill included">장착 이력 확인</span>요청한 시점 또는 기간 조건에 일치하는 장착 이력이 확인됨</p><p><span class="pill excluded">조건상 제외</span>충분한 이력 근거가 있으며 요청한 조건에는 해당하지 않음</p><p><span class="pill needs_confirmation">추가 이력 확인 필요</span>제거 시점이나 이력 확인 범위 등 판단에 필요한 근거가 부족함</p></div>
+            <p class="hint">장착 이력 확인은 결함·고장 확인이 아니며, 조건상 제외도 안전하다는 뜻이 아닙니다. 확인된 이력이 있어도 다른 미확인 구간은 남을 수 있습니다.</p>
+            <div id="results"></div>
+            <div class="actions"><button type="button" id="open-supplement">이력 보완안 작성</button><button type="button" id="explain-results">AI로 조회 결과 설명</button></div>
+          </section>
+          <section class="card" id="supplement-card" aria-labelledby="supplement-title">
+            <div class="section-heading"><h2 id="supplement-title"><span class="step">3</span>누락·미확인 장착/제거 이력 보완</h2><span class="pill synthetic">가상 운영 기록</span></div>
+            <p>첫 통합 사례는 보존된 <strong>U104 시연 보완 근거</strong>를 사용합니다. 시연값을 불러와도 초안 저장·승인·반영은 실행되지 않습니다.</p>
+            <div class="actions"><button type="button" id="load-supplement">시연용 U104 보완값 불러오기</button><button type="button" data-open-view="history">다른 이력 보완 자료 접수</button></div>
+            <p class="hint">다른 시연용 가상 보완 자료는 「개별 보드·부품 로트 이력」에서 JSON 파일로 접수할 수 있습니다. 이 U104 템플릿은 선택한 원본이 뒷받침하는 값만 제출합니다.</p>
+            <form id="supplement-form" hidden>
+              <div id="supplement-source" class="source-box"></div>
+              <div class="form-grid">
+                <label class="wide">대상 장착 기록<input id="installation-id" readonly></label>
+                <label class="wide">원본에서 확인한 제거 시각<input id="removed-at" required type="text"></label>
+                <label>전체 이력 확인 범위 시작<input id="coverage-start" required type="text"></label>
+                <label>전체 이력 확인 범위 종료<input id="coverage-end" required type="text"></label>
+              </div>
+              <label class="check"><input id="coverage-confirmed" type="checkbox" required><span>선택한 근거에서 시작 상태와 해당 범위의 전체 장착·제거 이력을 확인했습니다.</span></label>
+              <p id="supplement-mismatch" class="hint"></p>
+              <label class="check"><input id="revise-draft" type="checkbox"><span>현재 선택한 내 초안의 새 버전으로 저장 <small id="revision-target">선택된 초안 없음</small></span></label>
+              <div class="actions"><button type="submit" class="primary" id="save-supplement">보완 초안 저장·검증</button><button type="button" id="new-supplement">별도의 새 보완안 시작</button><span class="muted">확정 데이터는 바뀌지 않습니다. 같은 작업 재시도는 저장 버튼을 다시 누르세요.</span></div>
+            </form>
+            <div id="draft-created" class="message" hidden></div>
+          </section>
+          <section id="comparison-card" class="card" aria-labelledby="comparison-title">
+            <div class="section-heading"><h2 id="comparison-title"><span class="step">4</span>이력 보완 전·후 조사 결과 비교</h2></div>
+            <p>최초 조회에서 고정한 대상·로트·A/B 조건을 유지하고, 선택한 초안의 실제 반영 데이터 버전과 비교합니다.</p>
+            <div id="comparison-context" class="hint">먼저 장착 이력을 조회하고 보완 초안을 선택하세요.</div>
+            <div class="actions"><button type="button" id="compare-results">승인된 버전 확인·보완 전후 비교</button></div>
+            <div id="comparison-results"></div>
+          </section>
+        </section>
+        <section id="view-review" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">사람 검토 · 정확한 버전 승인</p><h1>등록·변경안 검토 및 승인</h1><p>변경 전후 값과 원본 근거를 검토합니다. 작성자는 자신의 초안을 승인할 수 없습니다.</p></div></div>
+          <section class="card">
+            <h2>검토할 초안 불러오기</h2>
+            <form id="draft-load-form"><div class="form-grid"><label>초안 ID<input id="draft-id" required autocomplete="off"></label><label>정확한 초안 버전<input id="draft-version" type="number" min="1" step="1" required value="1"></label></div><div class="actions"><button type="submit" class="primary" id="load-draft">변경 전후 비교·검증</button></div></form>
+            <p class="hint">최신 버전으로 자동 치환하지 않습니다. 오래된 초안은 내용을 확인할 수 있어도 승인·반영할 수 없습니다.</p>
+          </section>
+          <section id="review-card" class="card" hidden>
+            <div class="section-heading"><h2>변경 전후와 등록 조건 검증</h2><span id="draft-status" class="pill neutral"></span></div>
+            <div id="draft-metadata" class="metadata"></div>
+            <div id="draft-validation"></div>
+            <div id="draft-changes"></div>
+            <details><summary>초안의 전체 변경 내용</summary><pre id="draft-operations"></pre></details>
+            <details><summary>이 버전의 검토 이력</summary><div id="review-history"></div></details>
+            <div class="share-box"><label>별도 검토자 화면에 전달할 경로<input id="review-path" readonly></label><button type="button" id="copy-review-path">검토 경로 복사</button><p class="hint">상단에서 Bob 등 다른 개발 사용자를 선택한 뒤 업무 현황에서 같은 초안을 여세요. 복사한 경로를 같은 서비스 주소 뒤에 붙여 열 수도 있습니다. 경로 자체는 신원·권한을 바꾸지 않습니다.</p></div>
+            <div class="review-action-box"><label>검토 의견<textarea id="review-note" rows="3" maxlength="4000" placeholder="원본 근거와 변경 전후 값을 확인한 내용을 남겨주세요."></textarea></label><label class="check"><input type="checkbox" id="review-confirmed"><span>표시된 초안 ID·버전, 근거, 변경 전후 값을 확인했습니다.</span></label><div class="actions"><button type="button" id="approve-draft" class="primary">승인</button><button type="button" id="request-changes">보완 요청</button><button type="button" id="reject-draft" class="danger">반려</button></div><p class="hint">승인 성공 후 서버가 같은 초안 버전의 반영을 시도합니다. 승인과 반영 결과는 각각 표시됩니다.</p></div>
+            <div id="review-outcome"></div>
+            <div class="actions"><button type="button" id="retry-review" hidden>동일 요청으로 결과 확인·재시도</button><button type="button" id="go-compare">승인된 버전 반영 결과 확인</button></div>
+          </section>
+        </section>
+        <section id="view-home" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">제조 제품정보 서비스</p><h1>업무 현황</h1><p>서버에 저장된 등록·변경안과 승인된 데이터 버전을 확인하고 다음 업무를 이어갑니다.</p></div><button type="button" id="refresh-workspace">현황 새로고침</button></div>
+          <div class="overview-grid" id="workspace-metrics"><p class="hint">현황을 불러오면 실제 저장된 값을 표시합니다.</p></div>
+          <section class="card"><div class="section-heading"><h2>등록·변경안</h2><span id="workspace-version" class="pill neutral"></span></div><p class="hint">표에 표시된 정확한 초안 버전을 열어 검토합니다. 승인과 데이터 반영은 서로 다른 상태입니다.</p><div id="workspace-drafts"></div></section>
+          <section class="card"><h2>업무 시작</h2><div class="work-links"><button type="button" data-open-view="product"><strong>제품 개정·BOM 구성 등록</strong><span>원본 접수 → 추출 확인 → 비교 → 등록 초안</span></button><button type="button" data-open-view="investigation"><strong>부품 로트 장착 이력 조사</strong><span>A/B 조회 → 근거 확인 → 이력 보완 → 전후 비교</span></button><button type="button" data-open-view="evidence"><strong>기술 문서·기록 근거 찾기</strong><span>승인된 데이터 버전에 연결된 원본과 근거 조회</span></button></div><p class="hint">개발 신원과 시연 운영 기록을 사용하는 업무 연결입니다. 실제 인증·운영 배포 완료를 뜻하지 않습니다.</p></section>
+        </section>
+        <section id="view-product" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">S2 · 기존 사양·BOM 구조화</p><h1>제품 구성·BOM 등록</h1><p>실제 원본을 접수하고 개정·기존 구성과 연결한 뒤, 별도 검토자의 승인으로 등록합니다.</p></div><span class="pill neutral">OLIMEX L/L1 · WROOM</span></div>
+          <section class="card"><div class="section-heading"><h2><span class="step">1</span>원본 자료 접수</h2><span class="pill neutral">실제 공개 기술 자료</span></div><form id="source-intake-form"><label>OLIMEX L 또는 L1 WROOM 원본 BOM 파일<input type="file" id="source-file" accept=".ods,application/vnd.oasis.opendocument.spreadsheet" required><small>확인된 원본과 바이트·해시가 일치하는 ODS 파일을 접수합니다. 최대 700 KB.</small></label><div class="actions"><button type="submit" id="source-intake" class="primary">원본 자료 접수</button></div></form><p class="hint">원본 BOM을 구조화하는 기능입니다. 새로운 BOM 설계·부품 조합 생성, 임의 PDF/OCR 접수는 제공하지 않습니다.</p><div id="source-intake-result"></div></section>
+          <section class="card" id="source-extraction-card" hidden><div class="section-heading"><h2><span class="step">2</span>추출 정보 확인</h2><span id="source-revision" class="pill neutral"></span></div><div id="source-metadata" class="metadata"></div><div id="source-limitations" class="message warning"></div><div class="row-filter"><label class="check"><input type="checkbox" id="unknown-only"><span>실장 여부 미확인 항목만 보기</span></label><span id="source-row-count" class="muted"></span></div><div id="source-rows"></div><details><summary>접수 원본·검증 기록</summary><pre id="source-receipt-details"></pre></details></section>
+          <section class="card" id="source-compare-card" hidden><div class="section-heading"><h2><span class="step">3</span>제품 개정별 BOM 변경 비교</h2></div><form id="source-compare-form"><label>비교할 기존 구성 ID<input id="source-left-id" value="config:esp32-poe:L:WROOM" required></label><div class="actions"><button type="submit" id="source-compare">개정별 BOM 비교</button></div></form><p class="hint">원본 설명과 참조 위치를 비교합니다. 부품의 전기적 동일성·대체 호환성을 판정하지 않습니다. 접수 후보는 아직 확정 데이터가 아닙니다.</p><div id="source-comparison"></div></section>
+          <section class="card" id="source-draft-card" hidden><div class="section-heading"><h2><span class="step">4</span>등록 초안·검토 요청</h2></div><label class="check"><input type="checkbox" id="source-reviewed"><span>추출 정보·원본 근거·기존 정보와의 차이·실장 미확인 사항을 확인했습니다.</span></label><label class="check"><input type="checkbox" id="source-revise"><span>이 원본으로 작성한 등록 초안의 새 버전으로 저장 <small id="source-revise-target">작성된 등록 초안 없음</small></span></label><div class="actions"><button type="button" id="source-save-draft" class="primary">등록 초안 저장</button><button type="button" id="source-request-review">등록안 검토 요청</button><button type="button" id="source-new-draft">별도의 새 등록안 시작</button></div><p class="hint">저장은 원본 근거가 붙은 초안과 검증 결과를 만듭니다. 검토 요청은 저장한 동일 버전을 검토 화면으로 연결하며 중복 초안을 만들지 않습니다.</p><div id="source-draft-result"></div></section>
+          <section class="card"><div class="section-heading"><h2><span class="step">5</span>승인된 구성 확인</h2></div><form id="configuration-form"><div class="form-grid"><label>구성 ID<input id="configuration-id" value="config:esp32-poe:L:WROOM" required></label><label>데이터 버전 · 비우면 현재 승인 버전<input id="configuration-version" type="number" min="0" step="1"></label></div><div class="actions"><button type="submit" id="configuration-load">승인된 구성 확인</button></div></form><div id="configuration-result"></div></section>
+        </section>
+        <section id="view-history" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">승인된 운영 기록</p><h1>개별 보드·부품 로트 이력</h1><p>등록된 보드·로트와 장착/제거 기록을 같은 데이터 버전에서 확인합니다.</p></div><span class="pill synthetic">시연용 가상 운영 기록</span></div>
+          <section class="card"><form id="history-form"><div class="form-grid"><label>조회 대상<select id="history-kind"><option value="ProductUnit">개별 보드</option><option value="ComponentLot">부품 로트</option></select></label><label>정확한 ID · 비우면 해당 유형 전체<input id="history-node-id" placeholder="unit:U104 또는 lot:demo:lan8710:L07"></label><label>데이터 버전 · 비우면 현재 승인 버전<input id="history-version" type="number" min="0" step="1"></label></div><div class="actions"><button type="submit" id="history-load" class="primary">보드·로트 이력 조회</button></div></form><p class="hint">장착 기록 목록에 없다는 이유만으로 미장착·조건상 제외를 판단하지 않습니다. 전체 대상과 A/B 시간 조건의 판정은 로트 장착 이력 조회를 사용하세요. 재고 출고는 장착을 뜻하지 않습니다.</p></section><section class="card"><div class="section-heading"><h2>장착/제거 이력 보완 자료 접수</h2><span class="pill synthetic">사용자가 제출하는 시연 기록</span></div><p>시연용 가상 회사의 보드·로트·장착/제거·이력 확인 범위·입출고 기록을 JSON으로 접수합니다. 서버는 새 원본·근거 ID와 파일 해시를 붙이고 공통 등록 조건을 검증합니다.</p><form id="history-intake-form"><label>가상 운영 기록 JSON 파일 · 최대 200 KB, 100개 기록<input type="file" id="history-source-file" accept=".json,application/json" required></label><div class="actions"><button type="submit" id="history-intake">이력 보완 자료 접수</button></div></form><details><summary>제출 형식과 입력 범위</summary><p class="hint">origin은 synthetic만 허용합니다. authored_at에는 명시적 시간대를 넣고, records에 기존 SCHEMA의 운영 기록을 담습니다. 서버가 각 레코드의 origin·evidence를 연결하므로 직접 넣지 않습니다. 기존 ID를 정정해도 근거 파일은 새 ID로 보존됩니다.</p><pre>{
+  "origin": "synthetic",
+  "authored_at": "2026-10-26T10:00:00+09:00",
+  "notice": "시연용 가상 운영 기록이며 OLIMEX 실제 운영 기록이 아님",
+  "records": [
+    {
+      "id": "mount:U104:U4:1",
+      "type": "Installation",
+      "unit_id": "unit:U104",
+      "lot_id": "lot:demo:lan8710:L07",
+      "position": "U4",
+      "installed_at": "2026-08-20T09:00:00+09:00",
+      "removed_at": "2026-09-12T09:00:00+09:00"
+    }
+  ]
+}</pre><p class="hint">위 예시는 제거 기록 한 건입니다. 전체 이력 확인(HistoryCoverage)을 자동으로 주장하지 않습니다. 실제 고장 원인·검사 결과·가동 시간·안전성은 허용 필드가 아닙니다.</p></details><div id="history-intake-result"></div><div id="history-draft-controls" hidden><label class="check"><input type="checkbox" id="history-source-reviewed"><span>시연 기록의 내용·범위와 기존 정보의 정정 여부를 확인했습니다. 검증 통과가 사실 확정이나 승인이 아님을 이해했습니다.</span></label><label class="check"><input type="checkbox" id="history-source-revise"><span>이 접수 업무의 보완 초안을 새 버전으로 저장 <small id="history-revise-target">작성된 보완 초안 없음</small></span></label><div class="actions"><button type="button" id="history-save-draft" class="primary">보완 초안 저장·검증</button><button type="button" id="history-request-review">보완안 검토 요청</button></div></div><div id="history-draft-result"></div><p class="hint">접수·초안 저장은 확정 데이터를 바꾸지 않습니다. 별도 검토자의 승인과 정확한 버전 반영이 필요하며, 반영 후 동일 A/B 조건으로 재조회합니다.</p></section><section class="card" id="history-result-card" hidden><div class="section-heading"><h2>보드·로트 연결과 이력</h2><span id="history-result-version" class="pill neutral"></span></div><div id="history-results"></div></section>
+        </section>
+        <section id="view-evidence" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">원본·승인된 지식 탐색</p><h1>기술 문서·근거 조회</h1><p>제품·부품·운영 이력에 연결된 원본 위치와 근거의 적용 범위를 확인합니다.</p></div></div>
+          <section class="card"><form id="evidence-search-form"><div class="form-grid"><label class="wide">찾을 정보 · ID, 문자열 또는 의미<input id="evidence-search-query" placeholder="예: LAN8710, U104, 제거 시점을 확인할 기록" maxlength="200"></label><label>검색 방식<select id="evidence-search-mode"><option value="lexical">문자열 검색</option><option value="semantic">의미 검색 · 관련 근거 후보</option></select></label><label>자료 구분<select id="evidence-origin"><option value="all">실제·가상 모두</option><option value="real">실제 공개 기술 자료</option><option value="synthetic">시연용 가상 운영 기록</option></select></label><label>데이터 버전 · 비우면 현재 승인 버전<input id="evidence-version" type="number" min="0" step="1"></label></div><div class="actions"><button type="submit" id="evidence-search" class="primary">원본·기록 근거 찾기</button></div></form><p id="evidence-search-mode-note" class="hint">현재 승인된 그래프에서 문자열이 일치하는 정보를 찾습니다.</p><p class="hint">의미 검색은 선택한 승인 버전에 색인된 근거 후보만 반환합니다. 검색 결과와 유사도는 부품 동일성·장착 판정·승인을 대신하지 않습니다.</p></section><section class="card" id="evidence-results-card" hidden><div class="section-heading"><h2>검색 결과</h2><span id="evidence-result-version" class="pill neutral"></span></div><p id="evidence-result-count" class="hint"></p><div id="evidence-search-results"></div></section>
+        </section>
+      </main>
+      <aside class="ai-panel" aria-labelledby="ai-title"><div class="ai-heading"><span class="ai-icon" aria-hidden="true">✦</span><div><h2 id="ai-title">AI 업무 지원</h2><small id="ai-subtitle">현재 업무의 조건·근거·버전 연결</small></div></div><p id="model-status" class="hint">모델 설정 확인 중…</p><div class="ai-context"><strong>현재 화면에서 공유하는 대상·조건</strong><p id="ai-context">아직 고정된 조회 조건이 없습니다.</p></div><form id="ai-form"><label>업무 요청<textarea id="ai-question" rows="4" maxlength="2000" placeholder="확인된 근거를 설명하거나, 조사할 보드·로트·A/B 시각을 알려줘."></textarea></label><button type="submit" id="ask-ai" class="primary">업무 요청·설명</button></form><div id="ai-draft-controls" class="ai-draft-controls" hidden><p id="ai-draft-target" class="hint"></p><p class="hint">접수 자료의 원본·미확인 사항을 확인한 뒤 요청하세요. 이 버튼은 접수 원본의 초안을 저장하며 승인·확정 반영하지 않습니다. 사실 정정은 새 원본을 접수하고 새 초안 버전으로 검토합니다.</p><button type="button" id="prepare-ai-draft">AI 등록 초안 저장 요청</button></div><p class="hint">등록·조회 정보의 근거·버전·검증은 공통 도구를 사용합니다. AI는 초안을 승인하거나 확정 데이터를 바꿀 수 없습니다.</p><div id="ai-output" aria-live="polite"></div></aside>
+    </div>
+  </div>
+</div>
+<dialog id="evidence-dialog" aria-labelledby="evidence-title"><div class="dialog-heading"><h2 id="evidence-title">원본·이력 근거 확인</h2><button type="button" id="close-evidence" aria-label="근거 창 닫기">닫기</button></div><div id="evidence-content"></div></dialog>
+</body>
+</html>

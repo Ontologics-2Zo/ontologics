@@ -4,10 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ontologics"
-version = "0.2.0"
+version = "0.3.0"
 description = "Evidence-backed manufacturing knowledge and review foundation"
 requires-python = ">=3.10"
 dependencies = ["psycopg[binary]>=3.2,<4"]
 
 [tool.setuptools]
 packages = ["ontologics"]
+
+[tool.setuptools.package-data]
+ontologics = ["static/*.html", "static/*.css", "static/*.js"]

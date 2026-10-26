@@ -250,7 +250,7 @@ intake는 추출 정답 노드를 모델에 주지 않고 원문을 제공한다
 
 promise는 버전 2 약속에서 고객·구성·계약/회차 수량·단위·도착 기한·장소를 읽고 근거 및 SourceDocument를 조회한다. `fulfillment_assessed=false`, 미확인 inventory/allocation/production/transport/actual_arrival을 유지한다. 운영 관측 시각은 없고 due_at은 약속 기한이다. 두 모드는 독립 DB 스키마를 쓰며 모델의 intake 초안을 자동 승인해서 promise로 넘기지 않는다. 예제의 scripted reviewer는 실제 업무 승인이 아니다.
 
-`ModelRuntime(..., allowed_tools=도구목록)`는 호스트가 지정한 고유 list/tuple을 고정한다. 전체 호출 묶음을 실행 전에 검사하고 역할 밖 도구는 `TOOL_NOT_ALLOWED`로 중단한다. 생략 시 기존 Gateway 전체 허용 도구를 사용해 기존 호출자를 보존한다. 모드별 권한 목록을 실행 설정에도 기록한다. Agent 신원 변경·review/apply는 계속 금지한다. ModelConfig는 B 예제에서 max_steps=16, 기본 step당 max_tool_calls=4, max_attempts=2 및 기존 byte 제한을 사용한다. API 시간/토큰 한도는 기존 provider 설정이며 총 실행 시간/비용 강제 상한은 없다.
+`ModelRuntime(..., allowed_tools=도구목록)`는 호스트가 지정한 비어 있지 않은 고유 list/tuple/set/frozenset을 Gateway의 동결 집합으로 고정한다. 전체 호출 묶음을 실행 전에 검사하고 역할 밖 도구는 `TOOL_NOT_ALLOWED`로 중단한다. 생략 시 기존 Gateway 전체 허용 도구를 사용해 기존 호출자를 보존한다. 모드별 권한 목록을 실행 설정에도 기록한다. Agent 신원 변경·review/apply는 계속 금지한다. ModelConfig는 B 예제에서 max_steps=16, 기본 step당 max_tool_calls=4, max_attempts=2 및 기존 byte 제한을 사용한다. API 시간/토큰 한도는 기존 provider 설정이며 총 실행 시간/비용 강제 상한은 없다.
 
 자동 평가는 성공 trace·저장된 초안·원문 해시·정확한 버전과 구성·독립 정답을 대조한다. `runtime.ok`는 최종 텍스트 생성일 뿐 업무 평가 통과를 뜻하지 않는다. 잘못된 JSON/근거/수량/기한/승인 상태는 평가 실패다. 자유문 전체의 의미 검토는 별도로 남기며 도구 경로의 대역 성공을 실제 모델 해석 품질로 계산하지 않는다. `--provider openai` 설정 실패는 DB 시드·API 호출 전에 구조화한 실패 보고서를 남긴다. 실행 로그는 Git 제외 `artifacts/local/task09/`에 둔다.
 
@@ -326,7 +326,23 @@ with host.request(DevelopmentContext('dev-alice')) as request:
 이 경로는 **개발용 신원·권한 검증**이다. 프로세스의 Python 객체나 개발 사용자 선택 권한을 가진 사람을 격리하지 않으며, 실제 로그인·인증 세션·외부 인증 공급자 검증은 미완료다. 개발 공급자를 운영 인증 실패 시 fallback으로 사용하지 않는다. 기존 호스트 시험은 scripted provider로 수행했으며 아래 웹의 실모델 검증과 구별한다. 당시 호스트 검증에는 Supervisor/Knowledge 실모델 실행이 포함되지 않았다. 이번 화면 연동 범위는 아래 HTTP 절을 따르며 실제 인증·전체 대화 품질은 잔여 작업이다.
 
 
-확장 역할은 `AgentRegistration(name, instructions, allowed_tools)`를 서버 시작 코드의 `CommonHost(..., agent_registrations=(...))`에만 등록한다. 내장 이름 덮어쓰기·중복·미등록 도구·Agent 금지 도구는 거부한다. 등록 지침은 system 메시지에 연결되고 요청 사용자의 권한을 추가하지 않는다. 읽기 계약 예제는 [examples/extension_agent.py](../examples/extension_agent.py), 경계 검증은 `tests/test_agent_extensions.py`다. 역할 등록과 웹 Supervisor 라우팅 연결은 별도이며 자동 라우팅은 하지 않는다. B-CQ01·CQ02의 기존 Python 예제를 이 호스트에 등록하거나 웹 메뉴로 노출하는 것은 별도 연결 작업이며 이번 병합만으로 완료되지 않는다.
+확장 역할은 `AgentRegistration(name, instructions, allowed_tools)`를 서버 시작 코드의 `CommonHost(..., agent_registrations=(...))`에만 등록한다. 내장 이름 덮어쓰기·중복·미등록 도구·Agent 금지 도구는 거부한다. 등록 지침은 system 메시지에 연결되고 요청 사용자의 권한을 추가하지 않는다. 읽기 계약 예제는 [examples/extension_agent.py](../examples/extension_agent.py), 경계 검증은 `tests/test_agent_extensions.py`다. 역할 등록과 웹 Supervisor 라우팅 연결은 별도이며 자동 라우팅은 하지 않는다. B-CQ01·CQ02의 Python 호스트 연결은 아래 예제로 추가했고 웹 메뉴 연결은 미구현이다.
+
+### B 역할의 CommonHost 연결
+
+[examples/b_host_agent.py](../examples/b_host_agent.py)의 `REGISTRATIONS`는 기존 B 지침과 도구 목록을 참조하는 신뢰된 시작 코드다. `CommonHost(identities, database, agent_registrations=REGISTRATIONS)`를 구성하고 `host.request(DevelopmentContext(subject))` 안에서 `request.run_agent(role, provider, [{'role':'user','content':canonical(task)}], config=..., capture_tool_trace=True)`로 실행한다. CommonHost가 역할의 system 지침을 붙이므로 같은 지침을 별도로 복제하지 않는다.
+
+| 등록 역할 | 기존 도구 목록 | 필요한 사용자 권한·종료 조건 |
+| --- | --- | --- |
+| b_intake | B_INTAKE_TOOLS | read/draft. 기존 구성·원문·근거와 일치하는 미승인 계약 초안 후 검증; 정보 부족이면 초안 없이 확인 필요 |
+| b_promise | B_PROMISE_TOOLS | read. 확정 버전의 약속·근거·미확인 설명 |
+| b_fulfillment | B_FULFILLMENT_TOOLS | read. 기존 ProvenanceProvider와 CONFIG 사용, 현황→Evidence→SourceDocument→정확 인용 응답 |
+
+등록과 별개로 요청 사용자의 권한이 적용된다. 예제 기본 사용자는 `dev-b-author`(read/draft)이며 실행·초안은 `user:dev-b-author`로 남긴다. 예전 고정 `b-agent`·`fulfillment-agent`를 우회 신원으로 사용하지 않는다. 사용자가 review 권한을 갖더라도 B Agent는 review/apply를 호출할 수 없다. 기존 평가기·대역의 선택적 `actor=`는 신뢰된 호스트/검사 코드가 전달하며 모델 공개 인자가 아니다. 기본값은 보존하여 standalone 예제를 유지한다.
+
+`run_scripted_example`은 read 권한이 있는 개발 사용자를 대상으로 한다. 별도 새 스키마의 기존 합성 시드를 먼저 준비하고 시드 연결을 닫은 뒤, 동일 사용자만 등록한 독립 검사 연결과 CommonHost로 실행한다. 접수 초안을 자동 승인해서 조회 모드에 넘기지 않는다. 원래 CQ01/CQ02 검사에 실행 기록의 사용자·허용 도구·output_hash 대조를 더한다. CQ02의 정상 답 근거11개는 고정 숫자로 생성하지 않고 기존 도구 결과 정책으로 추린다. 전체 반환 근거 사슬을 로컬 확인하는 것과 모델이 원문 파일 전체를 읽는 것은 구별한다.
+
+CLI는 `--mode intake/promise/fulfillment/all`, `--env-file`, 필수 `--output`만 제공하며 대역 전용이다. 보고서 파일을 배타적으로 생성하여 이전 실행 원본을 덮어쓰지 않는다. 새 사례마다 새 schema를 사용한다. 기존 실모델 예제의 과거 성공을 이 새 사용자 연결의 실모델 성공으로 계산하지 않는다. B 웹/Supervisor 라우팅·실제 인증·운영 사용자 승인·유료 모델 평가는 이번 연결 범위 밖이다.
 
 ## 개발용 HTTP API와 화면
 

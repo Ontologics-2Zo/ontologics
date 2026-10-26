@@ -91,6 +91,14 @@ python -m examples.b_agent --provider openai --output artifacts/local/task09/b_a
 
 결과는 Git 제외 `artifacts/local/task09/b_agent.json`에 기록된다(`--output`으로 변경 가능). 실모델 실행에는 별도 경로를 권장한다. 키 누락은 DB 접수·API 호출 전에 `OPENAI_KEY_MISSING`으로 중단하며 대역 통과와 실모델 완료를 구별한다. 자동 평가는 원문 파서·독립 정답·실제 도구 기록·저장된 초안을 대조한다. 자유문 설명 전체와 임의 계약 PDF/OCR의 품질을 보증하지 않는다. 모드별 도구 권한과 입력/출력은 [TOOLS](docs/TOOLS.md#b-agent-연결-예제-task-09)를 따른다.
 
+새 CommonHost를 통한 B 연결 예제는 다음과 같다. 매 실행마다 새 개발 스키마를 사용하며 보고서 경로는 새 파일이어야 한다.
+
+```bash
+python -m examples.b_host_agent --mode all --env-file .env.local --output artifacts/local/b_host_first.json
+```
+
+[b_host_agent.py](examples/b_host_agent.py)는 기존 지침·도구·평가기를 `b_intake`·`b_promise`·`b_fulfillment`로 등록한다. 개발 사용자의 요청 신원으로 실행·초안 작성자를 기록하고, CQ02의 정확한 근거 인용 검사를 유지한다. 이 명령은 **대역 모델 전용이며 유료 API를 호출하지 않는다.** 기존 standalone 예제도 유지한다. 실제 로그인·B 웹 메뉴/Supervisor 인계·병합 후 실모델 품질은 별도 확인이 필요하다. 등록 방식과 권한은 [TOOLS](docs/TOOLS.md#b-역할의-commonhost-연결)를 따른다.
+
 ## S1·S2 웹 통합 — 개발 신원으로 실행
 
 Python CommonHost와 기존 공통 도구를 같은 origin의 HTML·CSS·JavaScript 화면에 연결했다. 별도 프런트엔드 빌드가 없다. **localhost 개발 서버이며 실제 로그인·운영 배포는 미완료**다. 상단의 개발 사용자 선택 박스에서 Alice·Bob·조회 전용 사용자를 바꿀 수 있다. 서버의 허용 목록을 선택하는 기능이며 권한 자체를 편집하지 않는다. 요청마다 서버 IdentityProvider가 신원을 고정하고 도구 입력·Agent는 작성자/권한을 지정하지 않는다.
@@ -194,6 +202,8 @@ python -m unittest tests.test_agent_extensions -v
 ```
 
 [extension_agent.py](examples/extension_agent.py)는 연결 계약을 보여주는 모델 대역 예제다. 동료는 `EXTENSION`의 책임/도구와 provider·messages를 구현하고 기존 고정 모델 `OpenAIProvider(settings, registration.allowed_tools)`로 연결한다. 허용 도구 이탈·사용자 권한 부족·확정 데이터 불변을 검증한 뒤 실제 역할 사례를 평가한다. 웹에서 새 역할로 라우팅하는 부분은 담당자가 명시적으로 연결한다. Change·Supplier·Report 업무 로직이나 자동 플러그인 로더를 구현한 것은 아니다.
+
+B의 CQ01·CQ02는 [b_host_agent.py](examples/b_host_agent.py)의 `REGISTRATIONS`로 이 접점을 사용한다. 기존 기본 네 역할을 교체하지 않으며 B 웹 라우팅은 아직 연결하지 않았다.
 
 ## 저장소 공유 상태
 

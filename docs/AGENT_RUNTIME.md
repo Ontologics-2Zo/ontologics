@@ -41,3 +41,5 @@ B-CQ02의 공통 `fulfillment_status(delivery_round_id, as_of, version)`를 `exa
 Quality는 빠진 조건을 질문하고 사용자가 명시한 보드·로트·ISO 시각만 조건 제안으로 반환한다. 사용자 확인 전 조사로 계산하지 않는다. Knowledge의 semantic_search는 승인 버전·실제/가상 구분·색인 범위의 근거 후보다. 의미 검색에서 모델은 정수 data_version·answerable·반환 후보 내 selected_evidence_ids만 제출하고 서버가 원본 필드로 표시한다. source.version의 Git 커밋을 서비스 데이터 버전으로 바꾸거나 BOM populated를 임의로 미확인 처리하지 않는다. 근거 없음·부분 색인을 부재·안전·품목 동일성으로 설명하지 않는다. Supervisor는 명확한 등록·장착 조사 표현의 공통 역할 제한을 지켜 한 요청을 한 전문 역할로 인계하고 그 역할의 결과·질문·실패 상태를 유지한다. 임의 다중 업무 자동 실행이나 지속 대화 저장의 구현을 뜻하지 않는다.
 
 동료의 확장 접점은 `host.AgentRegistration`과 `examples/extension_agent.py`다. 시스템 지침·허용 도구를 호스트에서 등록하고 기존 ModelRuntime으로 실행한다. 사용자와 승인 권한은 IdentityProvider·CommonHost가 정하므로 확장 지침으로 바꾸지 않는다. 모델 대역 계약 검증과 해당 역할의 실제 모델 사례 평가는 구분한다.
+
+B의 새 호스트 연결 예제는 `examples/b_host_agent.py`다. 기존 지침·도구 목록을 b_intake/b_promise/b_fulfillment로 등록하고 CommonHost가 고정한 사용자로 실행한다. 기존 파서·독립 정답·평가기·CQ02 ProvenanceProvider를 재사용하며 고정 Agent 신원으로 돌아가지 않는다. b_intake만 사용자 draft 권한 안에서 미승인 초안을 만들고 나머지 두 역할은 읽기 전용이다. 사용자에게 검토 권한이 있어도 Agent의 도구 목록에는 승인·반영이 없다. 대역 CLI 성공은 웹 인계·실제 인증·병합 후 실모델 품질 검증을 뜻하지 않는다.

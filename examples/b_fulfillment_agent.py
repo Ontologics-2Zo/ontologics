@@ -91,8 +91,8 @@ def setup(database=None, *, case='normal'):
         raise
 
 
-def _query(service, task):
-    return service.fulfillment_status(ACTOR, task['delivery_round_id'], task['as_of'], version=task['data_version'])
+def _query(service, task, *, actor=ACTOR):
+    return service.fulfillment_status(actor, task['delivery_round_id'], task['as_of'], version=task['data_version'])
 
 
 def answer_evidence(response):
@@ -143,33 +143,33 @@ def _answer(text):
         return None
 
 
-def resolve_provenance(service, response):
+def resolve_provenance(service, response, *, actor=ACTOR):
     """Host verifies ALL returned evidence locally, without extra model requests."""
     version = response['data_version']
     details = []
     for eid in response['evidence']:
-        evidence = must(service.lookup(ACTOR, node_id=eid, version=version))['data'][0]
-        source = must(service.lookup(ACTOR, node_id=evidence['source_id'], version=version))['data'][0]
+        evidence = must(service.lookup(actor, node_id=eid, version=version))['data'][0]
+        source = must(service.lookup(actor, node_id=evidence['source_id'], version=version))['data'][0]
         if evidence['type'] != 'Evidence' or source['type'] != 'SourceDocument' or not evidence['locator']:
             raise ValueError('Invalid evidence chain')
         details.append(dict(evidence=evidence, source=source, data_version=version))
     return details
 
 
-def evaluate(service, task, result, before_version):
+def evaluate(service, task, result, before_version, *, actor=ACTOR):
     answer = _answer(result['text'])
     trace = result.get('tool_trace', [])
     calls = [t for t in trace if t['name'] == 'fulfillment_status' and t['result']['ok']]
-    query = _query(service, task)
+    query = _query(service, task, actor=actor)
     expected_args = dict(delivery_round_id=task['delivery_round_id'], as_of=task['as_of'], version=task['data_version'])
     checks = dict(runtime_completed=result['ok'], structured_answer=answer is not None,
         exact_query_called=len(calls) == 1 and all(t['arguments'] == expected_args for t in calls),
         role_tools_only=all(t['name'] in TOOLS for t in trace),
         exact_read_versions=all(type(t['arguments'].get('version')) is int
             and t['arguments']['version'] == task['data_version'] for t in trace),
-        confirmed_version_unchanged=service.lookup(ACTOR)['data_version'] == before_version,
+        confirmed_version_unchanged=service.lookup(actor)['data_version'] == before_version,
         agent_did_not_write=all(service.db.execute('SELECT COUNT(*) AS n FROM ' + table + ' WHERE ' + field + '=%s',
-            (ACTOR,)).fetchone()['n'] == 0 for table, field in (('drafts', 'author'), ('review_events', 'actor'))),
+            (actor,)).fetchone()['n'] == 0 for table, field in (('drafts', 'author'), ('review_events', 'actor'))),
         within_request_limit=type(result.get('steps')) is int and result['steps'] <= CONFIG.max_steps)
     if not query['ok']:
         checks['tool_success'] = False
@@ -189,10 +189,10 @@ def evaluate(service, task, result, before_version):
     required = set(snapshot['evidence']) | {item['evidence'][0] for item in data['items']} if snapshot else set(query['evidence'])
     checks['exact_answer_evidence'] = bool(answer and selected == required)
     read = {t['arguments'].get('node_id') for t in trace if t['name'] == 'lookup' and t['result']['ok']}
-    coverage_reads = [must(service.lookup(ACTOR, node_id=e, version=task['data_version']))['data'][0]
+    coverage_reads = [must(service.lookup(actor, node_id=e, version=task['data_version']))['data'][0]
                       for e in (snapshot['evidence'] if snapshot else []) if e in read]
     checks['provenance_read'] = not snapshot or any(e['source_id'] in read for e in coverage_reads)
-    details = resolve_provenance(service, query)
+    details = resolve_provenance(service, query, actor=actor)
     checks['host_resolved_all_provenance'] = len(details) == len(query['evidence']) and bool(details)
     # Independent fixed fixture is never part of task messages or provider input.
     golden = json.loads((ROOT / 'data/b_fulfillment_expected.json').read_text())

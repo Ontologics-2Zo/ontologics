@@ -118,17 +118,17 @@ def setup_intake(database=None, *, source_path=None):
         raise
 
 
-def intake_baseline(service, task):
+def intake_baseline(service, task, *, actor=ACTOR):
     """Host-side oracle, never supplied as extracted nodes to the live model."""
-    source = must(service.lookup(ACTOR, node_id=task['source_id'], version=task['data_version']))['data'][0]
+    source = must(service.lookup(actor, node_id=task['source_id'], version=task['data_version']))['data'][0]
     actual_hash = hashlib.sha256(task['source_text'].encode()).hexdigest()
     if source['type'] != 'SourceDocument' or source['sha256'] != actual_hash or task['source_sha256'] != actual_hash:
         raise ValueError('Contract text does not match the registered source hash')
     for eid in task['evidence_ids'].values():
-        evidence = must(service.lookup(ACTOR, node_id=eid, version=task['data_version']))['data'][0]
+        evidence = must(service.lookup(actor, node_id=eid, version=task['data_version']))['data'][0]
         if evidence['type'] != 'Evidence' or evidence['source_id'] != source['id']:
             raise ValueError('Contract evidence belongs to a different source')
-    nodes = must(service.lookup(ACTOR, version=task['data_version']))['data']
+    nodes = must(service.lookup(actor, version=task['data_version']))['data']
     return extract_contract(task['source_text'], nodes, evidence_ids=task['evidence_ids'])
 
 
@@ -178,7 +178,7 @@ def _answer(text, mode):
         return None
 
 
-def evaluate(service, task, result, before_version):
+def evaluate(service, task, result, before_version, *, actor=ACTOR):
     """Check persisted facts AND actual model tool calls against independent truth.
 
     This is a narrow factual/authority gate, not a free-prose quality benchmark.
@@ -187,15 +187,15 @@ def evaluate(service, task, result, before_version):
     a = _answer(result['text'], mode)
     tools = B_INTAKE_TOOLS if mode == 'intake' else B_PROMISE_TOOLS
     checks = {'runtime_completed': result['ok'], 'structured_answer': a is not None,
-              'confirmed_version_unchanged': service.lookup(ACTOR)['data_version'] == before_version,
+              'confirmed_version_unchanged': service.lookup(actor)['data_version'] == before_version,
               'role_tools_only': all(t['name'] in tools for t in result.get('tool_trace', [])),
-              'no_review_or_apply': service.db.execute('SELECT COUNT(*) AS n FROM review_events WHERE actor=%s', (ACTOR,)).fetchone()['n'] == 0,
+              'no_review_or_apply': service.db.execute('SELECT COUNT(*) AS n FROM review_events WHERE actor=%s', (actor,)).fetchone()['n'] == 0,
               'exact_read_versions': all(t['arguments'].get('version') == task['data_version']
                   and type(t['arguments'].get('version')) is int for t in result.get('tool_trace', [])
                   if t['name'] in {'lookup', 'delivery_round'})}
     looked = {t['arguments'].get('node_id') for t in _calls(result, 'lookup')}
     if mode == 'intake':
-        baseline = intake_baseline(service, task)
+        baseline = intake_baseline(service, task, actor=actor)
         expected_status = 'awaiting_review' if baseline['status'] == 'ready' else baseline['status']
         issues = [{'field': i['field'], 'code': i['code']} for i in baseline['issues']]
         prepares, validations = _calls(result, 'prepare_draft'), _calls(result, 'validate_draft')
@@ -211,11 +211,11 @@ def evaluate(service, task, result, before_version):
             checks['exact_candidates_only'] = bool(prepares) and all(
                 canonical(sorted(t['arguments'].get('operations', []), key=canonical)) == expected
                 and t['arguments'].get('request_key') == task['request_key'] for t in prepares)
-            stored = service.get_draft(ACTOR, a['draft_id'], a['draft_version']) if a and a['status'] == 'awaiting_review' else None
+            stored = service.get_draft(actor, a['draft_id'], a['draft_version']) if a and a['status'] == 'awaiting_review' else None
             d = stored['data'] if stored and stored['ok'] else None
             checks['stored_unapproved_validated_draft'] = bool(d and d['status'] == 'awaiting_review'
                 and not d['reviewer'] and not d['applied_version'] and not d['review_history']
-                and d['author'] == ACTOR and d['base_version'] == task['data_version']
+                and d['author'] == actor and d['base_version'] == task['data_version']
                 and canonical(sorted(d['operations'], key=canonical)) == expected
                 and any(t['result']['data']['draft_id'] == d['id'] and t['result']['data']['draft_version'] == d['version'] for t in prepares)
                 and any(t['arguments'] == {'draft_id': d['id'], 'version': d['version']}
@@ -225,7 +225,7 @@ def evaluate(service, task, result, before_version):
     else:
         calls = _calls(result, 'delivery_round')
         args = {'delivery_round_id': task['delivery_round_id'], 'version': task['data_version']}
-        response = service.delivery_round(ACTOR, **args)
+        response = service.delivery_round(actor, **args)
         checks['exact_round_called'] = bool(calls) and all(t['arguments'] == args for t in calls)
         checks['tool_success'] = response['ok']
         if response['ok']:
@@ -235,7 +235,7 @@ def evaluate(service, task, result, before_version):
             checks['exact_promise_and_limits'] = bool(a and canonical(a['promise']) == canonical(expected)
                 and a['data_version'] == task['data_version'] and set(a['evidence']) == set(response['evidence'])
                 and sorted(a['unknowns']) == sorted(NOT_ASSESSED))
-            evidence = [must(service.lookup(ACTOR, node_id=e, version=task['data_version']))['data'][0] for e in response['evidence']]
+            evidence = [must(service.lookup(actor, node_id=e, version=task['data_version']))['data'][0] for e in response['evidence']]
             checks['provenance_read'] = {n['id'] for n in evidence} | {n['source_id'] for n in evidence} <= looked
         else:
             checks['exact_promise_and_limits'] = False
@@ -244,8 +244,9 @@ def evaluate(service, task, result, before_version):
 
 class ScriptedProvider:
     """Explicit deterministic TEST DOUBLE. It does not simulate LLM quality."""
-    def __init__(self, service, task):
+    def __init__(self, service, task, *, actor=ACTOR):
         self.service, self.task, self.step = service, task, 0
+        self.actor = actor
         self.calls = []  # No API calls.
 
     def __call__(self, **kwargs):
@@ -258,7 +259,7 @@ class ScriptedProvider:
             reads = [t['source_id'], *t['evidence_ids'].values()]
             if self.step <= 4: return read(reads[self.step - 1])
             if self.step <= 7: return call('lookup', {'kind': ('ProductModel', 'ProductRevision', 'Configuration')[self.step - 5], 'version': t['data_version']})
-            baseline = intake_baseline(self.service, t)
+            baseline = intake_baseline(self.service, t, actor=self.actor)
             if baseline['status'] == 'ready':
                 if self.step == 8: return call('prepare_draft', {'operations': [{'op': 'put', 'node': n} for n in baseline['nodes']], 'request_key': t['request_key']})
                 # Read the previous tool response exactly as a model adapter does.
@@ -275,7 +276,7 @@ class ScriptedProvider:
         else:
             if self.step == 1: return call('delivery_round', {'delivery_round_id': t['delivery_round_id'], 'version': t['data_version']})
             response = next(json.loads(m['content']) for m in kwargs['messages'] if m.get('name') == 'delivery_round')
-            evidence = [must(self.service.lookup(ACTOR, node_id=e, version=t['data_version']))['data'][0] for e in response['evidence']]
+            evidence = [must(self.service.lookup(self.actor, node_id=e, version=t['data_version']))['data'][0] for e in response['evidence']]
             ids = list(dict.fromkeys([n['id'] for n in evidence] + [n['source_id'] for n in evidence]))
             if self.step - 2 < len(ids): return read(ids[self.step - 2])
             a = {'status': 'promise_only', 'data_version': t['data_version'], 'promise': promise_values(response['data']),

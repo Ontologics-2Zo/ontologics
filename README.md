@@ -1,6 +1,6 @@
 # Ontologics 공통 기반 v0.4.0 — PostgreSQL + pgvector
 
-현재 작업은 B 보존 커밋 `f808b69`와 가져온 팀 main `7c5e2d9`의 통합이다. v0.4.0/`graph-0.3`의 B 확장과 팀 main의 호스트·웹·접수·검색 기능을 함께 유지한다. 통합 후 전체277개 회귀 검사와 B의 새 CommonHost 대역 연결을 확인했다. CQ01 약속 조회·CQ02 현황 조회는 각각 실제 LLM 정상 대표 사례1건을 통과했고, CQ01 접수/초안 작성의 새 호스트 실모델 검증은 남아 있다. 최신 진행·검증 범위는 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다.
+현재 작업은 B 보존 커밋 `f808b69`와 가져온 팀 main `7c5e2d9`의 통합이다. v0.4.0/`graph-0.3`의 B 확장과 팀 main의 호스트·웹·접수·검색 기능을 함께 유지한다. 통합 후 전체277개 회귀 검사와 B의 새 CommonHost 대역 연결을 확인했다. CQ01 접수/초안 작성·약속 조회와 CQ02 현황 조회는 각각 새 호스트에서 실제 LLM 정상 대표 사례1건을 통과했다. 범용 계약 파싱·예외/반복 신뢰도·웹/실제 인증은 별도다. 최신 진행·검증 범위는 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다.
 
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
 
@@ -97,7 +97,7 @@ python -m examples.b_agent --provider openai --output artifacts/local/task09/b_a
 python -m examples.b_host_agent --mode all --env-file .env.local --output artifacts/local/b_host_first.json
 ```
 
-[b_host_agent.py](examples/b_host_agent.py)는 기존 지침·도구·평가기를 `b_intake`·`b_promise`·`b_fulfillment`로 등록한다. 개발 사용자의 요청 신원으로 실행·초안 작성자를 기록하고, CQ02의 정확한 근거 인용 검사를 유지한다. 이 명령은 **대역 모델 전용이며 유료 API를 호출하지 않는다.** 기존 standalone 예제도 유지한다. 실제 로그인·B 웹 메뉴/Supervisor 인계와 CQ01 접수/초안 작성의 새 호스트 실모델 검증은 별도 확인이 필요하다. CQ01 약속 조회의 새 호스트 정상 대표 사례1건은 실제 호출10회로14/14·전체5개 근거 보존·의미 검토를, CQ02 정상 대표 사례1건은 실제 호출4회로17/17·정확11개 인용·의미 검토를 통과했다. 범위와 비용은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 위 CLI는 계속 대역 전용이다. 등록 방식과 권한은 [TOOLS](docs/TOOLS.md#b-역할의-commonhost-연결)를 따른다.
+[b_host_agent.py](examples/b_host_agent.py)는 기존 지침·도구·평가기를 `b_intake`·`b_promise`·`b_fulfillment`로 등록한다. 개발 사용자의 요청 신원으로 실행·초안 작성자를 기록하고, CQ02의 정확한 근거 인용 검사를 유지한다. 이 명령은 **대역 모델 전용이며 유료 API를 호출하지 않는다.** 기존 standalone 예제도 유지한다. 실제 로그인·B 웹 메뉴/Supervisor 인계와 예외/반복 신뢰도는 별도 확인이 필요하다. 새 호스트의 실제 정상 대표 사례는 CQ01 접수/초안 작성10회·14/14·미승인 초안, CQ01 약속 조회10회·14/14·전체5개 근거 보존, CQ02 현황 조회4회·17/17·정확11개 인용이며 각각 별도 의미 검토도 통과했다. 범용 계약 파싱/OCR·운영 승인 성공은 검증 범위 밖이다. 범위와 비용은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 위 CLI는 계속 대역 전용이다. 등록 방식과 권한은 [TOOLS](docs/TOOLS.md#b-역할의-commonhost-연결)를 따른다.
 
 ## S1·S2 웹 통합 — 개발 신원으로 실행
 
@@ -209,7 +209,7 @@ B의 CQ01·CQ02는 [b_host_agent.py](examples/b_host_agent.py)의 `REGISTRATIONS
 
 비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1·목표/완료 기준 PR #2·S1/S2 및 핵심 Agent 통합 PR #3은 가져온 main 이력에 포함되어 있다. 2026-10-27 로컬에서 가져온 기준은 `7c5e2d9`다. 이전 `codex/s1-s2-service`의 기준은 `189500e`였으며 해당 브랜치의 공통 호스트·S1·S2·네 Agent 변경이 이번 main에 들어왔다. 원격 CI 성공 여부는 해당 PR/커밋 checks에서 별도로 확인한다. 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
 
-현재 B 작업은 `feature/b-first-mvp`의 보존 커밋 `f808b69`를 남긴 뒤 위 main을 병합했다. 기존 작업을 보존한 상태에서 공통/CQ01·CQ02 회귀와 새 호스트의 제한된 대표 검증을 수행했으며, CQ01 접수/초안 작성의 실모델 검증은 남아 있다. 브랜치를 받았다는 사실이나 충돌을 해결했다는 사실을 업무 검증 통과로 계산하지 않는다. 실행 기준은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
+현재 B 작업은 `feature/b-first-mvp`의 보존 커밋 `f808b69`를 남긴 뒤 위 main을 병합했다. 기존 작업을 보존한 상태에서 공통/CQ01·CQ02 회귀와 새 호스트의 제한된 대표 검증을 수행했으며, 세 B 경로의 실제 정상 대표 검증을 갖췄다. 다음은 CQ03의 기존 정의/의존성 점검이다. 브랜치를 받았다는 사실이나 충돌을 해결했다는 사실을 업무 검증 통과로 계산하지 않는다. 실행 기준은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 
 ## 개발 기준
 

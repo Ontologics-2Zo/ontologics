@@ -11,3 +11,6 @@ dependencies = ["psycopg[binary]>=3.2,<4"]
 
 [tool.setuptools]
 packages = ["ontologics"]
+
+[tool.setuptools.package-data]
+ontologics = ["static/*.html", "static/*.css", "static/*.js"]

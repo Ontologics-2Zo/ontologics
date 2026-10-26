@@ -67,18 +67,18 @@ class ModelRuntime:
             raise ValueError("A ModelConfig and callable provider are required")
         if allowed_tools is None:
             allowed_tools = tuple(AgentGateway.ALLOWED)
-        if (not isinstance(allowed_tools, (list, tuple))
+        if (not isinstance(allowed_tools, (list, tuple, set, frozenset))
+                or not allowed_tools
                 or any(not isinstance(name, str) or not name for name in allowed_tools)
                 or len(set(allowed_tools)) != len(allowed_tools)
                 or not set(allowed_tools) <= AgentGateway.ALLOWED):
-            raise ValueError("allowed_tools must be a unique list or tuple of exposed tool names")
+            raise ValueError("allowed_tools must be a nonempty collection of unique exposed tool names")
         if in_transaction(service.db):
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
-        self._allowed_tools = frozenset(allowed_tools)
         self.config = config
         self.capture_tool_trace = bool(capture_tool_trace)
-        self._gateway = AgentGateway(service, actor)
+        self._gateway = AgentGateway(service, actor, allowed_tools=allowed_tools)
 
     def _bounded_json(self, value, limit, code):
         try:
@@ -115,7 +115,7 @@ class ModelRuntime:
         for call in calls:
             if not isinstance(call, dict) or set(call) != {"name", "arguments"}:
                 raise _Failure("INVALID_TOOL_CALL", "Each call needs name and arguments only")
-            if not isinstance(call["name"], str) or call["name"] not in self._allowed_tools:
+            if not isinstance(call["name"], str) or call["name"] not in self._gateway.allowed_tools:
                 raise _Failure("TOOL_NOT_ALLOWED", "Tool is not exposed to this Agent role")
             arguments = call["arguments"]
             if not isinstance(arguments, dict) or "actor" in arguments or "principals" in arguments:
@@ -181,7 +181,7 @@ class ModelRuntime:
             raise ValueError("Runtime cannot run inside a transaction")
         run_id, db = str(uuid.uuid4()), self._service.db
         config = asdict(self.config)
-        config['allowed_tools'] = sorted(self._allowed_tools)
+        config['allowed_tools'] = sorted(self._gateway.allowed_tools)
         if callable(getattr(self._provider, 'public_config', None)):
             config['provider'] = self._provider.public_config()
         db.execute("INSERT INTO runtime_runs VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
@@ -225,7 +225,8 @@ class ModelRuntime:
                    (status, self._service.now(), _hash(text) if status == "completed" else None, _json(error) if error else None, run_id))
         tool_ids = sorted({tid for row in db.execute("SELECT tool_run_ids FROM runtime_steps WHERE runtime_id=%s", (run_id,)) for tid in json.loads(row['tool_run_ids'])})
         result = {"ok": status == "completed", "run_id": run_id, "status": status, "text": text,
-                "model": self.config.model, "steps": steps, "tool_run_ids": tool_ids, "error": error}
+                "model": self.config.model, "steps": steps, "tool_run_ids": tool_ids, "error": error,
+                "output_hash": _hash(text) if status == "completed" else None}
         if self.capture_tool_trace:
             result['tool_trace'] = trace
         return result

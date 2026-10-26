@@ -79,7 +79,7 @@ document = report['data']['documents'][0]
 # candidates = index.search(question_embedding, version=3, origin='real')
 ```
 
-실제 실행되는 수치 벡터 예제는 `examples/cq_check.py`에 있다. 반환 예: `data.candidates[0].evidence=["evidence:olimex-L-wroom:row-55"]`, `origin="real"`, `data.candidate_only=true`. 현재는 정확 cosine 검색이며 특정 임베딩 API·자연어 RAG 품질 평가는 미구현이다. 검색 결과는 장착·동일 부품·승인 사실을 확정하지 않는다. index/search 객체 자체나 DB를 LLM에 공개하지 말고, 후속 host retriever가 text→embedding→search를 감싸도록 한다.
+실제 실행되는 수치 벡터 예제는 `examples/cq_check.py`에 있다. 반환 예: `data.candidates[0].evidence=["evidence:olimex-L-wroom:row-55"]`, `origin="real"`, `data.candidate_only=true`. 정확 cosine 검색이며 `embeddings.py`의 고정 text-embedding-3-small/1536과 `Service.semantic_search`가 자연어 질문을 연결한다. 검색 결과는 장착·동일 부품·승인 사실을 확정하지 않는다. index/search 객체·DB·색인 권한은 LLM에 공개하지 않는다. 실제 모델 사례 평가는 PROJECT_STATUS의 범위만 완료이며 범용 RAG 품질 평가와 구별한다.
 
 ### 후속 통합·배포 설계 (미구현)
 
@@ -218,6 +218,10 @@ Task08 현황 도구의 전체 evidence는 원천 상한·다른 회차 배정·
 | validate_draft | draft_id, version | 검증·현재 기준과의 충돌·변경점 |
 | preview_investigation | draft_id, version, query | is_preview=true, 미반영 초안의 예상 결과. 확정 데이터는 바꾸지 않음 |
 | export_graph | version? | JSON-LD 그래프 |
+| get_source_receipt | receipt_id | 요청자 소유 접수 후보·원본·Evidence/locator. operations 쓰기 입력은 노출하지 않음 |
+| prepare_source_draft | receipt_id, request_key, draft_id?, expected_version? | 기존 source_draft 경로와 동일 후보·작성자·검증·멱등 키. 승인/반영 아님 |
+| search_evidence | query, origin=all/real/synthetic, version? | 승인 그래프의 문자열 후보 최대60건. matches/total/limit/mode=lexical/candidate_only |
+| semantic_search | query, origin=all/real/synthetic, version? | 질문 임베딩→같은 모델·정확 버전 pgvector 후보 최대5건. candidates/source/locator/facts/content_hash/index_coverage, mode=semantic/candidate_only |
 
 ### B-CQ01 계약 접수와 약속 조회
 
@@ -277,9 +281,109 @@ service.apply('workflow', draft_id, revised_version, request_key='apply-002')
 
 초안 상태는 awaiting_review / needs_changes / approved / applied / superseded / rejected다. 실행 상태 succeeded/failed는 별도 `runs`에 기록한다. `review_events`는 검토 결정을 추가 기록하며 새 검토나 초안 수정으로 이전 의견을 지우지 않는다. `run_history`는 audit 권한이 있는 호스트만 사용한다.
 
-UI는 초안 버전·변경 전후·근거 위치·검증·미확인과 승인/보완/거절 동작을 연결하면 된다. 사용자가 보고 승인한 정확한 버전을 호출해야 한다. 로그인·세션·CSRF·프로세스 격리는 실제 UI/API 통합 단계의 과제다. 예제 principals를 네트워크 API 입력으로 받으면 안 된다. 로컬 Python 객체나 DB 파일을 가진 개발자를 격리하는 권한 모델은 아니다.
+UI는 초안 버전·변경 전후·근거 위치·검증·미확인과 승인/보완/거절 동작을 연결한다. 사용자가 보고 승인한 정확한 버전을 호출해야 한다. 아래 개발 HTTP 호스트는 고정 개발 신원과 Origin/CSRF 방어를 연결했으며 실제 로그인·인증 세션·운영 프로세스 격리는 미완료다. 예제 principals를 네트워크 API 입력으로 받으면 안 된다. 로컬 Python 객체나 DB를 가진 개발자를 격리하는 권한 모델은 아니다.
 
 `bootstrap`은 seed 권한과 비어 있는 DB가 필요한 개발 전용 적재다. 운영 승인 흐름이나 Agent 도구로 사용하지 않는다.
+
+## 개발용 사용자 호스트
+
+`ontologics/host.py`의 `CommonHost`는 기존 Service·AgentGateway·ModelRuntime을 연결하는 내부 함수 경로다. 이 모듈 자체에는 HTTP·로그인·새 DB 테이블이 없으며 아래 `web.py`가 HTTP 경계를 제공한다. `ontologics/identity.py`의 `DevelopmentIdentityProvider(..., enabled=True)`에 호스트가 등록한 개발 사용자만 `DevelopmentContext(subject)`로 선택한다. 개발 모드는 명시적으로 켜야 하며 환경변수·도구 인자에서 자동으로 사용자나 권한을 받지 않는다.
+
+```python
+from ontologics.host import CommonHost
+from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider, UserIdentity
+
+identities = DevelopmentIdentityProvider([
+    UserIdentity('dev-alice', frozenset({'read', 'draft', 'review'})),
+    UserIdentity('dev-bob', frozenset({'read', 'review'})),
+], enabled=True)
+host = CommonHost(identities)  # 기존 DATABASE_URL / ONTOLOGICS_DB_SCHEMA
+with host.request(DevelopmentContext('dev-alice')) as request:
+    result = request.agent('product').call('prepare_draft', {
+        'operations': operations,  # 기존 원본·파서에서 준비한 put 묶음
+        'request_key': 'registration-001',
+    })
+    context = request.context  # subject, actor=user:dev-alice, identity_mode=development, permissions
+# result가 ok이고 validation.valid인 초안의 ID/버전을 사람 검토 화면으로 전달한다.
+```
+
+전체 실행은 [examples/host_workflow.py](../examples/host_workflow.py)와 README의 `python3 -m examples.host_workflow`를 사용한다. 개발 사용자에게 draft·review 권한이 모두 있어도 요청 사용자가 작성한 초안의 자기 승인은 공통 `SELF_APPROVAL_FORBIDDEN`으로 차단한다. 작성자와 검토자는 표시 이름·Agent 역할명이 아닌 안정적인 `user:<subject>`로 기록한다.
+
+| 호스트 접점 | 권한·결과 |
+| --- | --- |
+| `host.request(context)` | 공급자의 신원을 한 번 고정하고 해당 요청 전용 Service/DB 연결을 열고 닫음. 이후 다른 사용자 선택이 기존 요청을 바꾸지 않음 |
+| `request.call(tool, arguments)` | 사람 요청의 조회·초안 경로. 기존 AgentGateway 공개 도구만 허용하며 신원·승인·반영·seed 입력 불가 |
+| `request.agent(role).call(...)` / `request.run_agent(role, provider, messages, config=...)` | Product/Quality/Knowledge/Supervisor 또는 호스트에 등록된 확장 역할의 도구 목록으로 추가 제한. 사용자의 review·draft 권한이 있어도 Agent 승인이나 Quality 쓰기를 허용하지 않음 |
+| `request.review(draft_id, version, decision=..., note=..., request_key=...)` | 고정된 요청 사용자의 명시적 호스트 동작. 기존 자기 승인·권한·버전·검증 규칙 재사용 |
+| `host.apply_approved(draft_id, version, request_key=...)` | Agent에 공개하지 않는 서버 워크플로. 저장된 승인자의 현재 권한을 공급자에서 다시 조회한 뒤 `system:host-workflow`로 기존 apply 호출. 최신 초안으로 자동 치환하지 않음 |
+
+도구 반환·오류·`request_key` 의미는 그대로다. 호스트에서 자동 키를 새로 만들지 않는다. 같은 사람·키·내용은 이전 결과를 재사용하며 다른 사람의 같은 키는 독립적이다. 반영 키는 워크플로 신원에서 공유하므로 초안·버전별 업무 키를 사용한다. 승인 이전 실패는 성공 캐시에 남지 않아 같은 내용·키로 재시도할 수 있다. 이미 성공한 요청의 재생은 그때의 결과이며 새로운 승인·반영을 뜻하지 않는다.
+
+`runs`·`drafts.author`·`review_events`·`runtime_runs.actor`에는 요청 사용자 ID가 남고 반영 실행은 워크플로 ID로 남는다. `AgentGateway`와 `ModelRuntime`의 선택적 `allowed_tools`는 기존 목록의 부분집합만 허용하며 런타임 설정에도 기록한다. 도구 인자의 `actor`·`principals` 및 계약에 없는 작성자·검토자 필드는 거부한다. 사용자 신원에는 read/draft/review/audit만 설정할 수 있고 apply/seed/index는 이 호스트의 사용자 권한으로 부여하지 않는다.
+
+인증 교체 시 `IdentityProvider.resolve(context)`는 검증된 인증 문맥을 안정적인 내부 subject·권한으로 변환하고, `lookup(subject)`는 기존 승인자의 현재 권한을 반환해야 한다. 같은 사람에게 요청마다 새 subject를 발급하면 자기 승인·초안 소유권 검사가 깨지므로 고정 대응을 유지한다. 알 수 없는 개발 신원·비활성 모드·잘못된 문맥은 DB 요청 생성 전에 `IdentityError`로 거부하며 아직 인증 감사 로그는 제공하지 않는다. 승인자 삭제·권한 철회는 기존 apply 권한 검사로 차단하고 공급자 장애는 `IDENTITY_PROVIDER_UNAVAILABLE`로 실행 실패를 남긴다. 조회한 승인자 신원은 해당 반영 요청 시점의 권한 스냅샷이다.
+
+이 경로는 **개발용 신원·권한 검증**이다. 프로세스의 Python 객체나 개발 사용자 선택 권한을 가진 사람을 격리하지 않으며, 실제 로그인·인증 세션·외부 인증 공급자 검증은 미완료다. 개발 공급자를 운영 인증 실패 시 fallback으로 사용하지 않는다. 기존 호스트 시험은 scripted provider로 수행했으며 아래 웹의 실모델 검증과 구별한다. 당시 호스트 검증에는 Supervisor/Knowledge 실모델 실행이 포함되지 않았다. 이번 화면 연동 범위는 아래 HTTP 절을 따르며 실제 인증·전체 대화 품질은 잔여 작업이다.
+
+
+확장 역할은 `AgentRegistration(name, instructions, allowed_tools)`를 서버 시작 코드의 `CommonHost(..., agent_registrations=(...))`에만 등록한다. 내장 이름 덮어쓰기·중복·미등록 도구·Agent 금지 도구는 거부한다. 등록 지침은 system 메시지에 연결되고 요청 사용자의 권한을 추가하지 않는다. 읽기 계약 예제는 [examples/extension_agent.py](../examples/extension_agent.py), 경계 검증은 `tests/test_agent_extensions.py`다. 역할 등록과 웹 Supervisor 라우팅 연결은 별도이며 자동 라우팅은 하지 않는다. B-CQ01·CQ02의 기존 Python 예제를 이 호스트에 등록하거나 웹 메뉴로 노출하는 것은 별도 연결 작업이며 이번 병합만으로 완료되지 않는다.
+
+## 개발용 HTTP API와 화면
+
+[web.py](../ontologics/web.py)가 CommonHost를 감싸고 [static](../ontologics/static/index.html)의 HTML/CSS/JavaScript를 같은 origin에서 제공한다. Python 표준 라이브러리 HTTP 서버를 사용한 **로컬 개발 통합**이다. 팀 main의 v0.3.0에서 기존 입력과 호환되는 접수 후보·문자열/의미 검색 도구를 추가했다. 이번 통합의 공통 계약은 B 확장을 포함한 v0.4.0/`graph-0.3`이며 기존 `temporal-0.1`·DB DDL은 유지한다. `web-0.3`은 개발 사용자 선택 및 명시적 AI 초안·조건 제안·검색을 포함한 HTTP 어댑터 버전이며 `X-Ontologics-HTTP-Contract` 헤더로 제공한다. 실행은 [README](../README.md#s1s2-웹-통합--개발-신원으로-실행)를 따른다.
+
+서버가 생성한 DevelopmentContext와 IdentityProvider를 요청마다 CommonHost에 전달한다. 명시적 development 모드의 서버가 Alice/Bob/reader 허용 목록을 제공하고 상단 선택 박스는 그 목록만 선택한다. --user는 새 브라우저의 최초 기본 사용자다. 선택 요청 이외의 도구 body·신원 헤더·Agent 주장을 사용자나 권한으로 사용하지 않는다. 기존 초안의 작성자는 전환 후에도 유지한다. 요청 한 개당 별도 DB 연결, 기존 작성자·검토자 분리와 승인자 현재 권한 확인을 재사용한다. 실제 인증 공급자를 도입할 때는 검증된 요청 문맥→안정적인 subject 연결을 교체하고 이 개발 진입점을 운영용으로 노출하지 않는다.
+
+| 경로 | 입력·응답과 권한 |
+| --- | --- |
+| `GET /api/context` | 현재 개발 신원/서버 권한·선택 가능한 development_users·CSRF 토큰·예시 A/B·model/embeddings 설정 여부·데이터 버전. 최초 호출은 개발 세션 쿠키를 설정하며 만료 후 재접속은 session_reset=true로 기본 사용자를 알림. `read` 검사. 모델 configured는 실제 통신 성공이 아님 |
+| `POST /api/development-user` | `{user:"alice" 또는 "bob" 또는 "reader"}`만 허용. 현재 개발 세션+CSRF 필수. 서버 허용 목록→DevelopmentContext→IdentityProvider로 신원을 확인하고 cookie/CSRF를 회전·이전 세션 폐기. 응답은 context와 같은 형태. 권한/actor 입력과 비개발 모드는 거부하며 Agent 도구가 아님 |
+| `POST /api/tools/{tool}` | JSON body는 기존 도구 arguments. 도구의 공통 envelope를 그대로 반환. actor/principals/작성자 주입·review/apply/seed는 불허 |
+| `POST /api/review` | `{draft_id,version,decision,note,request_key}`. `decision=approve/request_changes/reject`, 의견 필수. 요청 사용자로 review하고 승인 성공이면 내부 `apply_approved`를 같은 정확 버전으로 호출. 결과 `data.review`·`data.application`은 각각 공통 envelope; 승인 성공·반영 실패를 보존 |
+| `GET /api/demo-supplement` | 보존 `data/demo_records.json`의 U104 제거·완전 이력과 출처 설명을 읽음. 초안 생성·승인 아님. 기존 예시 경로이며 새 가상 근거 접수는 history/intake를 사용 |
+| `GET /api/source?source_id=...&version=...` | 지정 버전의 SourceDocument를 조회한 뒤 `data/` 경로와 실제 바이트 SHA-256 확인 후 attachment로 제공. 임의 경로·환경 파일·해시 불일치 원본 제공 불가 |
+| `POST /api/quality` | `{queries:{A,B},version,question,before_version?}`. 조회 조건·버전 필수. 비교 때 before_version과 version을 각각 이전/이후 데이터 버전으로 사용. 실제 Quality 도구 실행·동일 조건 직접 결과를 대조해 `data.consistency=matched`인 설명만 성공 반환 |
+| `GET /api/workspace` | read 권한. 최신 버전의 초안 최대 100건을 `data.drafts`로 반환(draft_id/version/status/author/reviewer/base_version/applied_data_version). 영속 DB의 업무 재개 목록이며 조사 대화 기록 목록은 아님 |
+| `POST /api/sources/intake` | `{filename,content_base64}`. draft 권한. 실제 바이트 해시를 manifest의 L/L1 WROOM ODS와 대조하고 제출 바이트를 파싱. `data.receipt_id/source/revision/configuration_id/rows/unknown_count/operations_count/base_version/verification` 반환. 미승인 후보 |
+| `POST /api/sources/compare` | `{receipt_id,left_id}`. 동일 사용자·현재 기준 버전의 접수 후보와 기존 구성 비교. 기존 구성 비교 함수를 재사용하고 is_preview=true. 초안·확정 데이터 생성 없음 |
+| `POST /api/sources/draft` | `{receipt_id,request_key,draft_id?,expected_version?}`. draft 권한. 서버에 보관한 정확한 후보 operations만 기존 초안 저장/검증 로직으로 처리. 응답은 prepare_draft와 같은 형태. 사용자 제공 operations/actor 불허 |
+| `POST /api/history/intake` | `{filename,content_base64}`. draft 권한. 200 KB 이하의 가상 운영 기록 JSON을 무변경 보존. receipt_id/source/records/validation/operations_count/base_version 반환. 허용 필드·관계·시간은 기존 SCHEMA 검증. 확정은 별도 검토·승인 필요 |
+| `GET /api/draft-source?draft_id=...&version=...&source_id=...` | 정확한 초안의 새 원본을 read 권한으로 내려받음. `data/` 내부 경로·바이트 해시 확인. 승인된 원본 조회와 구분 |
+| `POST /api/assistant` | `{question,version,screen,context,action?,request_key?}`. context: configuration_id/node_id/kind/draft_id/draft_version/queries/before_version/receipt_id/search_query/origin/search_mode(lexical/semantic). action=explain 기본, prepare_draft는 명시 요청 키 필수. 응답 role/runtime/results/tool_calls/consistency/conditions, Supervisor 인계 시 delegation. Agent 승인·신원·대상/버전 이탈 불허 |
+
+
+AI 초안 경로는 `get_source_receipt → prepare_source_draft → validate_draft`의 정확한 인자·순서를 강제한다. 직접 source_draft와 같은 요청 키를 사용한다. 성공은 `action=draft_prepared`와 draft/draft_record를 반환하며 승인 상태와 구별한다. 저장 후 모델·검증 기록 실패는 HTTP 오류와 `draft_saved_model_failed`에 저장된 ID/버전을 함께 반환한다. 같은 요청을 재시도해도 중복 초안을 만들지 않는다.
+
+누락 조건은 `needs_input`의 required_fields/questions/target_screen, 완전한 명시 조건은 `confirm_conditions`의 proposed_queries를 반환한다. 두 상태 모두 `consistency=not_executed`이며 완료된 조사 답이 아니다. 사용자 질문에 없는 보드·로트·시간대를 채우지 않는다. 화면에서 조건 적용 후 기존 investigate를 호출한다. `consistency=matched`는 직접/Agent 도구의 반환 일치이며 자유문 전체의 사실성 보증이 아니다.
+
+의미 검색의 read 권한·선택 버전 색인을 먼저 검사한 뒤 DB 트랜잭션 밖에서 임베딩한다. 같은 요청 안의 직접/Agent 대조에는 질문 벡터를 재사용하고 다음 요청과 공유하지 않는다. Knowledge 의미 검색은 `{data_version,answerable,selected_evidence_ids}`가 실제 반환 후보와 일치하는지 검사한다. `verified_selection`·`explanation_mode=verified_evidence_template`와 서버 display_text로 원본 버전/정수 데이터 버전·BOM 실장 표기를 구분한다. 근거 미선택은 부재·안전 판정이 아니다. `index_coverage={indexed,total,complete}`로 실제/가상 필터 안의 색인 범위를 표시한다. 미설정/미색인은 EMBEDDINGS_NOT_CONFIGURED/EVIDENCE_INDEX_NOT_READY(503), 부분 색인은 PARTIAL_EVIDENCE_INDEX 경고다. 다른 버전으로 자동 fallback하지 않는다. `examples.index_evidence`의 별도 host index 권한·실패 재개·무절단 한도와 실행 명령은 README를 따른다.
+
+
+HTTP 클라이언트는 먼저 GET /api/context를 호출하고 반환된 쿠키를 후속 요청에 보낸다. POST는 Content-Type: application/json과 현재 /api/context의 X-CSRF-Token이 필요하다. payload는 1 MB 이하 유한 JSON 객체다. 서버는 127.0.0.1만 bind하고 정확한 Host·same-origin 요청을 확인하며 CORS는 열지 않는다. CSP·프레임 금지·no-store를 적용하고 HTML 원문이나 모델 응답을 실행하지 않는다. 쿠키 이름은 포트별 ontologics_dev_<port>이며 HttpOnly·SameSite=Strict·Path=/를 사용한다. 개발 세션은 서버 메모리에 최대 128개·8시간 유지되고 재시작하면 만료된다. 토큰은 로그인 증명이 아니다. 전환 후 이전 쿠키는 DEVELOPMENT_SESSION_EXPIRED, 현재 쿠키+이전 CSRF는 CSRF_REJECTED로 거부하며 변경 요청을 기본 사용자로 자동 대체하지 않는다. GET /api/context만 세션 복구를 허용한다. 이미 시작된 요청은 시작 당시 신원으로 끝나고 전환은 그 요청의 작성자를 바꾸지 않는다. X-Ontologics-Development-Subject 응답 헤더가 화면 신원과 다르면 프런트엔드는 결과를 적용하지 않고 새로고침을 요구한다. 실제 인증 도입 시 이 개발 선택 경로는 활성화하지 않는다. 요청마다 `X-Request-ID`를 발급한다. 원문 payload·환경 비밀값을 HTTP 로그에 기록하지 않으며 실제 업무 감사는 기존 runs/review_events/runtime 기록을 사용한다. DB 연결 이전 HTTP 실패의 영속 감사 기록은 아직 없다.
+
+공통 성공은 HTTP 200이다. 입력/검증 오류는 400, 신원/권한·CSRF/Origin·개발 세션 만료는 403, 없는 대상/경로는 404, 오래된 초안/기준·중복 키 충돌은 409, 본문 초과는 413, 모델 실패는 502, DB/신원 공급자 장애·모델 미설정/처리 중은 503이다. HTTP 경계 실패도 공통 필드를 반환하되 확정할 수 없는 data_version/run_id는 null이다. `prepare_draft.ok=true`와 `validation.valid=true`는 별도 판단이다.
+
+```json
+POST /api/tools/investigate
+{"query":{"mode":"A","lot_id":"lot:demo:lan8710:L07","unit_ids":["unit:U104"],"at":"2026-09-20T10:00:00+09:00"},"version":1}
+
+POST /api/review
+{"draft_id":"실제 반환 ID","version":2,"decision":"approve","note":"원본과 변경 전후 검토","request_key":"review-업무별-고정키"}
+```
+
+브라우저는 작업 내용별 request_key와 초안 ID·버전을 sessionStorage에 유지한다. 응답 유실 뒤 같은 내용은 같은 키로 재시도하고, 변경된 내용은 새 키를 쓴다. 반려 뒤 별도 안을 제출하려면 **별도의 새 보완안 시작**으로 새 업무 키를 발급한다. 데이터는 서버가 결정하며 브라우저 캐시는 DB schema와 사용자별로 분리한다. 서버 반영 키는 초안 ID·정확 버전에서 생성한다. 별도 public apply endpoint는 없다. 승인 이후 반영 실패는 같은 검토 요청으로 복구하며, 승인 재생이 있어도 오래된 초안/STALE_BASE를 우회하지 않는다. 승인과 반영을 하나의 DB transaction으로 묶지 않으므로 승인만 저장된 중간 상태를 명확히 표시한다. 브라우저 기록 삭제·다른 기기에서 이전 조사 재개는 영속 업무 기능으로 구현하지 않았다.
+
+직접 조회·AI 모두 동일한 공통 조회와 버전 의미를 사용한다. A/B를 순서대로 읽을 때 첫 조회의 데이터 버전으로 두 번째를 고정하고, 보완 전후 비교는 저장된 보드 집합·로트·원래 offset을 포함한 같은 query를 재사용한다. AI에는 그 query와 버전을 고정해 전달한다. 모델이 다른 도구·조건·버전을 선택하면 **실행 전에** 거부하고 실제 도구 결과를 직접 조회와 대조한다. 자유문 설명의 정확성을 전부 보증하는 평가는 아니며 구조화 판정·근거가 기준이다. 역할은 Quality 그대로이고 승인 도구는 공개하지 않는다. 추적을 위해 `request.run_agent(..., capture_tool_trace=True)`를 선택적으로 사용하며 HTTP 반환은 조건·도구 run ID와 결과를 제공하고 키·환경값은 포함하지 않는다.
+
+화면 판정은 `included→장착 이력 확인`, `excluded→조건상 제외`, `needs_confirmation→추가 이력 확인 필요`로 표시한다. 결함/안전 판정으로 바꾸지 않는다. awaiting_review는 작성 시 검증을 통과한 검토 대기, needs_changes는 검증 오류 또는 보완 요청, approved는 승인 저장, applied는 정확 버전 반영 완료다. validate_draft는 저장 상태를 자동 전환하지 않는다. 신규 submit 상태/API를 만들지 않고 한 초안의 생성·검증·검토를 이어간다. 보완 preview는 미반영임을 표시한다.
+
+여섯 메뉴는 실제 공통 조회·등록·검토 기능에 연결한다. S2는 확인된 L/L1 WROOM ODS 접수만 지원하며 임의 PDF/OCR은 미지원이다. Knowledge의 문자열/ID 탐색과 실제 임베딩 의미 검색을 구분한다. Supervisor는 한 번의 역할 분류·인계, Product는 선택 구성·등록안 설명 및 명시 요청의 접수 후보 초안 저장을 지원한다. 실제 인증·지속 대화·범용 추출/해석 품질은 미완료다.
+
+접수는 [receipts.py](../ontologics/receipts.py)의 호스트 작업이며 새 DB 테이블을 만들지 않는다. 기존 `requests`에 사용자·원본 hash·기준 버전별 receipt와 서버 후보를 보관한다. 재연결해도 같은 원본/버전은 같은 접수로 복구한다. 성공한 초안 요청은 기준 버전 변경 후에도 동일 키로 성공을 재생하며, 새 요청은 `STALE_RECEIPT`로 막아 원본 재접수·차이 재확인을 요구한다. 다른 사람의 접수는 `RECEIPT_OWNER_REQUIRED`, 미확인 BOM 바이트는 `UNSUPPORTED_SOURCE`로 거부한다. 선택 구성의 의존 노드만 후보에 넣고 기존 공통 ProductModel은 덮어쓰지 않는다.
+
+가상 기록 JSON은 `{origin:"synthetic", authored_at:"ISO 시각+offset", notice:"근거 설명", records:[...]}`다. records는 기존 운영 다섯 타입의 id/type/필드를 쓰며 origin/evidence를 입력하지 않는다. 호스트가 원문 SHA ID의 SourceDocument와 `/records/N` Evidence를 추가하고 기존 근거를 보존한다. 등록 조건이 미충족이면 초안 needs_changes로 남고 승인은 차단된다. `data/receipts/<sha256>.json`은 Git 제외·무변경 보존이며 파일과 PostgreSQL은 별도 백업 대상이다. 파일 저장 오류는 SOURCE_STORAGE_ERROR와 실패 기록으로 남긴다. 파일 생성과 DB 저장은 하나의 트랜잭션이 아니므로 DB 실패 후 미참조 원본 파일이 남을 수 있으며 확정 사실로 공개하지 않는다.
+
+[assistant.py](../ontologics/assistant.py)는 화면 역할 연결이다. 기본 explain은 읽기이며, 명시적 prepare_draft만 정확한 접수 후보를 저장한다. 모든 Agent 실행은 동일 사용자 CommonHost 및 기존 ModelRuntime을 재사용하고 실제 도구 trace와 직접 읽기의 결과·근거·버전을 대조한다. Quality는 추가로 모델의 observations(mode/unit_id/before/after/status/evidence)를 도구의 모든 보드 행과 대조한다. 보드별 근거가 비어 있으면 빈 배열이어야 하며 다른 보드의 근거를 빌리면 AI_FACT_MISMATCH로 설명을 숨긴다. 검증 결과는 agent_answer_validation 실행 기록에 남긴다. 구조화 값이 맞아도 자유문 요약이 판정과 모순되는 실모델 사례가 있어 Quality 자유문은 표시하지 않는다. 화면의 시간 규칙·판정·근거 설명은 검증된 값으로 서버가 구성한다. Product/Knowledge의 자유문 품질도 범용 검증 완료로 계산하지 않는다. 이 검사는 자유문 전체의 정확도 평가를 대체하지 않는다. Supervisor의 모델 분류는 product/knowledge/quality enum만 인계하며 도구·권한을 생성하지 않는다. 등록해/접수해/구조화해·초안 작성/저장처럼 명시한 작업 표현은 Product, 장착/제거/로트 사용처/보완 전후 표현은 Quality 범위로 제한하고 모델이 이를 벗어나면 AI_ROUTING_INVALID로 거부한다. “등록된 보드”처럼 기존 상태를 수식하는 표현만으로 Product를 강제하지 않는다. 이는 역할 제한이며 자동 저장이 아니다. 신규 조건이 없으면 전문 역할이 질문하고, 화면에 명시된 기존 조건이 있으면 그 조건을 유지한다. 접수 후보 저장을 임의 BOM/사실 생성이나 다단계 자율 업무 수행으로 확대하지 않는다.
 
 ## 모델 호출 접점
 
@@ -287,9 +391,9 @@ UI는 초안 버전·변경 전후·근거 위치·검증·미확인과 승인/�
 
 `OpenAISettings.from_environment(환경파일)` → `OpenAIProvider(settings, PRODUCT_TOOLS 또는 QUALITY_TOOLS)` → `ModelRuntime(service, 호스트가 정한 신원, provider, config=ModelConfig(model=settings.model, max_steps=12))` 순서다. 실행마다 새 provider를 만든다. 예제 실행·모델·DB 환경변수·설정 우선순위는 [README](../README.md#실제-llm-실행과-동료-개발-시작)에 있다. 기본 timeout 30초, 응답 한도 4096토큰이며 설정 가능 범위는 각각 1~60초, 256~8192토큰이다. 실행 전체 wall-clock 제한이나 강제 종료 복구는 없다.
 
-Product에는 lookup/configuration/compare_configurations/prepare_draft/get_draft/validate_draft, Quality에는 lookup/component_usage/investigate/compare_investigation만 노출한다. 승인·반영·bootstrap·신원 선택은 두 목록 모두에 없다. 문서 안 지시문을 데이터로 처리하라는 역할 지침과 별개로, 실제 권한은 공통 코드가 강제한다.
+역할별 기본 도구는 `tool_specs.py`의 PRODUCT_TOOLS/QUALITY_TOOLS/KNOWLEDGE_TOOLS/SUPERVISOR_TOOLS가 기준이다. Product는 기존 초안 도구와 접수 후보 읽기/저장, Knowledge는 문자열·의미 검색을 포함한다. 웹은 매 요청의 정확한 도구·인자를 추가 제한한다. 승인·반영·bootstrap·신원 선택·색인은 모든 목록에 없다. 문서 안 지시문을 데이터로 처리하라는 역할 지침과 별개로, 실제 권한은 공통 코드가 강제한다.
 
-`runtime_runs`, `runtime_steps`에는 공개 모델 설정·해시·상태·공통 도구 run ID가 기록된다. provider의 `calls`에는 HTTP 상태·요청/응답 ID·토큰·경과 시간이 있으며 키·HTTP 오류 본문은 없다. 기본 런타임은 원문 trace를 저장하지 않는다. 예제만 `capture_tool_trace=True`로 로컬 보고서에 도구 입력/출력·최종 답을 보관하므로 다른 업무 자료에 적용할 때 공유 전에 내용을 검토한다.
+`runtime_runs`, `runtime_steps`에는 공개 모델 설정·해시·상태·공통 도구 run ID가 기록된다. provider의 `calls`에는 HTTP 상태·요청/응답 ID·토큰·경과 시간이 있으며 키·HTTP 오류 본문은 없다. 기본 런타임은 원문 trace를 저장하지 않는다. 예제는 `capture_tool_trace=True`로 로컬 보고서를 만들고 웹 호스트는 같은 옵션으로 직접 조회와의 일치성을 대조한다. 일반 읽기 답은 반환하되 DB 대화 기록으로 보관하지 않는다. 검증된 Quality/의미 검색/초안 안내는 별도 display_text/display_hash로 반환하고 runtime.text는 숨김(output_withheld=true) 처리한다. runtime.output_hash는 DB에 저장한 원래 모델 출력 해시이며 서버 안내 문구의 해시와 구분한다. 로컬 검증 보고서·브라우저 기록은 공유 전에 내용을 검토한다.
 
 | provider 오류 | 처리 |
 | --- | --- |

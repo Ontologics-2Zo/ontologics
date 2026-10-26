@@ -1,5 +1,7 @@
 # Ontologics 공통 기반 v0.4.0 — PostgreSQL + pgvector
 
+현재 작업은 B 보존 커밋 `f808b69`와 가져온 팀 main `7c5e2d9`의 통합이다. v0.4.0/`graph-0.3`의 B 확장과 팀 main의 호스트·웹·접수·검색 기능을 함께 유지한다. **통합 후 검증은 아직 대기**이며 기존 B/팀 main의 성공 기록을 현재 통합 코드의 통과로 보지 않는다. 최신 진행·검증 범위는 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다.
+
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
 
 v0.4.0은 B-CQ01의 계약·회차에 B-CQ02의 완성 보드 재고·생산 작업·배정·운송과 확인 범위를 연결해, 명시한 버전·관측 시점의 6상태 물량 현황을 조회한다(`graph-0.3`). B-CQ01과 별도로 B-CQ02의 읽기 전용 현황 역할도 기존 런타임에 연결한다. 생산·도착 예측과 납품 가능성 판단은 후속 범위다. 기존 장착 이력·승인·PostgreSQL 계약은 유지한다.
@@ -89,6 +91,49 @@ python -m examples.b_agent --provider openai --output artifacts/local/task09/b_a
 
 결과는 Git 제외 `artifacts/local/task09/b_agent.json`에 기록된다(`--output`으로 변경 가능). 실모델 실행에는 별도 경로를 권장한다. 키 누락은 DB 접수·API 호출 전에 `OPENAI_KEY_MISSING`으로 중단하며 대역 통과와 실모델 완료를 구별한다. 자동 평가는 원문 파서·독립 정답·실제 도구 기록·저장된 초안을 대조한다. 자유문 설명 전체와 임의 계약 PDF/OCR의 품질을 보증하지 않는다. 모드별 도구 권한과 입력/출력은 [TOOLS](docs/TOOLS.md#b-agent-연결-예제-task-09)를 따른다.
 
+## S1·S2 웹 통합 — 개발 신원으로 실행
+
+Python CommonHost와 기존 공통 도구를 같은 origin의 HTML·CSS·JavaScript 화면에 연결했다. 별도 프런트엔드 빌드가 없다. **localhost 개발 서버이며 실제 로그인·운영 배포는 미완료**다. 상단의 개발 사용자 선택 박스에서 Alice·Bob·조회 전용 사용자를 바꿀 수 있다. 서버의 허용 목록을 선택하는 기능이며 권한 자체를 편집하지 않는다. 요청마다 서버 IdentityProvider가 신원을 고정하고 도구 입력·Agent는 작성자/권한을 지정하지 않는다.
+
+기존 DB를 초기화하지 않고 새 schema를 사용한다. `--reserve-l1`은 L과 가상 운영 기록만 등록된 기준을 준비하므로 L1은 S2 승인 경로로 등록해야 한다. 옵션을 생략한 기존 시드는 L/L1을 모두 포함하며 S2 최초 등록의 증거가 아니다.
+
+```bash
+python -m ontologics.web seed --development --reserve-l1 --schema web_s1_s2_team_001 --env-file .env.local
+# 서버 한 개에서 상단 선택 박스로 사용자를 전환한다. --user는 최초 기본 사용자다.
+python -m ontologics.web serve --development --user alice --port 8000 --schema web_s1_s2_team_001 --env-file .env.local
+```
+
+`http://127.0.0.1:8000`에서 Alice(조회·초안·검토), Bob(조회·검토), 조회 전용(조회)을 선택한다. Alice로 초안 작성 후 Bob으로 전환하고 업무 현황에서 같은 초안을 열어 승인할 수 있다. 작성자는 바뀌지 않고 Alice 자기 승인은 차단된다. 사용자 전환 시 홈을 다시 불러오며 이전 사용자의 초안/조사·요청 키는 사용자별로 분리해 보존한다. 개발 사용자를 자유롭게 선택할 수 있으므로 실제 로그인이나 서로 다른 실제 사람의 승인 검증은 아니다. 127.0.0.1·정확한 Host·Origin·쿠키·CSRF 검사를 사용한다. 별도 브라우저는 독립적으로 선택하며 같은 브라우저의 다른 탭은 전환 후 새로고침해야 한다. 기존 두 포트 실행 방식도 사용할 수 있다. 실제 인증은 `IdentityProvider.resolve/lookup`과 검증된 요청 문맥에 연결해야 한다.
+
+- **S2:** 제품 구성·BOM 등록에서 `data/sources/ESP32-PoE_Rev_L1-BOM-WROOM.ods` 파일을 접수한다. 실제 바이트 SHA-256으로 개정을 식별하고 74행·128위치·실장 미확인 12행을 표시한다. L과 비교한 변경 위치는 R50·R51·R6·U2다. 등록 초안 저장 후 Bob이 업무 현황의 초안을 열어 원본·차이·검증 결과를 보고 보완 요청/반려/승인한다. 승인된 정확한 버전의 반영 결과를 확인한 뒤 L1 구성을 다시 조회한다. 파일명만 바꾸거나 새로운 부품 조합을 올려도 근거 없는 구성으로 등록하지 않는다.
+- **S1:** 로트 장착 이력 조회에서 A/B 조건을 고정한다. 보존된 U104 시연 보완값 또는 개별 보드·부품 로트 이력 화면의 사용자 제출 가상 기록 JSON으로 보완안을 저장한다. Bob 승인 후 최초 조건 그대로 이전/이후 데이터 버전을 비교한다. U104는 A 추가 확인→조건상 제외, B 추가 확인→장착 이력 확인이며 U106 미확인은 유지한다. 포함은 불량 확인, 제외는 안전 판정이 아니다.
+- **공통:** 업무 현황은 최근 초안/확정 버전, 이력 화면은 보드·로트·장착·제거·완전 이력, 기술 문서·근거 조회는 승인 버전의 키워드/종류/ID 탐색을 제공한다. 새 근거는 초안의 정확한 버전에서 원본 해시를 확인할 수 있다. 초안 작성·검토 승인·확정 반영 상태를 구분한다.
+
+AI 업무 지원은 기존 `.env`/`.env.local` 또는 `--model-env-file`의 `OPENAI_API_KEY`와 고정 모델 설정을 재사용한다. **설정됨은 실제 통신 성공과 다르다.** Supervisor는 명확한 등록/장착 업무 표현을 공통 규칙으로 제한한 뒤 홈의 요청을 한 전문 역할로 인계하고, Product는 접수 후보 설명·명시적 초안 저장, Quality는 누락 조건 질문·조건 제안·A/B 조회/비교, Knowledge는 관계 조회·문자열/의미 검색을 수행한다. 직접 조회와 Agent 도구의 반환값을 대조하며, 이 일치 검사가 자유 설명 전체의 사실성 평가를 대신하지 않는다. Quality의 판정·근거 설명, 의미 검색의 검증된 근거 선택, 초안 저장 결과는 원본 필드로 서버가 구성한다.
+
+- 원본 접수·비교 후 확인란을 선택하고 AI 패널에 “원본 근거와 미확인 상태를 유지해 등록 초안을 저장해줘”를 입력한 뒤 **AI 등록 초안 저장 요청**을 누른다. 직접 저장과 같은 요청 키·후보·검증을 사용한다. 모델 후속 처리 실패에도 저장된 정확한 초안은 표시하며 같은 키로 재시도한다. 승인·확정은 기존 사람 검토 경로다.
+- 조회 전 “U104와 U106의 L07 장착 이력을 조사해줘”는 빠진 시각을 질문한다. `A 2026-09-20T10:00:00+09:00, B 2026-09-01T00:00:00+09:00 부터 2026-09-21T00:00:00+09:00`까지 명시하면 조건 제안을 검토해 **조사 조건에 적용 → 장착 이력 조회**한다. 날짜만으로 시간대를 추정하지 않는다. 이미 조회한 화면은 고정 조건·버전의 설명을 요청한다.
+- 기술 문서·근거 조회에서 문자열/의미 검색을 선택하고 “L1 WROOM 보드의 이더넷 PHY LAN8710 부품 근거”처럼 요청한다. 의미 검색은 아래 색인 준비가 필요하다. 각 답에 대상·버전·원본 위치와 검색 범위가 표시된다. 지속 대화 저장·임의 PDF/OCR·범용 추출 정확도는 아직 완료하지 않았다.
+
+일반 가상 이력 파일은 UTF-8 JSON `{origin:"synthetic",authored_at:"명시적 시각+offset",notice:"시연 근거 설명",records:[...]}`다. records는 기존 SCHEMA의 ProductUnit/ComponentLot/Installation/HistoryCoverage/InventoryMovement 필드(id/type 포함, origin/evidence 제외)를 사용한다. 호스트가 새 SourceDocument/Evidence·해시·JSON 위치를 붙인다. 실제 회사 운영 자료나 고장/안전/가동 필드는 허용하지 않는다. 원본은 Git 제외 `data/receipts/`에 무변경 보존하고 DB와 함께 별도 백업해야 한다. 파일 접수·형식 검증은 사실 확인이나 승인과 다르다.
+
+기본 네 Agent·여섯 화면·공통 기반은 프로젝트 담당자가 구현하고 동료는 이후 추가 Agent를 같은 호스트 경계에 연결한다. HTTP 계약은 [TOOLS](docs/TOOLS.md#개발용-http-api와-화면), 실제 검증 범위·제한은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 영향 검사 후 최종 `python -m unittest discover -v`를 실행한다. 모델 대역·실제 브라우저·실모델 검증은 구분한다.
+
+## 개발용 사용자 신원과 공통 호스트
+
+아래 Python 예제는 로그인 없이 호스트가 지정한 개발 사용자로 등록·검토·반영 경로를 실행한다. **신원 연결과 권한 규칙의 개발 검증이며 실제 인증 완료가 아니다.** 브라우저 연결은 위 웹 통합 절차를 사용하며 실제 로그인·인증 세션은 아직 제공하지 않는다.
+
+```bash
+python3 -m examples.host_workflow
+# 다른 로컬 설정 파일을 사용할 때
+python3 -m examples.host_workflow --env-file /path/to/.env.local
+python3 -m unittest tests.test_host -v
+```
+
+예제는 모델 키 없이 새 `host_demo_<UUID>` PostgreSQL 스키마에서 실행된다. 개발 사용자 `dev-alice`의 Product 초안은 `author=user:dev-alice`로 기록된다. Alice의 자기 승인은 `SELF_APPROVAL_FORBIDDEN`, 미승인 반영은 `APPROVAL_REQUIRED`, 보완 전 버전 반영은 `SUPERSEDED_DRAFT`다. 다른 개발 사용자 Bob의 검토 뒤 정확한 버전만 반영되며 L1 74행 등록, U104 보완 후 A 제외/B 포함, U106 미확인 유지와 재시도 `IDEMPOTENT_REPLAY`를 확인한다. 예제의 개발 시드와 Bob의 검토 대역은 실제 자료 접수·사용자 인증·운영 승인 완료 근거가 아니다.
+
+동료는 [host.py](ontologics/host.py)의 `CommonHost.request()`로 요청 신원을 한 번 고정하고 `RequestSession.agent('product'/'quality'/'knowledge'/'supervisor')` 또는 `run_agent()`를 사용한다. `review()`는 사람의 호스트 동작, `apply_approved()`는 서버 워크플로 동작이며 Agent에 노출하지 않는다. 신원 공급자는 [identity.py](ontologics/identity.py)의 `resolve(context)`·`lookup(subject)` 접점으로 교체한다. 개발 사용자 선택은 명시적 개발 HTTP 경로에만 있으며 운영 인증으로 사용하지 않는다. 호출 예제·권한·오류 경계는 [TOOLS](docs/TOOLS.md#개발용-사용자-호스트)를 따른다.
+
 ## 실제 LLM 실행과 동료 개발 시작
 
 공통 provider는 OpenAI Responses API와 **`gpt-5.4-mini-2026-03-17` 한 모델**을 사용한다. Python 표준 라이브러리로 연결하며 추가 SDK 설치는 없다. API 호출에는 계정 사용량이 발생한다. 예제는 공개 OLIMEX 행 정보와 가상 운영 기록을 전송한다.
@@ -128,13 +173,33 @@ PostgreSQL 전환의 실제 API 결과와 실패·수정 이력은 [검증 요�
 
 `ontologics/retrieval.py`의 `EvidenceIndex`는 승인된 데이터 버전의 Evidence·SourceDocument·연결된 사실을 텍스트로 제공하고, 호스트가 만든 임베딩을 PostgreSQL `vector` 열에 저장·검색한다. 모델 이름·차원·내용 해시·데이터 버전을 구분하고 실제/가상 필터와 원본 locator를 반환한다. 원본은 파일로 보존하고, 그래프·초안·승인·실행 기록·벡터의 영속 저장은 PostgreSQL 한 곳에 둔다.
 
-`python -m examples.cq_check`에 실행 가능한 `documents → index → search` 예제가 있다. 이 예제의 3차원 벡터는 SQL 동작을 확인하는 시험값이다. **임베딩 API, 자연어 의미 검색, RAG 답변 품질까지 검증한 것은 아니다.** 동료는 같은 임베딩 모델로 문서와 질문을 벡터화해 이 접점에 연결할 수 있다. LLM에게 벡터를 직접 만들어 내도록 시키지 않는다.
+`python -m examples.cq_check`의 3차원 수치 벡터는 기존 SQL 검사다. 실제 의미 검색은 `OpenAIEmbeddings`의 고정 `text-embedding-3-small`/1536차원으로 문서와 질문을 변환한다. 기존 LLM과 목적이 다른 임베딩 모델이며 동적 라우팅은 없다. [공식 Embeddings API](https://developers.openai.com/api/reference/resources/embeddings/methods/create)를 따른다.
 
-`index`는 호스트의 별도 `index` 권한이며 AgentGateway에 공개하지 않는다. `search`도 호스트 retriever가 신원을 고정해 감싼 뒤 Agent에 연결한다. 기존 Product/Quality 도구 목록은 그대로다. 검색 결과의 `candidate_only=true`는 근거 후보임을 뜻하며, ID 동일성·A/B 판정·승인을 대체하지 않는다. 작은 데이터에 맞춘 정확 검색이며 ANN 성능 최적화는 하지 않았다.
+```bash
+# 위 S2를 승인한 실제 데이터 버전으로 지정한다. 예시 버전 2를 무조건 사용하지 않는다.
+python -m examples.index_evidence --schema web_s1_s2_team_001 --version 2 --env-file .env.local --model-env-file .env.local
+```
+
+별도 키 변수 없이 기존 `OPENAI_API_KEY`를 사용한다. 원본 text는 DB 트랜잭션 밖에서 API에 보내며 반환 모델·차원·유한값·입력 순서를 검사한다. `selection_complete`는 선택 범위, `snapshot_complete`는 전체 Evidence 범위의 색인 완료다. 8192 UTF-8 bytes 초과 근거는 자르지 않고 `unindexed`에 남긴다. 재실행은 같은 모델/버전/hash의 기존 캐시를 보존하고 누락분만 처리한다. 새 승인 버전은 따로 색인해야 하며 미색인 버전을 이전 버전으로 자동 대체하지 않는다.
+
+의미 검색은 `semantic_search(query, origin, version)` 공통 도구로 연결된다. `index` 권한·DB·provider 객체는 Agent에 공개하지 않는다. `candidate_only=true`와 부분 색인 경고를 유지하며 유사도는 부품 동일성·장착 판정·승인 또는 사실 확률이 아니다. 작은 데이터에 맞춘 정확 cosine 검색이며 ANN 최적화·범용 RAG 품질 보장은 별도다.
+
+## 동료의 확장 Agent 연결
+
+기본 네 역할·여섯 화면·공통 기반은 프로젝트 담당자의 범위다. 동료는 기존 역할을 덮어쓰지 않고 `AgentRegistration(name, instructions, allowed_tools)`를 호스트 시작 코드에서 등록한다. `CommonHost(..., agent_registrations=(registration,))` → 요청 신원 고정 → `request.run_agent(registration.name, provider, messages, config=...)` 순서다. 도구는 기존 `AgentGateway.ALLOWED`의 부분집합이며 등록 자체가 사용자 권한을 늘리지 않는다. 승인·반영·seed·색인 도구는 등록할 수 없다. HTTP 요청이나 모델 출력으로 역할을 등록하지 않는다.
+
+```bash
+python -m examples.extension_agent --schema web_s1_s2_team_001 --version 2 --env-file .env.local
+python -m unittest tests.test_agent_extensions -v
+```
+
+[extension_agent.py](examples/extension_agent.py)는 연결 계약을 보여주는 모델 대역 예제다. 동료는 `EXTENSION`의 책임/도구와 provider·messages를 구현하고 기존 고정 모델 `OpenAIProvider(settings, registration.allowed_tools)`로 연결한다. 허용 도구 이탈·사용자 권한 부족·확정 데이터 불변을 검증한 뒤 실제 역할 사례를 평가한다. 웹에서 새 역할로 라우팅하는 부분은 담당자가 명시적으로 연결한다. Change·Supplier·Report 업무 로직이나 자동 플러그인 로더를 구현한 것은 아니다.
 
 ## 저장소 공유 상태
 
-비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. 2026-10-22에 `main`을 push했고 `origin/main`을 추적한다. 공통 기반 구현 기준 커밋은 `07eddb82a8c15dcde9965c3de4345db2a932605a`, 초기 v0.1.0 기준은 `2fdc0159c8cf5ba694e5d8bd51136d77b1bc42b4`다. PostgreSQL 전환은 `codex/postgresql-pgvector` 브랜치의 PR로 제공한다. 검토·병합 전 main은 기존 기준을 유지한다. 사용 중인 기준 커밋은 `git rev-parse HEAD`로 확인한다. 비공개 저장소 접근 권한이 있는 동료가 clone할 수 있다.
+비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1·목표/완료 기준 PR #2·S1/S2 및 핵심 Agent 통합 PR #3은 가져온 main 이력에 포함되어 있다. 2026-10-27 로컬에서 가져온 기준은 `7c5e2d9`다. 이전 `codex/s1-s2-service`의 기준은 `189500e`였으며 해당 브랜치의 공통 호스트·S1·S2·네 Agent 변경이 이번 main에 들어왔다. 원격 CI 성공 여부는 해당 PR/커밋 checks에서 별도로 확인한다. 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
+
+현재 B 작업은 `feature/b-first-mvp`의 보존 커밋 `f808b69`를 남긴 뒤 위 main과 통합 중이다. 미커밋 작업을 보존한 상태에서 기존 작업 브랜치에 최신 공통 코드를 합치고 공통/CQ01·CQ02 검증을 수행한다. 브랜치를 받았다는 사실이나 충돌을 해결했다는 사실을 업무 검증 통과로 계산하지 않는다. 실행 기준은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 
 ## 개발 기준
 
@@ -154,4 +219,4 @@ OLIMEX ESP32-POE 공식 저장소 커밋 `deb38a377d50eadb04ddc7118a17a5ae58b1ee
 
 ODS 시트명 오류는 대응 PDF 표제와 모듈 행으로 확인하고 경고로 보존했다. `NA`·`NS`·`Opened` 의미는 확정하지 않았으므로 L 11행, L1 12행은 실장 상태가 `unknown`이다. PDF 전체 148행을 각각 시각 대조한 것은 아니다. 부품의 개정 간 동일성·대체 호환성·설계 변경 이유를 추정하지 않는다.
 
-실제 LLM의 최소 도구 호출 예제는 연결했다. 전체 Agent의 추출·대화 품질, 업무 UI·운영 사용자 인증·실제 사람 승인은 미완료다. 파일·Python 객체에 접근할 수 있는 로컬 개발자를 보안적으로 격리하는 시스템도 아니다.
+S1/S2 개발 웹과 네 역할의 제한된 업무 경로, 접수 후보의 AI 초안 저장·의미 검색을 연결했다. 전체 Agent의 범용 추출/대화 품질·운영 사용자 인증·실제 운영 승인은 미완료다. 파일·Python 객체에 접근할 수 있는 로컬 개발자를 보안적으로 격리하는 시스템도 아니다.

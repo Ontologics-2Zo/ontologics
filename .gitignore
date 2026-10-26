@@ -17,3 +17,6 @@ artifacts/local/
 
 # Personal documents (local only)
 /JunhwaDocs/
+
+# User-submitted immutable evidence; back up separately from Git.
+data/receipts/

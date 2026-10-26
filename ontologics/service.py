@@ -16,6 +16,23 @@ class DomainError(Exception):
         super().__init__(message)
         self.code, self.message, self.details = code, message, details
 
+def configuration_changes(nodes, left_id, right_id):
+    idx = {n['id']: n for n in nodes}
+    for cid in (left_id, right_id):
+        if idx.get(cid, {}).get('type') != 'Configuration': raise DomainError('NOT_FOUND', 'Unknown configuration')
+    def positions(cid):
+        return {p: {'component': idx[n['component_id']]['name'], 'population': n['population'],
+                    'package': idx[n['component_id']].get('package'),
+                    'raw_value': n['raw_value'], 'evidence': n['evidence'], 'item_id': n['id']}
+                for n in nodes if n['type'] == 'BOMItem' and n['configuration_id'] == cid for p in n['positions']}
+    left, right = positions(left_id), positions(right_id)
+    changes = []
+    for p in sorted(left.keys() | right.keys()):
+        a, b = left.get(p), right.get(p)
+        equal = a and b and all(a[k] == b[k] for k in ('component', 'package', 'population', 'raw_value'))
+        if not equal: changes.append({'position': p, 'before': a, 'after': b})
+    return changes
+
 class Service:
     """Trusted application boundary. Never expose Service or principal setup to an LLM.
 
@@ -225,20 +242,7 @@ class Service:
             else:
                 if draft_version is not None: raise DomainError('INVALID_INPUT', 'draft_id is required for draft comparison')
                 nodes = self._nodes(version)
-            idx = {n['id']: n for n in nodes}
-            for cid in (left_id, right_id):
-                if idx.get(cid, {}).get('type') != 'Configuration': raise DomainError('NOT_FOUND', 'Unknown configuration')
-            def positions(cid):
-                return {p: {'component': idx[n['component_id']]['name'], 'population': n['population'],
-                            'package': idx[n['component_id']].get('package'),
-                            'raw_value': n['raw_value'], 'evidence': n['evidence'], 'item_id': n['id']}
-                        for n in nodes if n['type'] == 'BOMItem' and n['configuration_id'] == cid for p in n['positions']}
-            left, right = positions(left_id), positions(right_id)
-            changes = []
-            for p in sorted(left.keys() | right.keys()):
-                a, b = left.get(p), right.get(p)
-                equal = a and b and all(a[k] == b[k] for k in ('component', 'package', 'population', 'raw_value'))
-                if not equal: changes.append({'position': p, 'before': a, 'after': b})
+            changes = configuration_changes(nodes, left_id, right_id)
             return self._envelope(ok=True, data={'left': left_id, 'right': right_id, 'changes': changes,
                 'is_preview': draft_id is not None, 'draft_id': draft_id, 'draft_version': draft_version,
                 'comparison_basis': 'source descriptions by reference designator; not electrical equivalence'}, version=version,
@@ -316,24 +320,27 @@ class Service:
             'SELECT * FROM review_events WHERE draft_id=%s AND draft_version=%s ORDER BY sequence', (draft_id, version))]
         return d
 
+    def _save_draft(self, actor, operations, draft_id=None, expected_version=None):
+        base = self._version()
+        nodes, changes = self._candidate(operations, base)
+        report = validate_graph(nodes)
+        if not changes: raise DomainError('NO_CHANGES', 'The exact content already exists; reuse the existing registration')
+        did, dv = draft_id or str(uuid.uuid4()), 1
+        if draft_id:
+            old = self._draft(draft_id, expected_version)
+            if old['author'] != actor: raise DomainError('DRAFT_OWNER_REQUIRED', 'Only the original author may revise this draft')
+            if old['status'] in ('applied', 'rejected'): raise DomainError('DRAFT_CLOSED', 'Create a new proposal for a closed draft')
+            dv = old['version'] + 1
+            self.db.execute('UPDATE drafts SET status=%s WHERE id=%s AND version=%s', ('superseded', did, old['version']))
+        status = 'awaiting_review' if report['valid'] else 'needs_changes'
+        self.db.execute('INSERT INTO drafts VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+            (did, dv, actor, base, canonical(operations), digest(operations), status, None, None, None, self.now()))
+        return self._envelope(ok=True, data={'draft_id': did, 'draft_version': dv, 'base_version': base,
+            'status': status, 'content_hash': digest(operations), 'changes': changes, 'validation': report}, warnings=report['warnings'])
+
     def prepare_draft(self, actor, operations, *, request_key, draft_id=None, expected_version=None):
         def act():
-            base = self._version()
-            nodes, changes = self._candidate(operations, base)
-            report = validate_graph(nodes)
-            if not changes: raise DomainError('NO_CHANGES', 'The exact content already exists; reuse the existing registration')
-            did, dv = draft_id or str(uuid.uuid4()), 1
-            if draft_id:
-                old = self._draft(draft_id, expected_version)
-                if old['author'] != actor: raise DomainError('DRAFT_OWNER_REQUIRED', 'Only the original author may revise this draft')
-                if old['status'] in ('applied', 'rejected'): raise DomainError('DRAFT_CLOSED', 'Create a new proposal for a closed draft')
-                dv = old['version'] + 1
-                self.db.execute('UPDATE drafts SET status=%s WHERE id=%s AND version=%s', ('superseded', did, old['version']))
-            status = 'awaiting_review' if report['valid'] else 'needs_changes'
-            self.db.execute('INSERT INTO drafts VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-                (did, dv, actor, base, canonical(operations), digest(operations), status, None, None, None, self.now()))
-            return self._envelope(ok=True, data={'draft_id': did, 'draft_version': dv, 'base_version': base,
-                'status': status, 'content_hash': digest(operations), 'changes': changes, 'validation': report}, warnings=report['warnings'])
+            return self._save_draft(actor, operations, draft_id, expected_version)
         return self._run(actor, 'prepare_draft', {'operations': operations, 'draft_id': draft_id, 'expected_version': expected_version}, act,
                          permission='draft', request_key=request_key)
 
@@ -410,6 +417,75 @@ class Service:
             return self._envelope(ok=True, data={'draft_id': draft_id, 'draft_version': version, 'status': 'applied', 'applied_version': next_version})
         return self._run(actor, 'apply', {'draft_id': draft_id, 'version': version}, act, permission='apply', request_key=request_key)
 
+    def get_source_receipt(self, actor, receipt_id):
+        from .receipts import receipt
+        def act():
+            data = dict(receipt(self, actor, receipt_id))
+            # The parsed candidate is immutable. Models inspect source facts but
+            # never regenerate or replace its operations in their tool arguments.
+            operations = data.pop('operations', [])
+            data['evidence'] = sorted({ref for op in operations for ref in op['node'].get('evidence', [])})
+            data['evidence_records'] = [op['node'] for op in operations if op['node']['type'] == 'Evidence']
+            return self._envelope(ok=True, data=data, version=data['base_version'])
+        return self._run(actor, 'get_source_receipt', {'receipt_id': receipt_id}, act)
+
+    def prepare_source_draft(self, actor, receipt_id, request_key, draft_id=None, expected_version=None):
+        from .receipts import source_draft
+        return source_draft(self, actor, receipt_id, request_key, draft_id, expected_version)
+
+    def search_evidence(self, actor, query, *, origin='all', version=None):
+        def act():
+            if not isinstance(query, str) or not 1 <= len(query.strip()) <= 200 or origin not in {'all', 'real', 'synthetic'}:
+                raise DomainError('INVALID_INPUT', '검색어와 실제/가상 자료 구분을 확인하세요.')
+            needle = query.strip().casefold()
+            nodes = [n for n in self._nodes(version) if (origin == 'all' or n['origin'] == origin)
+                     and needle in canonical(n).casefold()]
+            return self._envelope(ok=True, data={'matches': nodes[:60], 'total': len(nodes), 'limit': 60,
+                'query': query.strip(), 'origin': origin, 'mode': 'lexical', 'candidate_only': True}, version=version)
+        return self._run(actor, 'search_evidence', {'query': query, 'origin': origin, 'version': version}, act)
+
+    def semantic_search(self, actor, query, *, origin='all', version=None):
+        from .retrieval import EvidenceIndex
+        from .openai_provider import ProviderError
+        provider = getattr(self, 'embedding_provider', None)
+        def prepare():
+            if not isinstance(query, str) or not 1 <= len(query.strip()) <= 2000 or origin not in {'all', 'real', 'synthetic'}:
+                raise DomainError('INVALID_INPUT', '검색 질문과 실제/가상 구분을 확인하세요.')
+            if provider is None:
+                raise DomainError('EMBEDDINGS_NOT_CONFIGURED', '임베딩 API가 설정되지 않았습니다. 문자열 검색은 사용할 수 있습니다.')
+            selected = self._version() if version is None else version
+            nodes = self._nodes(selected)
+            ids = [n['id'] for n in nodes if n['type'] == 'Evidence' and (origin == 'all' or n['origin'] == origin)]
+            indexed = self.db.execute('SELECT COUNT(*) AS count FROM evidence_vectors WHERE data_version=%s AND model=%s AND dimensions=%s AND evidence_id=ANY(%s)',
+                (selected, provider.model, provider.dimensions, ids)).fetchone()['count']
+            if not indexed:
+                raise DomainError('EVIDENCE_INDEX_NOT_READY', '선택한 데이터 버전·자료 구분의 근거 색인이 없습니다. 다른 버전으로 자동 대체하지 않습니다.')
+            return self._envelope(ok=True, data={'indexed': indexed, 'total': len(ids), 'complete': indexed == len(ids)}, version=selected)
+        prepared = self._run(actor, 'semantic_search_prepare', {'query': query, 'origin': origin, 'version': version}, prepare)
+        if not prepared['ok']:
+            return prepared
+        selected = prepared['data_version']
+        cache = getattr(self, '_query_embeddings', {})
+        key = digest([provider.model, provider.dimensions, query.strip()])
+        try:
+            if key not in cache:
+                # External API call is outside every database transaction. The
+                # request-local cache avoids calling it again for direct/AI parity.
+                cache[key] = provider.embed([query.strip()])[0]
+                self._query_embeddings = cache
+        except (ProviderError, TimeoutError, ConnectionError) as exc:
+            code = getattr(exc, 'code', 'EMBEDDING_UNAVAILABLE')
+            def failed():
+                raise DomainError(code, '검색 질문의 임베딩을 생성하지 못했습니다. 같은 조건으로 재시도하세요.')
+            return self._run(actor, 'semantic_search', {'query': query, 'origin': origin, 'version': selected}, failed)
+        result = EvidenceIndex(self, actor, model=provider.model, dimensions=provider.dimensions).search(
+            cache[key], version=selected, origin=None if origin == 'all' else origin, limit=5)
+        if result['ok']:
+            result['data'].update(mode='semantic', query=query.strip(), origin=origin, index_coverage=prepared['data'])
+            if not prepared['data']['complete']:
+                result['warnings'].append({'code': 'PARTIAL_EVIDENCE_INDEX', 'detail': '검색은 이 버전에서 색인된 근거만 포함합니다.'})
+        return result
+
     def run_history(self, actor):
         return self._run(actor, 'run_history', {}, lambda: self._envelope(ok=True, data=[dict(row) for row in self.db.execute('SELECT * FROM runs ORDER BY sequence')]), permission='audit')
 
@@ -417,11 +493,15 @@ class AgentGateway:
     """Host binds identity once. Actor, review, apply and seed are not tool inputs."""
     ALLOWED = frozenset({'lookup', 'configuration', 'compare_configurations', 'component_usage', 'investigate',
                          'compare_investigation', 'prepare_draft', 'get_draft', 'validate_draft', 'export_graph', 'preview_investigation',
-                         'delivery_round', 'fulfillment_status'})
-    def __init__(self, service, actor):
+                         'delivery_round', 'fulfillment_status',
+                         'get_source_receipt', 'prepare_source_draft', 'search_evidence', 'semantic_search'})
+    def __init__(self, service, actor, *, allowed_tools=None):
         self._service, self._actor = service, actor
+        self.allowed_tools = self.ALLOWED if allowed_tools is None else frozenset(allowed_tools)
+        if not self.allowed_tools or not self.allowed_tools <= self.ALLOWED:
+            raise ValueError('Gateway tools must be a nonempty subset of AgentGateway.ALLOWED')
     def call(self, tool, arguments):
-        if tool not in self.ALLOWED:
+        if tool not in self.allowed_tools:
             return self._service._run(self._actor, 'blocked_tool', {'tool': tool},
                 lambda: (_ for _ in ()).throw(DomainError('TOOL_NOT_ALLOWED', 'Tool is not exposed to service Agents')))
         if not isinstance(arguments, dict) or 'actor' in arguments or 'principals' in arguments:

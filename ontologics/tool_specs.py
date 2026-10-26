@@ -15,6 +15,14 @@ QUERY = obj({'mode': {'type': 'string', 'enum': ['A', 'B']}, 'lot_id': TEXT,
     ['mode', 'lot_id', 'unit_ids'])
 
 _DEFINITIONS = {
+    'get_source_receipt': ('Read this user-owned immutable receipt: source, parsed BOM/records, unknowns, evidence and base version. Not approved data.',
+        obj({'receipt_id': TEXT}, ['receipt_id'])),
+    'prepare_source_draft': ('Save only the exact host-parsed receipt candidate as an unapproved draft. No operations/author/permission inputs. Same request key as direct save; rejects stale receipt.',
+        obj({'receipt_id': TEXT, 'request_key': TEXT, 'draft_id': TEXT, 'expected_version': DRAFT_VERSION}, ['receipt_id', 'request_key'])),
+    'semantic_search': ('Search already-indexed evidence using a fixed embedding model and pgvector. Explicit snapshot/origin, top-five candidates, source/locator and partial index coverage. Similarity is not fact, identity or time judgment.',
+        obj({'query': TEXT, 'origin': {'type': 'string', 'enum': ['all', 'real', 'synthetic']}, 'version': VERSION}, ['query'])),
+    'search_evidence': ('Search confirmed graph text/IDs with real/synthetic and version filters. Lexical candidates, not semantic RAG, factual judgment or identity merging.',
+        obj({'query': TEXT, 'origin': {'type': 'string', 'enum': ['all', 'real', 'synthetic']}, 'version': VERSION}, ['query'])),
     'lookup': ('Read graph nodes, including Evidence and SourceDocument for provenance.',
         obj({'node_id': TEXT, 'kind': {'type': 'string', 'enum': list(SCHEMA)}, 'version': VERSION})),
     'configuration': ('Read product, revision, configuration, BOM and source-scoped components; unknown population is not populated.',
@@ -44,11 +52,13 @@ _DEFINITIONS = {
     'export_graph': ('Export the confirmed JSON-LD graph; usually prefer focused lookups to reduce tokens.', obj({'version': VERSION})),
 }
 
-PRODUCT_TOOLS = ('lookup', 'configuration', 'compare_configurations', 'prepare_draft', 'get_draft', 'validate_draft')
+PRODUCT_TOOLS = ('get_source_receipt', 'prepare_source_draft', 'lookup', 'configuration', 'compare_configurations', 'prepare_draft', 'get_draft', 'validate_draft')
 QUALITY_TOOLS = ('lookup', 'component_usage', 'investigate', 'compare_investigation')
 B_INTAKE_TOOLS = ('lookup', 'prepare_draft', 'get_draft', 'validate_draft')
 B_PROMISE_TOOLS = ('lookup', 'delivery_round')
 B_FULFILLMENT_TOOLS = ('fulfillment_status', 'lookup')
+KNOWLEDGE_TOOLS = ('semantic_search', 'search_evidence', 'lookup', 'configuration', 'component_usage')
+SUPERVISOR_TOOLS = ('lookup',)
 
 def function_tools(names):
     """Non-strict JSON schemas retain optional and heterogeneous graph fields.

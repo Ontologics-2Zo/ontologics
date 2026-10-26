@@ -1,5 +1,6 @@
 """Scripted adapter tests only: no live model/provider quality claim."""
 import copy
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -157,12 +158,37 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
 
     def test_invalid_role_tool_configuration_is_rejected_before_running(self):
-        for tools in ("lookup", {"lookup"}, ["lookup", "lookup"], ["apply"], [""],
+        for tools in ("lookup", [], (), set(), frozenset(), ["lookup", "lookup"], ["apply"], [""],
                       [True], [["lookup"]], ["unknown"]):
             with self.subTest(tools=tools), self.assertRaises(ValueError):
                 ModelRuntime(self.service, "agent", lambda **kw: {},
                     config=ModelConfig(model="fixed"), allowed_tools=tools)
         self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM runtime_runs").fetchone()['count'])
+
+    def test_host_tool_collections_keep_gateway_scope_and_output_hash(self):
+        for collection in (list, tuple, set, frozenset):
+            with self.subTest(collection=collection.__name__):
+                calls = []
+                def provider(**kwargs):
+                    calls.append(1)
+                    if len(calls) == 1:
+                        return {"text": "", "tool_calls": [{"name": "lookup",
+                            "arguments": {"kind": "ProductModel"}}]}
+                    return {"text": "Read-only result.", "tool_calls": []}
+                runtime = ModelRuntime(self.service, "agent", provider,
+                    config=ModelConfig(model="fixed"), allowed_tools=collection(["lookup"]))
+                result = runtime.run(self.messages)
+                self.assertTrue(result["ok"])
+                expected_hash = hashlib.sha256(json.dumps(result["text"], ensure_ascii=False,
+                    sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+                self.assertEqual(expected_hash, result["output_hash"])
+                row = self.service.db.execute("SELECT config,output_hash FROM runtime_runs WHERE id=%s",
+                    (result["run_id"],)).fetchone()
+                self.assertEqual(["lookup"], json.loads(row["config"])["allowed_tools"])
+                self.assertEqual(expected_hash, row["output_hash"])
+                denied = runtime._gateway.call("prepare_draft", {"operations": [], "request_key": "denied"})
+                self.assertEqual("TOOL_NOT_ALLOWED", denied["errors"][0]["code"])
+        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
 
     def test_malformed_oversized_and_model_override_responses_are_rejected(self):
         responses = [

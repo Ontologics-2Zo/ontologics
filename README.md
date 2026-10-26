@@ -97,7 +97,7 @@ python -m examples.b_agent --provider openai --output artifacts/local/task09/b_a
 python -m examples.b_host_agent --mode all --env-file .env.local --output artifacts/local/b_host_first.json
 ```
 
-[b_host_agent.py](examples/b_host_agent.py)는 기존 지침·도구·평가기를 `b_intake`·`b_promise`·`b_fulfillment`로 등록한다. 개발 사용자의 요청 신원으로 실행·초안 작성자를 기록하고, CQ02의 정확한 근거 인용 검사를 유지한다. 이 명령은 **대역 모델 전용이며 유료 API를 호출하지 않는다.** 기존 standalone 예제도 유지한다. 실제 로그인·B 웹 메뉴/Supervisor 인계·병합 후 실모델 품질은 별도 확인이 필요하다. 등록 방식과 권한은 [TOOLS](docs/TOOLS.md#b-역할의-commonhost-연결)를 따른다.
+[b_host_agent.py](examples/b_host_agent.py)는 기존 지침·도구·평가기를 `b_intake`·`b_promise`·`b_fulfillment`로 등록한다. 개발 사용자의 요청 신원으로 실행·초안 작성자를 기록하고, CQ02의 정확한 근거 인용 검사를 유지한다. 이 명령은 **대역 모델 전용이며 유료 API를 호출하지 않는다.** 기존 standalone 예제도 유지한다. 실제 로그인·B 웹 메뉴/Supervisor 인계와 CQ01의 새 호스트 실모델 검증은 별도 확인이 필요하다. CQ02의 새 호스트 정상 대표 사례1건은 별도 실제 호출4회로17/17·정확11개 인용·의미 검토를 통과했으며 범위와 비용은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 위 CLI는 계속 대역 전용이다. 등록 방식과 권한은 [TOOLS](docs/TOOLS.md#b-역할의-commonhost-연결)를 따른다.
 
 ## S1·S2 웹 통합 — 개발 신원으로 실행
 

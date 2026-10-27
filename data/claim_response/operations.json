@@ -1,0 +1,42 @@
+{
+  "notice": "All records in this file are fictional demonstration operations for the C claim response feature, not OLIMEX internal records. No inspection, fault cause, defect rate or operating-time data is asserted.",
+  "authored_at": "2026-10-26T10:05:00+09:00",
+  "company": "Demo Assembly Company",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "lines": [
+    {"id": "production-line:demo:C-01", "line_code": "C-01", "name": "Demo board assembly line C-01"},
+    {"id": "production-line:demo:C-02", "line_code": "C-02", "name": "Demo board assembly line C-02"}
+  ],
+  "batches": [
+    {
+      "name": "delivered",
+      "prefix": "C-D",
+      "count": 80,
+      "line_code": "C-01",
+      "first_produced_at": "2026-09-14T09:00:00+09:00",
+      "per_day": 16,
+      "interval_minutes": 30,
+      "statement": "Delivered to the fictional customer 가정 고객사 C-01 on 2026-09-25 under delivery document DO-DEMO-C-001. Recorded as a statement only until the shared shipment type is defined."
+    },
+    {
+      "name": "replacement",
+      "prefix": "C-R",
+      "count": 7,
+      "line_code": "C-02",
+      "first_produced_at": "2026-09-21T09:00:00+09:00",
+      "per_day": 4,
+      "interval_minutes": 30,
+      "statement": "Replacement stock produced on line C-02. Not part of claim CLM-DEMO-C-20261026-001."
+    },
+    {
+      "name": "stored",
+      "prefix": "C-S",
+      "count": 120,
+      "line_code": "C-01",
+      "first_produced_at": "2026-10-05T09:00:00+09:00",
+      "per_day": 24,
+      "interval_minutes": 30,
+      "statement": "Kept in the fictional demo warehouse and not shipped as of 2026-10-26T10:00:00+09:00. Recorded as a statement only until the shared finished-goods stock type is defined."
+    }
+  ]
+}

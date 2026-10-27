@@ -16,7 +16,14 @@
       "first_produced_at": "2026-09-14T09:00:00+09:00",
       "per_day": 16,
       "interval_minutes": 30,
-      "statement": "Delivered to the fictional customer 가정 고객사 C-01 on 2026-09-25 under delivery document DO-DEMO-C-001. Recorded as a statement only until the shared shipment type is defined."
+      "statement": "Delivered to the fictional customer 가정 고객사 C-01 on 2026-09-25 under delivery document DO-DEMO-C-001. Recorded as a statement only until the shared shipment type is defined.",
+      "shipment": {
+        "customer_name": "가정 고객사 C-01",
+        "external_document": "DO-DEMO-C-001",
+        "departed_at": "2026-09-25T14:00:00+09:00",
+        "departed_at_note": "Assumed demo time; the delivery document gives the date only.",
+        "complete": true
+      }
     },
     {
       "name": "replacement",
@@ -36,7 +43,12 @@
       "first_produced_at": "2026-10-05T09:00:00+09:00",
       "per_day": 24,
       "interval_minutes": 30,
-      "statement": "Kept in the fictional demo warehouse and not shipped as of 2026-10-26T10:00:00+09:00. Recorded as a statement only until the shared finished-goods stock type is defined."
+      "statement": "Kept in the fictional demo warehouse and not shipped as of 2026-10-26T10:00:00+09:00. Recorded as a statement only until the shared finished-goods stock type is defined.",
+      "stock": {
+        "location": "Demo warehouse",
+        "observed_at": "2026-10-26T10:00:00+09:00",
+        "complete": true
+      }
     }
   ]
 }

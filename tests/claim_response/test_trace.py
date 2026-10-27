@@ -2,11 +2,12 @@
 import json
 import unittest
 
-from ontologics.claim_response.fixtures import claim_response_nodes
+from ontologics.claim_response.fixtures import claim_response_nodes, load_operations
 from ontologics.claim_response.intake import convert_claim
 from ontologics.claim_response.trace import (
-    AMBIGUOUS, CONFLICT, MATCHED, NEEDS_HISTORY, NOT_FOUND, TRACED,
-    by_type, line_summary, link_serials, prepare_quality_case, trace_claim, trace_lines)
+    AMBIGUOUS, C_OPERATIONS_BASIS, CONFLICT, MATCHED, NEEDS_HISTORY, NOT_FOUND, TRACED,
+    by_type, c_operations_shipments, c_operations_stock, candidate_scope, line_summary, link_serials,
+    prepare_quality_case, stored_scope, trace_claim, trace_lines)
 from ontologics.demo import fixture_nodes
 from ontologics.model import ROOT, validate_graph
 from ontologics.service import Service
@@ -112,6 +113,79 @@ class TraceLineTests(unittest.TestCase):
         self.assertEqual(['unit:C-D001', 'unit:C-D003'], summary['unresolved_unit_ids'])
 
 
+def confirmed_case():
+    claim = claim_nodes(confirmed=True)
+    intake = by_type(claim)['ClaimIntake'][0]
+    units = by_type(claim_response_nodes())['ProductUnit']
+    return claim, prepare_quality_case(intake, link_serials(intake, units))['node']
+
+
+class ScopeTests(unittest.TestCase):
+    def setUp(self):
+        self.operations = load_operations()
+        self.records = by_type(claim_response_nodes())['UnitProductionRecord']
+        self.stock = c_operations_stock(self.operations)
+        self.shipments = c_operations_shipments(self.operations)
+        self.claim, self.case = confirmed_case()
+
+    def test_operations_values_are_read_as_temporary_c_basis(self):
+        self.assertEqual(1, len(self.stock))
+        self.assertEqual(120, len(self.stock[0]['unit_ids']))
+        self.assertEqual('2026-10-26T10:00:00+09:00', self.stock[0]['observed_at'])
+        self.assertEqual(1, len(self.shipments))
+        self.assertEqual('DO-DEMO-C-001', self.shipments[0]['external_document'])
+        self.assertEqual(80, len(self.shipments[0]['unit_ids']))
+        self.assertEqual({C_OPERATIONS_BASIS}, {o['basis'] for o in self.stock + self.shipments})
+
+    def test_hold_scope_is_the_120_stored_boards_from_line_c01(self):
+        result = stored_scope(self.case, LINE_C01, self.records, self.stock, self.shipments)
+        self.assertEqual('ready', result['state'])
+        self.assertEqual([C_OPERATIONS_BASIS], result['basis'])
+        node = result['node']
+        self.assertEqual(120, len(node['unit_ids']))
+        self.assertTrue(all(u.startswith('unit:C-S') for u in node['unit_ids']))
+        self.assertEqual(('hold', '2026-10-26T10:00:00+09:00', LINE_C01),
+                         (node['scope_state'], node['as_of'], node['production_line_id']))
+        self.assertEqual(['evidence:claim_response:batch:stored'], node['evidence'])
+
+    def test_hold_scope_keeps_other_lines_and_unknown_lists_out(self):
+        mixed = [dict(self.stock[0], unit_ids=self.stock[0]['unit_ids'] + ['unit:C-R001'])]
+        units = stored_scope(self.case, LINE_C01, self.records, mixed)['node']['unit_ids']
+        self.assertNotIn('unit:C-R001', units)
+        partial = [dict(self.stock[0], complete=False)]
+        self.assertEqual('stock_list_incomplete', stored_scope(self.case, LINE_C01, self.records, partial)['state'])
+        early = stored_scope(self.case, LINE_C01, self.records, self.stock, as_of='2026-10-26T09:00:00+09:00')
+        self.assertEqual('no_stock_observation', early['state'])
+        self.assertIsNone(early['node'])
+
+    def test_boards_that_left_after_the_observation_are_not_held(self):
+        later = [{'unit_ids': ['unit:C-S001', 'unit:C-S002'], 'departed_at': '2026-10-26T11:00:00+09:00',
+                  'complete': True, 'evidence': [], 'basis': C_OPERATIONS_BASIS}]
+        result = stored_scope(self.case, LINE_C01, self.records, self.stock, self.shipments + later,
+                              as_of='2026-10-26T12:00:00+09:00')
+        self.assertEqual(118, len(result['node']['unit_ids']))
+        self.assertEqual(['unit:C-S001', 'unit:C-S002'], result['departed_after_observation'])
+
+    def test_candidate_scope_is_the_75_other_delivered_boards(self):
+        result = candidate_scope(self.case, LINE_C01, self.records, self.shipments)
+        node = result['node']
+        self.assertEqual('candidate', node['scope_state'])
+        self.assertEqual(['unit:C-D%03d' % n for n in range(6, 81)], node['unit_ids'])
+        self.assertFalse(set(CLAIMED) & set(node['unit_ids']))
+        self.assertEqual([C_OPERATIONS_BASIS], result['basis'])
+        before = candidate_scope(self.case, LINE_C01, self.records, self.shipments, as_of='2026-09-25T13:00:00+09:00')
+        self.assertEqual('no_shipment', before['state'])
+        partial = candidate_scope(self.case, LINE_C01, self.records, [dict(self.shipments[0], complete=False)])
+        self.assertEqual('shipment_list_incomplete', partial['state'])
+
+    def test_case_and_scopes_are_valid_graph_additions(self):
+        hold = stored_scope(self.case, LINE_C01, self.records, self.stock, self.shipments)['node']
+        candidate = candidate_scope(self.case, LINE_C01, self.records, self.shipments)['node']
+        self.assertNotEqual(hold['id'], candidate['id'])
+        outcome = validate_graph(existing_nodes() + claim_response_nodes() + self.claim + [self.case, hold, candidate])
+        self.assertEqual([], outcome['errors'])
+
+
 class TraceClaimDatabaseTests(unittest.TestCase):
     def setUp(self):
         self.service = Service(database_for_test(self), principals={
@@ -137,6 +211,20 @@ class TraceClaimDatabaseTests(unittest.TestCase):
         self.assertEqual(1, self.service._version())
         with self.assertRaisesRegex(ValueError, 'NOT_A_CLAIM_INTAKE'):
             trace_claim(self.service, 'claim-agent', 'unit:C-D001', version=1)
+
+    def test_scopes_from_one_version_become_reviewable_drafts(self):
+        _, case = confirmed_case()
+        records = self.service.lookup('claim-agent', kind='UnitProductionRecord', version=1)['data']
+        operations = load_operations()
+        hold = stored_scope(case, LINE_C01, records, c_operations_stock(operations),
+                            c_operations_shipments(operations))['node']
+        candidate = candidate_scope(case, LINE_C01, records, c_operations_shipments(operations))['node']
+        draft = self.service.prepare_draft('claim-agent', [{'op': 'put', 'node': n} for n in (case, hold, candidate)],
+                                           request_key='scope-draft')
+        self.assertTrue(draft['ok'], draft)
+        saved = self.service.get_draft('claim-agent', draft['data']['draft_id'], draft['data']['draft_version'])['data']
+        self.assertEqual('awaiting_review', saved['status'])
+        self.assertEqual(1, self.service._version())
 
 
 if __name__ == '__main__':

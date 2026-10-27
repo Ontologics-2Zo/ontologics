@@ -19,9 +19,14 @@ from urllib import error, request
 from .model import canonical, digest
 from .service import DomainError
 from .tool_specs import function_tools
+from .harness import begin_paid_call
+from .paid_budget import COST_ENV_KEYS
 
 MODEL = 'gpt-5.4-mini-2026-03-17'
 ENDPOINT = 'https://api.openai.com/v1/responses'
+# Fixed-model context window, verified against the official model documentation.
+# Reserve the entire window rather than guessing tokens from characters/bytes.
+INPUT_TOKEN_RESERVATION_FLOOR = 400_000
 _ENV_KEYS = {'OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_TIMEOUT_SECONDS', 'OPENAI_MAX_OUTPUT_TOKENS'}
 
 class ProviderError(DomainError):
@@ -59,7 +64,7 @@ class OpenAISettings:
                     if not line or line.startswith('#'): continue
                     name, sep, value = line.partition('=')
                     name, value = name.strip(), value.strip()
-                    if not sep or name not in _ENV_KEYS | {'DATABASE_URL', 'ONTOLOGICS_DB_SCHEMA', 'POSTGRES_PASSWORD', 'POSTGRES_PORT', 'TEST_DATABASE_URL'}: raise ValueError()
+                    if not sep or name not in _ENV_KEYS | COST_ENV_KEYS | {'DATABASE_URL', 'ONTOLOGICS_DB_SCHEMA', 'POSTGRES_PASSWORD', 'POSTGRES_PORT', 'TEST_DATABASE_URL'}: raise ValueError()
                     if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
                         value = value[1:-1]
                     values[name] = value
@@ -78,7 +83,8 @@ class OpenAISettings:
     def public_config(self):
         return {'provider': 'openai', 'endpoint': ENDPOINT, 'model': self.model,
                 'timeout_seconds': self.timeout_seconds, 'max_output_tokens': self.max_output_tokens,
-                'reasoning_effort': 'none', 'store': False, 'parallel_tool_calls': False}
+                'reasoning_effort': 'none', 'store': False, 'parallel_tool_calls': False,
+                'input_token_reservation_floor': INPUT_TOKEN_RESERVATION_FLOOR}
 
 class _NoRedirect(request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -166,18 +172,24 @@ class OpenAIProvider:
                    'reasoning': {'effort': 'none'}, 'include': ['reasoning.encrypted_content'],
                    'max_output_tokens': self.settings.max_output_tokens}
         data = canonical(payload).encode()
+        budget, reservation, timeout = begin_paid_call(model,
+            minimum_input_tokens=INPUT_TOKEN_RESERVATION_FLOOR,
+            output_tokens=self.settings.max_output_tokens, timeout_seconds=self.settings.timeout_seconds)
         event = {'attempt': len(self.calls) + 1, 'request_hash': hashlib.sha256(data).hexdigest(),
-                 'status': 'started', 'model': model}
+                 'status': 'started', 'model': model, 'timeout_seconds': timeout}
         self.calls.append(event); started = time.monotonic()
+        accounted_usage = None
         req = request.Request(ENDPOINT, data=data, method='POST', headers={
             'Authorization': 'Bearer ' + self.settings.api_key, 'Content-Type': 'application/json'})
         try:
-            with self._open(req, timeout=self.settings.timeout_seconds) as response:
+            with self._open(req, timeout=timeout) as response:
                 event.update(http_status=response.status, request_id=_safe_id(response.headers.get('x-request-id')))
                 raw = response.read(2_000_001)
                 if len(raw) > 2_000_000: raise ProviderError('OPENAI_RESPONSE_TOO_LARGE', 'Provider response exceeded 2 MB')
             try: body = json.loads(raw)
             except (ValueError, UnicodeError): raise ProviderError('OPENAI_RESPONSE_INVALID', 'Provider response was not JSON') from None
+            if not isinstance(body, dict):
+                raise ProviderError('OPENAI_RESPONSE_INVALID', 'Provider response must be an object')
             if not isinstance(body.get('usage',{}),dict):
                 raise ProviderError('OPENAI_RESPONSE_INVALID', 'Invalid response usage')
             # Even an incomplete/rejected model output can have billed usage.
@@ -191,6 +203,8 @@ class OpenAIProvider:
                 if type(value) is int and 0 <= value <= usage.get(total, -1):
                     usage[field] = {detail: value}
             event.update(response_id=_safe_id(body.get('id')), usage=usage)
+            if body.get('model') == self.settings.model:
+                accounted_usage = usage
             normalized = self._normalize(body)
             event.update(status='completed')
             assistant = {'role': 'assistant', 'content': normalized['text'], 'tool_calls': normalized['tool_calls']}
@@ -215,4 +229,7 @@ class OpenAIProvider:
             event.update(status='failed', error_code=exc.code)
             raise
         finally:
+            usage = accounted_usage or {}
+            event['cost'] = reservation.settle(usage.get('input_tokens'), usage.get('output_tokens'))
             event['elapsed_seconds'] = round(time.monotonic() - started, 3)
+            budget.check()

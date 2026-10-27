@@ -88,11 +88,12 @@ def _identity(value, subject=None):
 class CommonHost:
     """One connection per request; existing DB transactions remain authoritative."""
 
-    def __init__(self, identity_provider: IdentityProvider, database=None, *, schema=None, agent_registrations=(), embedding_provider=None, sandbox_client=None):
+    def __init__(self, identity_provider: IdentityProvider, database=None, *, schema=None, agent_registrations=(), embedding_provider=None, sandbox_client=None, cost_policy=None):
         self._agent_registrations = _registrations(agent_registrations)
         self._identities = identity_provider
         self._embedding_provider = embedding_provider
         self._sandbox_client = sandbox_client
+        self._cost_policy = cost_policy
         self._database = (database if isinstance(database, DatabaseSettings) else
                           DatabaseSettings(database, schema or 'ontologics') if database is not None else
                           DatabaseSettings.from_environment(schema=schema))
@@ -110,7 +111,7 @@ class CommonHost:
         service.embedding_provider = self._embedding_provider
         service.sandbox_client = self._sandbox_client
         try:
-            with request_budget(user.actor, budget) as shared_budget:
+            with request_budget(user.actor, budget, cost_policy=self._cost_policy) as shared_budget:
                 yield RequestSession(service, user, self._identities.mode, agent_registrations=self._agent_registrations, budget=shared_budget, identity_lookup=self._identities.lookup)
         finally:
             service.close()
@@ -189,7 +190,8 @@ def _definition_fingerprint(spec, messages, provider, implementation=None):
                   'input_schema': asdict(spec.input_schema), 'output_schema': asdict(spec.output_schema),
                   'tools': sorted(spec.requested_tools), 'limits': asdict(spec.limits),
                   'messages': messages, 'provider': public, 'validator': identity(spec.validator),
-                  'result_validator': identity(getattr(implementation, 'validate_result', None))}
+                  'result_validator': identity(getattr(implementation, 'validate_result', None)),
+                  'result_decoder': identity(getattr(implementation, 'decode_result', None))}
     return hashlib.sha256(canonical(definition).encode()).hexdigest()
 
 
@@ -304,11 +306,15 @@ class RequestSession:
         """Bind a configured role to this user; it cannot exceed user permissions."""
         return _RequestGateway(self._service, self._identity.actor, allowed_tools=self._role_tools(role), budget=self._budget)
 
-    def run_agent(self, role, provider, messages, *, config, capture_tool_trace=False, pinned_context=None, final_validator=None, budget=None, tool_observer=None):
+    def run_agent(self, role, provider, messages, *, config, capture_tool_trace=False, pinned_context=None, final_validator=None, budget=None, tool_observer=None, task_tools=None):
         selected_budget = self._budget if budget is None else budget
         if not isinstance(selected_budget, ExecutionBudget) or not selected_budget.is_descendant_of(self._budget):
             raise DomainError('EXECUTION_CONTEXT_MISMATCH', 'A role cannot replace its request execution budget')
         allowed = self._role_tools(role)
+        if task_tools is not None:
+            if not set(task_tools) <= allowed:
+                raise DomainError('TOOL_NOT_ALLOWED', 'Task tools exceed the registered role')
+            allowed = frozenset(task_tools)
         registration = self._agent_registrations.get(role)
         if registration is not None and isinstance(messages, list):
             # Keep existing built-in prompts/callers unchanged. The caller is
@@ -326,10 +332,7 @@ class RequestSession:
         Existing run_agent callers retain their original interface. Authority is
         still bound by this request, never by an AgentTask/AgentResult payload.
         """
-        registration = self._agent_registrations.get(role)
-        if registration is None or registration.spec is None or not isinstance(task, AgentTask):
-            raise ValueError('Select a registered versioned AgentSpec and AgentTask')
-        spec = registration.spec
+        spec = self._task_spec(role, implementation, task)
         spec.input_schema.validate(task.data())
         if not callable(getattr(implementation, 'messages', None)):
             raise ValueError('Implementation must prepare messages for the common runtime')
@@ -342,7 +345,7 @@ class RequestSession:
         supplied = implementation.messages(task)
         if not isinstance(supplied, list):
             raise ValueError('Role implementation must supply a message list')
-        messages = build_context_messages(task.context, [], profile='structured') + supplied
+        messages = self._task_messages(implementation, task, supplied)
         definition_hash = _definition_fingerprint(spec, messages, provider, implementation)
         if _resume_fingerprint is not None and definition_hash != _resume_fingerprint:
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Task definition changed during resume')
@@ -353,7 +356,9 @@ class RequestSession:
         validated_payload = None
         def validate_result(text):
             nonlocal validated_payload
-            value = spec.validate_result(text)
+            decoder = getattr(implementation, 'decode_result', None)
+            value = (spec.validate_payload(decoder(text, task, json.loads(canonical(reads.results))))
+                     if callable(decoder) else spec.validate_result(text))
             if 'data_version' in value and (type(value['data_version']) is not int or
                     value['data_version'] != task.context.data_version):
                 raise DomainError('AGENT_RESULT_VERSION_MISMATCH', 'Result version differs from the host-pinned task')
@@ -370,7 +375,8 @@ class RequestSession:
             return value
         runtime = self.run_agent(role, provider, messages, config=config,
             capture_tool_trace=capture_tool_trace, pinned_context=task.context,
-            final_validator=validate_result, budget=self._budget.child(spec.limits), tool_observer=reads.observe)
+            final_validator=validate_result, budget=self._budget.child(spec.limits), tool_observer=reads.observe,
+            task_tools=spec.requested_tools)
         payload = validated_payload if runtime['ok'] else None
         result = AgentResult(spec.name, spec.version, payload, runtime, context=task.context,
                              evidence_refs=reads.selected(payload) if payload is not None else ())
@@ -395,7 +401,39 @@ class RequestSession:
             }
         self._service.db.execute('UPDATE runtime_runs SET config=%s WHERE id=%s',
                                 (json.dumps(saved, sort_keys=True), runtime['run_id']))
-        return result.to_dict()
+        response = result.to_dict()
+        response['request_execution_budget'] = self._budget.snapshot()
+        response['read_restart'] = {
+            'checkpoint_available': 'read_checkpoint' in saved and runtime['status'] in {'failed', 'step_limit'},
+            'run_id': runtime['run_id'], 'mode': 'returned_failed_read_restart',
+            'requires': ['current_identity', 'same_task_and_contract', 'unchanged_snapshot',
+                         'same_cost_policy', 'remaining_budget', 'one_use'],
+            'crash_recovery': False,
+        }
+        return response
+
+    def _task_spec(self, role, implementation, task):
+        if not isinstance(task, AgentTask):
+            raise ValueError('Select an AgentTask')
+        from .builtin_agents import BuiltinRole
+        if type(implementation) is BuiltinRole:
+            if implementation.role != role:
+                raise ValueError('Builtin role does not match the task')
+            return implementation.spec
+        registration = self._agent_registrations.get(role)
+        if registration is None or registration.spec is None:
+            raise ValueError('Select a registered versioned AgentSpec')
+        return registration.spec
+
+    @staticmethod
+    def _task_messages(implementation, task, supplied):
+        from .builtin_agents import BuiltinRole
+        pinned = build_context_messages(task.context, [], profile='structured')
+        if type(implementation) is BuiltinRole:
+            # Preserve the real role's existing first system/user messages. The
+            # new host context is a system message, never an extra user request.
+            return supplied[:1] + pinned[:1] + supplied[1:]
+        return pinned + supplied
 
     def resume_task(self, checkpoint_run_id, role, implementation, task, provider, *, config, capture_tool_trace=False):
         """Restart an interrupted/failed read-only task once, with remaining limits.
@@ -414,10 +452,7 @@ class RequestSession:
         self._service.principals[refreshed.actor] = refreshed.principal()
         self._identity = refreshed
         self._service._require(self._identity.actor, 'read')
-        registration = self._agent_registrations.get(role)
-        if registration is None or registration.spec is None or not isinstance(task, AgentTask):
-            raise ValueError('Use a registered task contract')
-        spec = registration.spec
+        spec = self._task_spec(role, implementation, task)
         if spec.requested_tools & {'prepare_draft', 'prepare_source_draft'}:
             raise DomainError('CHECKPOINT_WRITE_FORBIDDEN', 'Checkpoint replay is read-only')
         row = self._service.db.execute('SELECT * FROM runtime_runs WHERE id=%s', (checkpoint_run_id,)).fetchone()
@@ -432,15 +467,15 @@ class RequestSession:
         supplied = implementation.messages(task)
         if not isinstance(supplied, list):
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Task implementation returned invalid messages')
-        definition_hash = _definition_fingerprint(spec, build_context_messages(task.context, [], profile='structured') + supplied, provider, implementation)
+        definition_hash = _definition_fingerprint(spec, self._task_messages(implementation, task, supplied), provider, implementation)
         if (definition_hash is None or metadata.get('definition_hash') != definition_hash or checkpoint.get('schema_version') != 'read-checkpoint-1' or checkpoint.get('task_hash') != expected_hash
                 or metadata.get('agent_name') != spec.name or metadata.get('agent_version') != spec.version
                 or any(saved.get(k) != value for k, value in asdict(config).items())):
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Resume requires the same task, contract, model and settings')
         if checkpoint.get('consumed'):
             raise DomainError('CHECKPOINT_ALREADY_RESUMED', 'Checkpoint has already been consumed')
-        if row['status'] not in {'failed', 'step_limit', 'running'}:
-            raise DomainError('CHECKPOINT_NOT_RESUMABLE', 'Only an unfinished or failed read task can restart')
+        if row['status'] not in {'failed', 'step_limit'}:
+            raise DomainError('CHECKPOINT_NOT_RESUMABLE', 'Only a returned failed read task can restart')
         if checkpoint['base_version'] != self._service._version():
             raise DomainError('STALE_CHECKPOINT', 'Confirmed data changed; start a new reviewed task context')
         remaining = checkpoint['expires_at'] - time.time()
@@ -451,6 +486,7 @@ class RequestSession:
         limits['deadline_seconds'] = min(limits['deadline_seconds'], remaining)
         resumed_budget = self._budget.child(BudgetLimits(**limits))
         resumed_budget.restore_usage(previous['attempted_calls'])
+        resumed_budget.restore_cost(previous.get('cost'))
         # Atomic one-use reservation prevents two processes resetting the same
         # persisted budget. A crash after reservation requires an explicit new task.
         checkpoint['consumed'] = True

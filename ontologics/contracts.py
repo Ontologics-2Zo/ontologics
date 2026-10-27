@@ -86,7 +86,10 @@ class AgentSpec:
         object.__setattr__(self, 'requested_tools', frozenset(self.requested_tools))
 
     def validate_result(self, text):
-        value = self.output_schema.validate(json.loads(text))
+        return self.validate_payload(json.loads(text))
+
+    def validate_payload(self, payload):
+        value = self.output_schema.validate(payload)
         if self.validator is not None and self.validator(value) is not True:
             raise DomainError('AGENT_RESULT_REJECTED', 'Registered semantic validation rejected the result')
         return value
@@ -190,3 +193,19 @@ class AgentProtocol(Protocol):
     detached copies of successful tool reads. It cannot approve or mutate facts.
     """
     def messages(self, task: AgentTask) -> list[dict]: ...
+
+
+def withhold_agent_result(result, code, message):
+    """A later host parity/audit failure must not expose a successful payload.
+
+    Keep transport execution status separately: a completed model call is not
+    a successfully verified application result, and its DB trace is unchanged.
+    """
+    error = AgentError.from_runtime({'code': code, 'message': message}).to_dict()
+    runtime = result['runtime']
+    runtime.update({'execution_status': runtime.get('status'),
+        'ok': False, 'status': 'failed', 'error': error, 'text': '', 'output_withheld': True,
+        'failure_stage': 'post_runtime_validation'})
+    result.update(payload=None, evidence_refs=[], error=error)
+    if 'read_restart' in result:
+        result['read_restart'] = {**result['read_restart'], 'checkpoint_available': False}

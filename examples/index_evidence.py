@@ -16,6 +16,8 @@ from ontologics.model import digest
 from ontologics.openai_provider import OpenAISettings, ProviderError
 from ontologics.retrieval import EvidenceIndex
 from ontologics.service import DomainError, Service
+from ontologics.harness import ExecutionBudget, request_budget
+from ontologics.paid_budget import cost_policy_from_environment
 
 
 INDEX_ACTOR = 'system:evidence-indexer'
@@ -155,8 +157,12 @@ def main():
     args = parser.parse_args()
     try:
         database = DatabaseSettings.from_environment(schema=args.schema, env_file=args.env_file)
-        settings = OpenAISettings.from_environment(environ=environment_values(args.model_env_file))
-        result = index_confirmed_evidence(database, OpenAIEmbeddings(settings), version=args.version, evidence_ids=args.evidence_ids)
+        values = environment_values(args.model_env_file)
+        settings = OpenAISettings.from_environment(environ=values)
+        budget = ExecutionBudget(cost_policy=cost_policy_from_environment(values))
+        with request_budget(INDEX_ACTOR, budget):
+            result = index_confirmed_evidence(database, OpenAIEmbeddings(settings), version=args.version, evidence_ids=args.evidence_ids)
+        result['execution_budget'] = budget.snapshot()
     except (DomainError, ProviderError, DatabaseError) as exc:
         result = {'status': 'failed', 'error': {'code': getattr(exc, 'code', 'STORAGE_ERROR'),
                   'message': 'Index preparation failed; inspect local settings and the selected confirmed version.'}}

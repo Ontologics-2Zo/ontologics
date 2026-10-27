@@ -156,6 +156,82 @@ class AgentContractTests(unittest.TestCase):
                 self.assertEqual('CHECKPOINT_CONTRACT_MISMATCH',denied.exception.code)
         self.assertEqual(1,provider.calls)
 
+    def test_builtin_read_restart_in_new_host_keeps_delegated_cost_and_rejects_running(self):
+        from decimal import Decimal
+        from ontologics.assistant import ScreenProvider
+        from ontologics.builtin_agents import builtin_task
+        from ontologics.harness import begin_paid_call
+        from ontologics.paid_budget import CostPolicy, ModelPrice
+        from ontologics.service import DomainError
+        from tests.test_assistant import ScriptedScreen
+
+        policy = CostPolicy('0.001', (ModelPrice('scripted-priced', '1', '1', 100),))
+        identities = self.host._identities
+        def make_host(selected=policy):
+            return CommonHost(identities, self.database, cost_policy=selected)
+        calls = [{'name': 'lookup', 'arguments': {'kind': 'ProductModel', 'version': 0}}]
+        def role_task(role, flow):
+            messages = [{'role': 'system', 'content': role + ' Agent: use the exact reads.'},
+                        {'role': 'user', 'content': json.dumps({'supplied_calls': calls})}]
+            return builtin_task(role, flow, 'Read confirmed models', 0, calls, messages)
+        class PricedScript(ScriptedScreen):
+            def __init__(self, fail=False):
+                super().__init__()
+                self.fail = fail
+            def public_config(self):
+                return {'provider': 'local-priced-test-double'}
+            def __call__(self, **kwargs):
+                _, reservation, _ = begin_paid_call('scripted-priced', minimum_input_tokens=100,
+                                                     output_tokens=10, timeout_seconds=1)
+                if self.fail:
+                    reservation.settle()  # Unknown usage stays reserved; no real network.
+                    raise ConnectionError('controlled model outage')
+                response = super().__call__(**kwargs)
+                reservation.settle(10, 2)
+                return response
+        config = ModelConfig('scripted-priced', max_attempts=1)
+        role, task = role_task('knowledge', 'read')
+        host = make_host()
+        with host.request(DevelopmentContext('a')) as request:
+            supervisor, route_task = role_task('supervisor', 'route')
+            routed = request.run_task('supervisor', supervisor, route_task,
+                ScreenProvider(PricedScript(), calls), config=config)
+            self.assertTrue(routed['runtime']['ok'])
+            failed = request.run_task('knowledge', role, task, ScreenProvider(PricedScript(fail=True), calls), config=config)
+        run_id = failed['runtime']['run_id']
+        self.assertTrue(failed['read_restart']['checkpoint_available'])
+        prior_cost = failed['runtime']['execution_budget']['cost']
+        self.assertEqual(3, prior_cost['paid_calls'])  # Supervisor plus the failed specialist.
+        self.assertEqual(Decimal('0.000110'), Decimal(prior_cost['unreported_reserved_usd']))
+
+        self.audit.db.execute("UPDATE runtime_runs SET status='running' WHERE id=%s", (run_id,))
+        with make_host().request(DevelopmentContext('a')) as request:
+            with self.assertRaises(DomainError) as active:
+                request.resume_task(run_id, 'knowledge', role, task, ScreenProvider(PricedScript(), calls), config=config)
+            self.assertEqual('CHECKPOINT_NOT_RESUMABLE', active.exception.code)
+        self.audit.db.execute("UPDATE runtime_runs SET status='failed' WHERE id=%s", (run_id,))
+        changed = CostPolicy('0.002', policy.prices)
+        with make_host(changed).request(DevelopmentContext('a')) as request:
+            with self.assertRaises(DomainError) as drift:
+                request.resume_task(run_id, 'knowledge', role, task, ScreenProvider(PricedScript(), calls), config=config)
+            self.assertEqual('COST_POLICY_MISMATCH', drift.exception.code)
+        # Reconstruct both host and role, with fresh DB connection and provider.
+        new_role, new_task = role_task('knowledge', 'read')
+        with make_host().request(DevelopmentContext('a')) as request:
+            resumed = request.resume_task(run_id, 'knowledge', new_role, new_task,
+                ScreenProvider(PricedScript(), calls), config=config)
+            self.assertTrue(resumed['runtime']['ok'], resumed)
+            cost = resumed['runtime']['execution_budget']['cost']
+            self.assertEqual(5, cost['paid_calls'])
+            self.assertEqual(5, resumed['request_execution_budget']['attempted_calls']['model'])
+            self.assertEqual(2, resumed['runtime']['execution_budget']['attempted_calls']['model'])
+            self.assertEqual(prior_cost['unreported_reserved_usd'], cost['unreported_reserved_usd'])
+            self.assertEqual(Decimal('0.000048'), Decimal(cost['reported_cost_usd']))
+            with self.assertRaises(DomainError) as duplicate:
+                request.resume_task(run_id, 'knowledge', new_role, new_task,
+                    ScreenProvider(PricedScript(), calls), config=config)
+            self.assertEqual('CHECKPOINT_ALREADY_RESUMED', duplicate.exception.code)
+
     def test_evidence_provenance_is_host_resolved_and_unread_citations_are_terminal(self):
         catalog=json.loads((Path(__file__).resolve().parents[1]/'data/catalog.json').read_text())['nodes']
         fictional,_=fixture_nodes()

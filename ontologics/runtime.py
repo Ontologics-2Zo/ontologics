@@ -15,7 +15,7 @@ import uuid
 
 from .service import AgentGateway, DomainError
 from .database import in_transaction
-from .harness import ExecutionBudget
+from .harness import ExecutionBudget, active_budget, current_budget
 
 
 def _json(value):
@@ -36,6 +36,7 @@ class ModelConfig:
     max_context_bytes: int = 1048576
     max_tool_result_bytes: int = 524288
     max_repairs: int = 0
+    retry_backoff_seconds: float = 0.1
 
     def __post_init__(self):
         if not isinstance(self.model, str) or not self.model.strip() or len(self.model) > 200:
@@ -48,6 +49,8 @@ class ModelConfig:
                 raise ValueError(f"{key} must be an integer in 1..{cap}")
         if type(self.max_repairs) is not int or not 0 <= self.max_repairs <= 2:
             raise ValueError("max_repairs must be an integer in 0..2")
+        if type(self.retry_backoff_seconds) not in (int, float) or not 0 <= self.retry_backoff_seconds <= 1:
+            raise ValueError('retry_backoff_seconds must be in 0..1')
 
 
 class _Failure(Exception):
@@ -73,7 +76,7 @@ class ModelRuntime:
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
         self.config = config
-        self._budget = budget or ExecutionBudget()
+        self._budget = budget or current_budget() or ExecutionBudget()
         self._pinned_context = pinned_context
         self._final_validator = final_validator
         self._tool_observer = tool_observer
@@ -159,7 +162,8 @@ class ModelRuntime:
                 if in_transaction(db):
                     raise _Failure("TRANSACTION_BOUNDARY", "Callback cannot run inside a transaction")
                 self._budget.consume(kind)
-                response = invoke()
+                with active_budget(self._budget, model_already_counted=kind == 'model'):
+                    response = invoke()
                 self._budget.check()
                 normalized = validate(response)
                 db.execute("UPDATE runtime_steps SET status=%s,output_hash=%s,tool_run_ids=%s,finished_at=%s WHERE id=%s",
@@ -171,6 +175,7 @@ class ModelRuntime:
                            ("failed", self._service.now(), _json(error), sid))
                 if attempt == self.config.max_attempts:
                     raise _Failure(error["code"], "Transient retry budget exhausted", type(exc).__name__) from None
+                self._budget.backoff(attempt, base_seconds=self.config.retry_backoff_seconds)
             except Exception as exc:
                 failure = (exc if isinstance(exc, _Failure) else
                            _Failure(exc.code, "Provider or common tool reported failure") if isinstance(exc, DomainError) else

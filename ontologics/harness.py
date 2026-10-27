@@ -1,8 +1,8 @@
 """Host-owned execution limits and context, independent of model instructions.
 
 Deadlines/cancellation stop dispatch at callback boundaries; synchronous provider
-transport timeouts still bound a call already in flight. This is not process
-isolation, a dollar cap, or an approval/checkpoint ledger.
+transport timeouts still bound a call already in flight. Paid adapters reserve
+against explicit trusted prices; this is not a provider invoice or account cap.
 """
 from __future__ import annotations
 from contextlib import contextmanager
@@ -10,9 +10,11 @@ from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 import json
 import math
+import threading
 import time
 
 from .service import DomainError
+from .paid_budget import CostLedger, CostPolicy
 
 
 def canonical(value):
@@ -38,7 +40,7 @@ class BudgetLimits:
 
 class ExecutionBudget:
     """One host request and its child roles consume the same bounded counters."""
-    def __init__(self, limits=None, *, clock=time.monotonic, parent=None):
+    def __init__(self, limits=None, *, clock=time.monotonic, parent=None, cost_policy=None, sleeper=None):
         self.limits = limits or BudgetLimits()
         if not isinstance(self.limits, BudgetLimits):
             raise ValueError('Use trusted BudgetLimits')
@@ -46,6 +48,18 @@ class ExecutionBudget:
         self._counts = {'model': 0, 'tool': 0, 'repair': 0}
         self._cancelled = False
         self._parent = parent
+        self._lock = parent._lock if parent is not None else threading.RLock()
+        self._sleep = sleeper or (parent._sleep if parent is not None else time.sleep)
+        if parent is not None:
+            if cost_policy is not None and (parent.cost_policy is None or cost_policy.fingerprint != parent.cost_policy.fingerprint):
+                raise DomainError('COST_POLICY_MISMATCH', 'A child cannot replace the request cost policy')
+            self._cost = parent._cost
+        else:
+            self._cost = CostLedger(cost_policy) if cost_policy is not None else None
+
+    @property
+    def cost_policy(self):
+        return self._cost.policy if self._cost is not None else None
 
     def cancel(self):
         self._cancelled = True
@@ -57,18 +71,52 @@ class ExecutionBudget:
             raise DomainError('EXECUTION_CANCELLED', 'Execution was cancelled by the host')
         if self._clock() - self._started >= self.limits.deadline_seconds:
             raise DomainError('DEADLINE_EXCEEDED', 'No more work may be dispatched after the deadline')
+        if self._cost is not None:
+            self._cost.check()
+
+    def remaining_seconds(self):
+        self.check()
+        remaining = self.limits.deadline_seconds - (self._clock() - self._started)
+        return min(remaining, self._parent.remaining_seconds()) if self._parent is not None else remaining
+
+    def backoff(self, attempt, *, base_seconds=0.1):
+        """Bounded transient delay; never sleep beyond the remaining deadline."""
+        if type(attempt) is not int or not 1 <= attempt <= 8:
+            raise ValueError('Use a bounded retry attempt')
+        delay = min(base_seconds * 2 ** (attempt - 1), 1.0)
+        if not 0 <= delay <= 1 or not math.isfinite(delay):
+            raise ValueError('Use a bounded retry delay')
+        if self.remaining_seconds() <= delay:
+            raise DomainError('DEADLINE_EXCEEDED', 'Insufficient remaining time for the bounded retry delay')
+        if delay:
+            self._sleep(delay)
+        self.check()
+
+    def reserve_cost(self, model, *, minimum_input_tokens, output_tokens):
+        self.check()
+        if self._cost is None:
+            raise DomainError('COST_POLICY_REQUIRED', 'Configure a request cost cap and trusted model prices before paid calls')
+        return self._cost.reserve(model, minimum_input_tokens, output_tokens)
+
+    def restore_cost(self, snapshot):
+        if snapshot is None:
+            return
+        if self._cost is None:
+            raise DomainError('COST_POLICY_MISMATCH', 'Cannot resume paid usage without its original cost policy')
+        self._cost.restore(snapshot)
 
     def consume(self, kind):
-        self.check()
-        limits = {'model': self.limits.max_model_calls, 'tool': self.limits.max_tool_calls,
-                  'repair': self.limits.max_repairs}
-        if kind not in limits:
-            raise ValueError('Unknown execution counter')
-        if self._counts[kind] >= limits[kind]:
-            raise DomainError('SHARED_BUDGET_EXCEEDED', 'Shared ' + kind + ' limit reached')
-        if self._parent is not None:
-            self._parent.consume(kind)
-        self._counts[kind] += 1
+        with self._lock:
+            self.check()
+            limits = {'model': self.limits.max_model_calls, 'tool': self.limits.max_tool_calls,
+                      'repair': self.limits.max_repairs}
+            if kind not in limits:
+                raise ValueError('Unknown execution counter')
+            if self._counts[kind] >= limits[kind]:
+                raise DomainError('SHARED_BUDGET_EXCEEDED', 'Shared ' + kind + ' limit reached')
+            if self._parent is not None:
+                self._parent.consume(kind)
+            self._counts[kind] += 1
 
     def restore_usage(self, snapshot):
         """Trusted persisted counters only; add to this request, never reset it."""
@@ -79,6 +127,8 @@ class ExecutionBudget:
         for name, value in snapshot.items():
             if type(value) is not int or value < 0 or value + self._counts[name] > caps[name]:
                 raise DomainError('SHARED_BUDGET_EXCEEDED', 'Checkpoint cannot reset or exceed execution limits')
+        if self._parent is not None:
+            self._parent.restore_usage(snapshot)
         for name, value in snapshot.items():
             self._counts[name] += value
 
@@ -96,24 +146,68 @@ class ExecutionBudget:
     def snapshot(self):
         return {'limits': asdict(self.limits), 'attempted_calls': dict(self._counts),
                 'elapsed_seconds': round(max(0, self._clock() - self._started), 6),
-                'cancelled': self._cancelled, 'deadline_mode': 'callback_boundary'}
+                'cancelled': self._cancelled, 'deadline_mode': 'callback_boundary_with_transport_timeout',
+                'cost': self._cost.snapshot() if self._cost is not None else None}
 
 
 _CURRENT = ContextVar('ontologics_execution_budget', default=None)
+_ACTIVE = ContextVar('ontologics_active_callback_budget', default=None)
+_MODEL_CHARGE = ContextVar('ontologics_model_attempt_charge', default=None)
+
+
+def current_budget():
+    active = _ACTIVE.get()
+    current = _CURRENT.get()
+    return active if active is not None else current[1] if current is not None else None
 
 
 @contextmanager
-def request_budget(actor, budget=None):
+def active_budget(budget, *, model_already_counted=False):
+    """Propagate a runtime child into nested provider and embedding dispatch."""
+    current = current_budget()
+    if current is not None and not budget.is_descendant_of(current):
+        raise DomainError('EXECUTION_CONTEXT_MISMATCH', 'Callback cannot replace the current request budget')
+    token = _ACTIVE.set(budget)
+    charge = _MODEL_CHARGE.set({'budget': budget, 'available': bool(model_already_counted)})
+    try:
+        yield budget
+    finally:
+        _MODEL_CHARGE.reset(charge)
+        _ACTIVE.reset(token)
+
+
+def begin_paid_call(model, *, minimum_input_tokens, output_tokens, timeout_seconds):
+    """Charge each real dispatch exactly once, even inside model/tool wrappers."""
+    budget = current_budget()
+    if budget is None:
+        raise DomainError('COST_POLICY_REQUIRED', 'Paid calls require the host request budget')
+    charge = _MODEL_CHARGE.get()
+    if charge and charge['budget'] is budget and charge['available']:
+        charge['available'] = False  # A second nested paid call is a new attempt.
+    else:
+        budget.consume('model')
+    reservation = budget.reserve_cost(model, minimum_input_tokens=minimum_input_tokens, output_tokens=output_tokens)
+    return budget, reservation, min(timeout_seconds, budget.remaining_seconds())
+
+
+@contextmanager
+def request_budget(actor, budget=None, *, cost_policy=None):
     current = _CURRENT.get()
+    if cost_policy is not None and not isinstance(cost_policy, CostPolicy):
+        raise ValueError('Use a trusted CostPolicy')
     if current and current[0] == actor:
         if budget is not None and current[1] is not budget:
             raise DomainError('EXECUTION_CONTEXT_MISMATCH', 'A child cannot replace the request budget')
+        if cost_policy is not None and (current[1].cost_policy is None or current[1].cost_policy.fingerprint != cost_policy.fingerprint):
+            raise DomainError('COST_POLICY_MISMATCH', 'A child cannot replace the request cost policy')
         yield current[1]
         return
     # A separately resolved person's explicit host request is independent. It
     # cannot be manufactured through model/tool arguments. Preserve the existing
     # nested Alice/Bob host workflow while same-user delegation shares a budget.
-    selected = budget or ExecutionBudget()
+    selected = budget or ExecutionBudget(cost_policy=cost_policy)
+    if cost_policy is not None and (selected.cost_policy is None or selected.cost_policy.fingerprint != cost_policy.fingerprint):
+        raise DomainError('COST_POLICY_MISMATCH', 'Explicit budget differs from the trusted host cost policy')
     token = _CURRENT.set((actor, selected))
     try:
         yield selected

@@ -54,7 +54,7 @@ def run_example(database, *, version=1):
                 'request_context': request.context, 'runtime': result}
 
 
-def run_contract_example(database, *, version=1, flow='model', provider=None):
+def run_contract_example(database, *, version=1, flow='model', provider=None, cost_policy=None):
     """Two role-owned flows, one host/runtime. Defaults never call a paid model.
 
     A trusted caller can pass the existing OpenAIProvider with SPEC.requested_tools.
@@ -77,7 +77,7 @@ def run_contract_example(database, *, version=1, flow='model', provider=None):
     else:
         raise ValueError('Select model or history flow')
     identities = DevelopmentIdentityProvider([UserIdentity('dev-extension-reader', frozenset({'read'}))], enabled=True)
-    host = CommonHost(identities, database, agent_registrations=(AgentRegistration.from_spec(SPEC),))
+    host = CommonHost(identities, database, agent_registrations=(AgentRegistration.from_spec(SPEC),), cost_policy=cost_policy)
     with host.request(DevelopmentContext('dev-extension-reader')) as request:
         settings = getattr(provider, 'settings', None)
         model = settings.model if settings is not None else 'scripted-extension-example'

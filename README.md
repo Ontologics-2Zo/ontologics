@@ -102,7 +102,13 @@ OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini-2026-03-17
 OPENAI_TIMEOUT_SECONDS=30
 OPENAI_MAX_OUTPUT_TOKENS=4096
+ONTOLOGICS_REQUEST_MAX_COST_USD=
+ONTOLOGICS_MODEL_PRICES_JSON=
 ```
+
+실제 유료 호출 전에는 `.env.example`의 형식으로 **요청별 USD 상한과 고정 모델 단가를 모두 명시**해야 한다. 비어 있으면 `COST_POLICY_REQUIRED`로 외부 호출 전에 중단한다. 팀 운영 상한은 기본값으로 정하지 않았다. 키 설정과 비용 정책 설정은 별개이며, 직접 조회·초안·사람 승인에는 모델이 필요하지 않다. 웹 요청의 Supervisor→전문 역할·장애 재시도·의미 검색 임베딩은 같은 예산을 공유한다. `llm_agents --role both`는 두 예제 전체, `index_evidence`는 한 색인 실행 전체의 한도를 공유한다. 개인 평가 예산이나 계정 전체 청구 상한을 대신하지 않는다.
+
+예약은 고정 모델의 전체 입력 상한(Responses 400,000, 임베딩 요청 300,000 tokens)과 출력 한도로 계산한다. 작은 요청도 이 예약액을 수용해야 한다. 응답의 사용량이 확인되면 차액을 해제하고, 미보고·응답 유실은 예약을 유지한다. 캐시 할인은 한도 계산에서 가정하지 않는다. 단가는 운영자가 확인하며 [고정 모델 가격](https://developers.openai.com/api/docs/models/gpt-5.4-mini)과 [임베딩 가격](https://developers.openai.com/api/docs/models/text-embedding-3-small)을 참고한다. 추정 사용량 기록은 실제 청구서가 아니다.
 
 ```bash
 python3 -m examples.llm_agents --role both
@@ -167,7 +173,7 @@ python -m unittest tests.test_agent_contracts tests.test_agent_extensions tests.
 
 ## 공통 실행 계약과 격리 파서 — 로컬 개발 보완
 
-기존 `run_agent`와 네 화면 Agent의 검증은 유지한다. 요청·하위 Agent는 `ExecutionBudget`의 모델/도구/repair 횟수와 deadline을 공유한다. **복구 반복 기본값 0은 읽기 작업의 LLM 응답 형식 수정(`max_repairs`)**이며 자동 재검색을 뜻하지 않는다. 설정 허용 범위는 0~2회지만 공통 잔여 한도를 넘지 못한다. 권한·버전·근거·의미 오류는 수정 반복으로 통과시키지 않는다. 일시 장애 재시도·읽기 재개·멱등 처리와의 차이는 [TOOLS](docs/TOOLS.md#반복과-복구의-구분)에 정리했다. deadline/취소는 동기 호출 전후 검사이며 실행 중 네트워크 호출의 강제 종료가 아니다.
+기존 `run_agent` 호환과 네 화면 Agent의 업무 검증은 유지한다. 실제 화면 경로도 역할별 공통 Task/Result 어댑터를 사용한다. 요청·하위 Agent는 `ExecutionBudget`의 모델/도구/repair 횟수·deadline·명시한 비용 정책을 공유한다. **복구 반복 기본값 0은 읽기 작업의 LLM 응답 형식 수정(`max_repairs`)**이며 자동 재검색을 뜻하지 않는다. 설정 허용 범위는 0~2회지만 공통 잔여 한도를 넘지 못한다. 권한·버전·근거·의미 오류는 수정 반복으로 통과시키지 않는다. 일시 장애 재시도·읽기 재개·멱등 처리와의 차이는 [TOOLS](docs/TOOLS.md#반복과-복구의-구분)에 정리했다. deadline/취소는 호출 경계에서 검사하고 provider timeout을 잔여 시간으로 줄인다. 동기 호출·DB 작업을 강제 종료하는 기능은 아니다.
 
 입출력 계약이 필요한 확장 Agent는 `AgentSpec`의 이름·버전·PayloadSchema·필요 도구·한도를 정의하고 `AgentRegistration.from_spec()`으로 등록한다. `AgentTask`와 `PinnedContext`를 `request.run_task()`로 전달하는 예제는 다음과 같다. 기존 등록 방식도 사용할 수 있다.
 
@@ -175,7 +181,7 @@ python -m unittest tests.test_agent_contracts tests.test_agent_extensions tests.
 python -m examples.extension_agent --typed --schema web_s1_s2_team_001 --version 2 --env-file .env.local
 ```
 
-`resume_task()`는 반환된 읽기 작업을 동일 조건으로 다시 시작하는 제한된 접점이다. 신원·현재 버전·계약·provider·프롬프트·잔여 한도를 재검사한다. 중간 강제 종료의 자동 복구나 Product 쓰기의 임의 재생은 지원하지 않는다. 상세 계약은 [TOOLS](docs/TOOLS.md#공통-harness와-버전-agent-계약)를 따른다.
+`resume_task()`는 반환된 읽기 작업을 동일 조건으로 다시 시작하는 제한된 접점이다. 신원·현재 버전·계약·provider·프롬프트·잔여 한도와 동일 비용 정책을 재검사한다. 미보고 사용량의 예약도 재개할 때 복원한다. 중간 강제 종료의 자동 복구나 Product 쓰기의 임의 재생은 지원하지 않는다. 상세 계약은 [TOOLS](docs/TOOLS.md#공통-harness와-버전-agent-계약)를 따른다.
 
 파일 파싱을 격리하려면 검토된 파서 이미지와 별도 로컬 controller를 실행한다. controller만 Docker를 제어하며 웹에는 제한된 Unix socket client만 전달한다.
 

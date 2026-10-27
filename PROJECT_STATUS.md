@@ -2,6 +2,19 @@
 
 문서 확인일: **2026-10-28, Asia/Seoul**. 구현 검증은 아래 기록의 실행 기준을 따른다. 공통 코드·도구 계약 **v0.3.0**, 그래프 `graph-0.1`, 시간 규칙 `temporal-0.1`.
 
+## 2026-10-28 — 실제 네 Agent 역할 폴더 분리
+
+PR #4의 최신 `963d9d5`에서 별도 **`codex/agent-role-packages`**를 만들었다. 시작 시 main은 `7c5e2d9`, PR #4는 미병합이므로 이 변경은 #4 위의 별도 리뷰로 분리한다. 다른 worktree의 기존 변경은 건드리지 않았다. 아래 실행 경계 보완 절은 이전 구현의 근거이며 현재 위치는 이 절과 README의 전후 트리를 따른다.
+
+- 실제 Supervisor·Product·Knowledge·Quality 지침·schema·흐름·검증을 `ontologics/agents/<역할>/`에 이동했다. HTTP는 중립 `AgentApplication`을 전달하고 역할 폴더의 구현을 호출한다. `web.py`의 Quality 검증 역방향 의존을 제거했다. `assistant.py`·`builtin_agents.py`는 호환 export이며 구현을 중복 보관하지 않는다.
+- 역할의 지침/내부 흐름 수정은 담당 폴더에서 가능하다. 공개 payload·도메인·권한 변경은 공통 계약 검토 대상이다. 공통 Host/Harness/provider·도구·Sandbox·승인·A/B·누적 한도는 재사용한다. 기존 CLI의 제한된 Product/Quality task·검증도 역할 폴더로 옮겼다.
+- 기존 8개 역할/flow 스키마·허용 도구·지침이 이동 전과 일치함을 비교했다. graph/temporal·DB·공개 HTTP 계약·역할 버전은 유지했다. 패키지 검색 설정을 수정하여 설치본에 하위 Agent 패키지가 포함되도록 했다.
+- builtin 읽기 checkpoint는 역할 helper 및 공유 실행 코드 변경을 감지한다. 이동 전 checkpoint는 명시적 계약 불일치로 거부하며 저장 초안은 유지한다. 별도 확장 역할의 기존 fingerprint 항목은 보존한다. 자동 쓰기 재개나 강제 종료 복구를 구현한 것은 아니다.
+
+검증 완료: Agent/HTTP/검색 영향 28개, 기존 CLI 예제 4개, 새 등록·의존성·checkpoint 경계 4개를 확인한 뒤 **전체 187개 통과(31.448초, 실제 PostgreSQL·Docker 포함, skip 없음)**했다. S1/S2 HTTP·자기 승인·정확한 버전·누적 한도·미확인 회귀를 포함한다. CQ 명령 내부 승인 데모 v1→v2→v3와 두 typed 확장 CLI도 성공했고 CQ09 제안/CQ10 원본 ID 범위를 유지했다. 오프라인 wheel을 만들어 저장소 밖 설치본에서 네 역할과 HTTP 모듈 import를 확인했다. 공통 검사 로그는 Git 제외 `artifacts/local/agent-role-packages/`에 있다. 실모델 프롬프트/공개 계약은 보존했고 유료 모델 평가를 재실행하지 않았다. 기존 실모델 근거는 `963d9d5` 당시 범위로 남긴다. 화면 수동 인수 검증을 이번 코드 회귀로 대체하지 않는다.
+
+개인 보고서에는 구조 변경의 문제·선택·검증·한계를 기록했다. 개발 효율과 사람 업무 시간은 **미측정**이며 결과를 추정하지 않는다. 개인 자료는 Git 제외 상태를 유지한다. 실제 인증·운영 복구·RDF/Neo4j·AWS는 별도 미완료 목표다. 이번 범위의 추가 사용자 결정은 없다.
+
 ## 2026-10-28 — v2 필수 실행 경계와 실제 역할 계약 연결
 
 PR #4의 `c48d058`을 출발점으로 **`codex/harness-security-eval`**에서 남은 필수 구현을 보완했다. 작업 시작 시 원격 main은 `7c5e2d9`, PR #4는 미병합이었다. 기존 PR에 보완 커밋을 추가하며 중복 PR·main 직접 push·자동 병합을 하지 않는다. 다른 worktree의 로컬 변경은 보존했다. 아래 2026-10-27 절은 당시 상태이며 현재 지원 범위는 이 절을 따른다.

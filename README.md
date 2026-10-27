@@ -91,6 +91,55 @@ python3 -m unittest tests.test_host -v
 
 동료는 [host.py](ontologics/host.py)의 `CommonHost.request()`로 요청 신원을 한 번 고정하고 `RequestSession.agent('product'/'quality'/'knowledge'/'supervisor')` 또는 `run_agent()`를 사용한다. `review()`는 사람의 호스트 동작, `apply_approved()`는 서버 워크플로 동작이며 Agent에 노출하지 않는다. 신원 공급자는 [identity.py](ontologics/identity.py)의 `resolve(context)`·`lookup(subject)` 접점으로 교체한다. 개발 사용자 선택은 명시적 개발 HTTP 경로에만 있으며 운영 인증으로 사용하지 않는다. 호출 예제·권한·오류 경계는 [TOOLS](docs/TOOLS.md#개발용-사용자-호스트)를 따른다.
 
+## 실제 Agent 담당 폴더와 연결
+
+실제 네 Agent 구현은 `ontologics/agents/<역할>/`에 있다. 담당자는 해당 폴더의 `instructions.py`에서 지침, `workflow.py`에서 처리 순서, `schemas.py`에서 역할 payload, `agent.py`와 필요한 `validators.py`에서 결과 해석·검증을 수정한다. 공통 `RoleAgent`는 메시지 보존·필수 도구 호출 확인만 공유하고 역할의 해석은 각 구현에 위임한다. 모든 역할에 planner/critic 파일을 만들지 않았다.
+
+```text
+변경 전
+ontologics/
+  builtin_agents.py     # 네 역할 schema·결과 해석
+  assistant.py          # 역할 인계·등록·조건 제안·검색
+  web.py                # HTTP + Quality 조사·판정 검증
+examples/llm_agents.py  # CLI 실행 + Product/Quality 지침·평가
+
+변경 후
+ontologics/agents/
+  supervisor/          # agent.py, schemas.py, instructions.py, workflow.py
+  product/             # 위 파일 + validators.py, sample_cli.py
+  knowledge/           # 위 파일 + validators.py
+  quality/             # 위 파일 + validators.py, sample_cli.py
+  registry.py          # 고정 네 역할 등록·dispatch, Task 생성
+  base.py              # 공유 계약 연결, 역할별 decode 위임
+  execution.py         # 공통 읽기 실행·직접/Agent 결과 대조
+  service.py           # HTTP와 독립적인 AI 요청 진입점
+  sample_support.py    # 기존 소규모 CLI의 공통 fixture
+ontologics/web.py        # HTTP·개발 세션·화면 전송만
+ontologics/assistant.py  # 이전 import 호환 export만
+ontologics/builtin_agents.py # 이전 생성자·계약 목록 호환만
+examples/llm_agents.py   # CLI 실행·보고, 역할 폴더 구현 재사용
+```
+
+실제 화면 `/api/assistant` → `agents.service.assistant` → Supervisor 인계 또는 `registry.run_screen` → 담당 역할 `workflow` → `RequestSession.run_task` → 공통 Harness·provider·도구로 이어진다. `/api/quality`는 같은 `quality.workflow.investigate`를 사용한다. `AgentApplication`에는 호스트·호스트가 해석할 신원 context·고정 provider·모델만 전달한다. 역할 모듈은 HTTP 모듈을 import하지 않는다. 기존 CLI 두 행/U104 예제는 역할 폴더의 `sample_cli.py`를 사용하는 제한된 예제이며 전체 화면 흐름을 대신하지 않는다.
+
+1. 기존 역할 담당자는 해당 폴더만 수정하고 그 역할의 테스트를 실행한다. 보통의 지침·내부 순서·검증 수정에 다른 역할이나 공통 실행 코드 수정은 필요 없다.
+2. 공개 Task/Result payload·도구 인자·도메인·권한·외부 전송을 바꾸면 별도 공통 계약 검토가 필요하다. `schemas.py`에 있다는 이유로 공개 필드를 임의 변경하지 않는다. 의미가 바뀌는 지침/검증에는 역할 버전과 회귀 사례를 함께 검토한다.
+3. 새로운 동료 역할은 아래 [확장 Agent 연결](#동료의-확장-agent-연결)의 `AgentSpec`·호스트 등록을 사용한다. 고정 네 역할을 subclass로 사칭할 수 없으며 새 역할의 허용 도구는 호스트 검토로 등록한다.
+4. 신원·작성자·승인·A/B 계산·확정 저장·누적 한도·Sandbox는 기존 공통 모듈을 사용한다. Agent는 별도 예산 생성, 직접 DB 쓰기나 승인 호출을 하지 않는다.
+
+```bash
+# import/등록/의존 방향·checkpoint 계약: DB·모델 불필요
+python -m unittest tests.test_agent_packages -v
+# 담당 흐름의 HTTP·도구 검증: PostgreSQL, 모델은 테스트 대역
+python -m unittest tests.test_agent_workflows tests.test_assistant tests.test_web tests.test_semantic_search -v
+# 기존 CLI 입출력·근거 검사: PostgreSQL, 유료 호출 없음
+python -m unittest tests.test_llm_examples -v
+# 통합 마감에 한 번 전체 회귀. 실제 Docker 격리 시험 설정은 아래 보안 절 참조
+python -m unittest discover -v
+```
+
+저장 초안·DB·공개 HTTP 계약은 그대로다. 구현 위치/검증기 fingerprint가 달라진 **이전 builtin 읽기 checkpoint는 재개를 거부**하고 현재 조건으로 새 읽기를 시작한다. 신규 checkpoint는 역할 helper 변경도 감지한다. 이번 변경은 확장 Agent의 fingerprint에 불필요한 키를 추가하지 않는다. 쓰기 재실행·강제 종료 복구를 추가한 것은 아니다.
+
 ## 실제 LLM 실행과 동료 개발 시작
 
 공통 provider는 OpenAI Responses API와 **`gpt-5.4-mini-2026-03-17` 한 모델**을 사용한다. Python 표준 라이브러리로 연결하며 추가 SDK 설치는 없다. API 호출에는 계정 사용량이 발생한다. 예제는 공개 OLIMEX 행 정보와 가상 운영 기록을 전송한다.
@@ -122,8 +171,8 @@ python3 -m examples.llm_agents --role quality
 
 | 실행 | 기대 결과 | 동료가 수정할 위치 |
 | --- | --- | --- |
-| Product | 이미 파싱한 L1 U4·R50 두 행의 `awaiting_review` 초안과 검증 결과. R50은 `population=unknown`. 확정 데이터 버전 1 유지 | [examples/llm_agents.py](examples/llm_agents.py)의 `PRODUCT_PROMPT`, `product_task`, `evaluate_product` |
-| Quality | U104, L07, 버전 2→3 비교. A 미확인→제외, B 미확인→포함. 실제 BOM 근거와 가상 이력 근거 분리 | 같은 파일의 `QUALITY_PROMPT`, `quality_task`, `evaluate_quality` |
+| Product | 이미 파싱한 L1 U4·R50 두 행의 `awaiting_review` 초안과 검증 결과. R50은 `population=unknown`. 확정 데이터 버전 1 유지 | [product/sample_cli.py](ontologics/agents/product/sample_cli.py)의 지침·task·검사 (화면 구현은 같은 폴더의 workflow.py) |
+| Quality | U104, L07, 버전 2→3 비교. A 미확인→제외, B 미확인→포함. 실제 BOM 근거와 가상 이력 근거 분리 | [quality/sample_cli.py](ontologics/agents/quality/sample_cli.py)의 지침·task·검사 (화면 구현은 같은 폴더의 workflow.py) |
 | 공통 연결 | 신원 고정·도구 검증·실행 기록·제한된 재시도 | [runtime.py](ontologics/runtime.py), [openai_provider.py](ontologics/openai_provider.py), [tool_specs.py](ontologics/tool_specs.py). 역할별 복제 없이 재사용 |
 
 Quality 버전 2/3은 **모델 호출 전 호스트가 기존 데모 승인 경로로 준비한 시험 데이터**다. LLM 작성 초안을 자동 승인하는 기능이 아니다. Product 예제는 대표 두 행의 초안 작성까지이며, 전체 S2 등록·보완·승인 흐름은 위 오프라인 데모에서 확인한다.

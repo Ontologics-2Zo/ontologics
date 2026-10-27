@@ -1,5 +1,15 @@
 # Order Fulfillment — B 작업 기록
 
+## 2026-10-27 공통 실행기 원복과 B 실행 검사 분리
+
+공통 `ontologics/runtime.py`와 `tests/test_runtime.py`를 메인 기준 `7c5e2d9` 원본과 바이트 단위로 동일하게 복구했다. 역할별 도구 제한 자체는 메인에도 이미 있다. 추가했던 엄격한 도구 설정 검사는 기존 B 실행기에 유지하고, B용 거부 문구만 공통 응답 검사를 호출하는 작은 재정의로 보존했다. 실행 루프·재시도·예산·감사 기록은 공통 구현을 그대로 상속한다. 이번 분리를 위해 공통 기능을 추가할 필요는 없었다.
+
+공통 테스트에서 추가했던 4개 검사 메서드를 `tests/order_fulfillment/test_runtime.py`에 내용 변경 없이 옮겼다. 기본 허용 도구의 저장 확인도 B용 검사로 보존했고, DB 없이 확인하는 경계 검사 6개를 추가했다. 분리 후 관련 검사 101개 중 83개 통과·DB 검사 18개 제외다. 전체 오프라인 검사 623개에서는 136개 통과·DB/원본 환경 검사 311개 제외이며, 기존 공통 `model.py`의 옛 `ontologics.fulfillment_validation` import 오류 기록 1,267개가 그대로 남았다. 이 오류는 하위 사례를 포함한 기록 수이며 테스트 개수가 아니다. 모델 수정·검증 우회·실제 DB/API 호출은 하지 않았다.
+
+남은 경로 오류는 이전 분리에서 검사 파일을 `ontologics/order_fulfillment/`로 옮긴 후 공통 `model.py`의 import가 옛 위치를 가리키는 연결 불일치다. 메인 원본의 오류라는 뜻은 아니다. 해당 호출은 `fulfillment_validation`, `production_validation`, `delivery_validation`의 3곳이며 이번 실행기 분리·원복 커밋에는 모델 경로 수정을 포함하지 않는다.
+
+작업 전 코드, 실행 계획, 검사 원문과 보존 확인은 Git 제외 `artifacts/local/b_runtime_extraction_20261027/`에 저장했다. B Python 파일 65개의 구문과 diff 공백 검사를 통과했으며, 별도 lint/typecheck 도구는 설치되어 있지 않다. 이번 변경은 현재 작업 브랜치의 로컬 커밋으로 기록하며 메인 브랜치 변경과 push는 하지 않는다. 아래 내용은 앞선 분리의 당시 결과다.
+
 ## 2026-10-27 공통 파일 3개 원복과 B 코드 분리 — 전원 종료 후 재확인
 
 공통 `openai_provider.py`, `service.py`, `tool_specs.py`와 공통 Provider 테스트를 메인 기준 `7c5e2d9`의 원본으로 복구했다. 추가했던 B 기능은 `ontologics/order_fulfillment/`의 같은 이름 파일에 분리했고, B 전용 `host.py`·`runtime.py`가 공통 신원·권한·승인·감사·실행 루프를 상속해 연결한다. B 예제·테스트는 이 경로를 사용한다. 모델·버전 파일과 원본 데이터는 이번 분리에서 변경하지 않았다.

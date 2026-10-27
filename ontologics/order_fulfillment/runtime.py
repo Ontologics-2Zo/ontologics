@@ -1,5 +1,5 @@
 """B gateway wiring over the unchanged common model execution loop."""
-from ..runtime import ModelConfig, ModelRuntime as CommonModelRuntime
+from ..runtime import ModelConfig, ModelRuntime as CommonModelRuntime, _Failure
 from .service import AgentGateway
 
 
@@ -22,3 +22,11 @@ class ModelRuntime(CommonModelRuntime):
         super().__init__(service, actor, provider, config=config,
                          capture_tool_trace=capture_tool_trace, allowed_tools=('lookup',))
         self._gateway = AgentGateway(service, actor, allowed_tools=allowed_tools)
+
+    def _model_response(self, response):
+        try:
+            return super()._model_response(response)
+        except _Failure as exc:
+            if exc.error['code'] == 'TOOL_NOT_ALLOWED':
+                exc.error['message'] = 'Tool is not exposed to this Agent role'
+            raise

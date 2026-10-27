@@ -61,18 +61,9 @@ class ModelRuntime:
     A killed process may leave a run as running; automatic crash recovery is not
     provided by this small adapter.
     """
-    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False,
-                 allowed_tools=None):
+    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False, allowed_tools=None):
         if not isinstance(config, ModelConfig) or not callable(provider):
             raise ValueError("A ModelConfig and callable provider are required")
-        if allowed_tools is None:
-            allowed_tools = tuple(AgentGateway.ALLOWED)
-        if (not isinstance(allowed_tools, (list, tuple, set, frozenset))
-                or not allowed_tools
-                or any(not isinstance(name, str) or not name for name in allowed_tools)
-                or len(set(allowed_tools)) != len(allowed_tools)
-                or not set(allowed_tools) <= AgentGateway.ALLOWED):
-            raise ValueError("allowed_tools must be a nonempty collection of unique exposed tool names")
         if in_transaction(service.db):
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
@@ -116,7 +107,7 @@ class ModelRuntime:
             if not isinstance(call, dict) or set(call) != {"name", "arguments"}:
                 raise _Failure("INVALID_TOOL_CALL", "Each call needs name and arguments only")
             if not isinstance(call["name"], str) or call["name"] not in self._gateway.allowed_tools:
-                raise _Failure("TOOL_NOT_ALLOWED", "Tool is not exposed to this Agent role")
+                raise _Failure("TOOL_NOT_ALLOWED", "Tool is not exposed to service Agents")
             arguments = call["arguments"]
             if not isinstance(arguments, dict) or "actor" in arguments or "principals" in arguments:
                 raise _Failure("INVALID_TOOL_ARGUMENTS", "Identity is bound by the host")

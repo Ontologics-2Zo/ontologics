@@ -1,6 +1,5 @@
 """Scripted adapter tests only: no live model/provider quality claim."""
 import copy
-import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -9,7 +8,7 @@ from tests.db import database_for_test
 from ontologics.database import in_transaction
 
 from ontologics.runtime import ModelConfig, ModelRuntime
-from ontologics.service import AgentGateway, Service
+from ontologics.service import Service
 
 
 class RuntimeTests(unittest.TestCase):
@@ -55,7 +54,6 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(all(x["finished_at"] for x in trace))
         persisted = dict(self.service.db.execute("SELECT * FROM runtime_runs WHERE id=%s", (result["run_id"],)).fetchone())
         self.assertEqual("fixed-test-model", json.loads(persisted["config"])["model"])
-        self.assertEqual(sorted(AgentGateway.ALLOWED), json.loads(persisted["config"])["allowed_tools"])
         self.assertNotIn("private request 937", json.dumps(persisted))
         self.assertNotIn("No registered products.", json.dumps(persisted))
         self.service.close()
@@ -120,75 +118,6 @@ class RuntimeTests(unittest.TestCase):
         result = self.runtime(lambda **kw: response).run(self.messages)
         self.assertEqual("TOOL_NOT_ALLOWED", result["error"]["code"])
         self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM runs").fetchone()['count'])
-
-    def test_read_only_role_rejects_entire_batch_before_lookup_or_draft(self):
-        response = {"text": "", "tool_calls": [
-            {"name": "lookup", "arguments": {}},
-            {"name": "prepare_draft", "arguments": {"operations": [], "request_key": "forbidden-draft"}},
-        ]}
-        runtime = ModelRuntime(self.service, "agent", lambda **kw: response,
-            config=ModelConfig(model="fixed"), allowed_tools=("lookup",))
-        result = runtime.run(self.messages)
-        self.assertEqual("TOOL_NOT_ALLOWED", result["error"]["code"])
-        self.assertEqual([], result["tool_run_ids"])
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM runs").fetchone()['count'])
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
-
-    def test_role_tools_are_frozen_and_logged_with_provider_config(self):
-        tools = ["lookup"]
-        calls = []
-        def provider(**kwargs):
-            calls.append(1)
-            if len(calls) > 1:
-                return {"text": "", "tool_calls": [{"name": "prepare_draft", "arguments": {
-                    "operations": [], "request_key": "mutated-list"}}]}
-            return {"text": "No tools needed.", "tool_calls": []}
-        provider.public_config = lambda: {"provider": "test"}
-        runtime = ModelRuntime(self.service, "agent", provider,
-            config=ModelConfig(model="fixed"), allowed_tools=tools)
-        tools.append("prepare_draft")
-        result = runtime.run(self.messages)
-        self.assertTrue(result["ok"])
-        config = json.loads(self.service.db.execute("SELECT config FROM runtime_runs WHERE id=%s",
-            (result["run_id"],)).fetchone()['config'])
-        self.assertEqual(["lookup"], config["allowed_tools"])
-        self.assertEqual({"provider": "test"}, config["provider"])
-        denied = runtime.run(self.messages)
-        self.assertEqual("TOOL_NOT_ALLOWED", denied["error"]["code"])
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
-
-    def test_invalid_role_tool_configuration_is_rejected_before_running(self):
-        for tools in ("lookup", [], (), set(), frozenset(), ["lookup", "lookup"], ["apply"], [""],
-                      [True], [["lookup"]], ["unknown"]):
-            with self.subTest(tools=tools), self.assertRaises(ValueError):
-                ModelRuntime(self.service, "agent", lambda **kw: {},
-                    config=ModelConfig(model="fixed"), allowed_tools=tools)
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM runtime_runs").fetchone()['count'])
-
-    def test_host_tool_collections_keep_gateway_scope_and_output_hash(self):
-        for collection in (list, tuple, set, frozenset):
-            with self.subTest(collection=collection.__name__):
-                calls = []
-                def provider(**kwargs):
-                    calls.append(1)
-                    if len(calls) == 1:
-                        return {"text": "", "tool_calls": [{"name": "lookup",
-                            "arguments": {"kind": "ProductModel"}}]}
-                    return {"text": "Read-only result.", "tool_calls": []}
-                runtime = ModelRuntime(self.service, "agent", provider,
-                    config=ModelConfig(model="fixed"), allowed_tools=collection(["lookup"]))
-                result = runtime.run(self.messages)
-                self.assertTrue(result["ok"])
-                expected_hash = hashlib.sha256(json.dumps(result["text"], ensure_ascii=False,
-                    sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
-                self.assertEqual(expected_hash, result["output_hash"])
-                row = self.service.db.execute("SELECT config,output_hash FROM runtime_runs WHERE id=%s",
-                    (result["run_id"],)).fetchone()
-                self.assertEqual(["lookup"], json.loads(row["config"])["allowed_tools"])
-                self.assertEqual(expected_hash, row["output_hash"])
-                denied = runtime._gateway.call("prepare_draft", {"operations": [], "request_key": "denied"})
-                self.assertEqual("TOOL_NOT_ALLOWED", denied["errors"][0]["code"])
-        self.assertEqual(0, self.service.db.execute("SELECT COUNT(*) FROM drafts").fetchone()['count'])
 
     def test_malformed_oversized_and_model_override_responses_are_rejected(self):
         responses = [

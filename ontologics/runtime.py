@@ -3,7 +3,8 @@
 Provider contract: provider(model=<fixed string>, messages=<JSON messages>) returns
 {"text": str, "tool_calls": [{"name": str, "arguments": dict}, ...]}.
 The trusted provider adapter must enforce its own network request timeout. This
-synchronous runner bounds steps, retries, calls, and bytes, not wall-clock time.
+runner bounds steps, retries, calls and bytes, and checks a shared deadline at
+callback boundaries. It does not interrupt a synchronous call already in flight.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ import uuid
 
 from .service import AgentGateway, DomainError
 from .database import in_transaction
+from .harness import ExecutionBudget
 
 
 def _json(value):
@@ -33,6 +35,7 @@ class ModelConfig:
     max_output_bytes: int = 262144
     max_context_bytes: int = 1048576
     max_tool_result_bytes: int = 524288
+    max_repairs: int = 0
 
     def __post_init__(self):
         if not isinstance(self.model, str) or not self.model.strip() or len(self.model) > 200:
@@ -43,6 +46,8 @@ class ModelConfig:
             value = getattr(self, key)
             if type(value) is not int or not 1 <= value <= cap:
                 raise ValueError(f"{key} must be an integer in 1..{cap}")
+        if type(self.max_repairs) is not int or not 0 <= self.max_repairs <= 2:
+            raise ValueError("max_repairs must be an integer in 0..2")
 
 
 class _Failure(Exception):
@@ -61,13 +66,17 @@ class ModelRuntime:
     A killed process may leave a run as running; automatic crash recovery is not
     provided by this small adapter.
     """
-    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False, allowed_tools=None):
+    def __init__(self, service, actor, provider, *, config: ModelConfig, capture_tool_trace=False, allowed_tools=None, budget=None, pinned_context=None, final_validator=None, tool_observer=None):
         if not isinstance(config, ModelConfig) or not callable(provider):
             raise ValueError("A ModelConfig and callable provider are required")
         if in_transaction(service.db):
             raise ValueError("Runtime must not be created inside a transaction")
         self._service, self._actor, self._provider = service, actor, provider
         self.config = config
+        self._budget = budget or ExecutionBudget()
+        self._pinned_context = pinned_context
+        self._final_validator = final_validator
+        self._tool_observer = tool_observer
         self.capture_tool_trace = bool(capture_tool_trace)
         self._gateway = AgentGateway(service, actor, allowed_tools=allowed_tools)
 
@@ -111,6 +120,8 @@ class ModelRuntime:
             arguments = call["arguments"]
             if not isinstance(arguments, dict) or "actor" in arguments or "principals" in arguments:
                 raise _Failure("INVALID_TOOL_ARGUMENTS", "Identity is bound by the host")
+            if self._pinned_context is not None:
+                self._pinned_context.validate_call(call["name"], arguments)
             if call["name"] == "prepare_draft":
                 key = arguments.get("request_key")
                 if not isinstance(key, str) or not 1 <= len(key) <= 200:
@@ -147,7 +158,9 @@ class ModelRuntime:
                 # There is deliberately no open database transaction around callbacks.
                 if in_transaction(db):
                     raise _Failure("TRANSACTION_BOUNDARY", "Callback cannot run inside a transaction")
+                self._budget.consume(kind)
                 response = invoke()
+                self._budget.check()
                 normalized = validate(response)
                 db.execute("UPDATE runtime_steps SET status=%s,output_hash=%s,tool_run_ids=%s,finished_at=%s WHERE id=%s",
                            ("completed", _hash(normalized), _json(self._tool_ids(response) if kind == "tool" else []), self._service.now(), sid))
@@ -173,12 +186,16 @@ class ModelRuntime:
         run_id, db = str(uuid.uuid4()), self._service.db
         config = asdict(self.config)
         config['allowed_tools'] = sorted(self._gateway.allowed_tools)
+        config['shared_budget'] = self._budget.snapshot()['limits']
+        if self._pinned_context is not None:
+            config['context_hash'] = _hash(self._pinned_context.to_dict())
         if callable(getattr(self._provider, 'public_config', None)):
             config['provider'] = self._provider.public_config()
         db.execute("INSERT INTO runtime_runs VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                    (run_id, self._actor, self.config.model, _json(config), "running", self._service.now(), None, None, None, None))
         status, text, error, steps = "failed", "", None, 0
-        trace = []
+        trace, repairs = [], 0
+        read_only = not bool(self._gateway.allowed_tools & {"prepare_draft", "prepare_source_draft"})
         try:
             self._service._require(self._actor, "read")
             history = self._messages(messages)
@@ -187,8 +204,26 @@ class ModelRuntime:
                 steps = step
                 self._bounded_json(history, self.config.max_context_bytes, "CONTEXT_LIMIT")
                 request = {"model": self.config.model, "messages": history}
-                response = self._attempt(run_id, step, "model", request,
-                    lambda: self._provider(model=self.config.model, messages=json.loads(_json(history))), self._model_response)
+                try:
+                    response = self._attempt(run_id, step, "model", request,
+                        lambda: self._provider(model=self.config.model, messages=json.loads(_json(history))), self._model_response)
+                    if not response["tool_calls"] and self._final_validator is not None:
+                        try:
+                            self._final_validator(response["text"])
+                        except (ValueError, TypeError, KeyError):
+                            raise _Failure("INVALID_FINAL_PAYLOAD", "Final payload failed the registered data contract") from None
+                except _Failure as exc:
+                    # Repair only a read-only response shape; never retry policy,
+                    # identity, version or evidence failures, nor repeat writes.
+                    if (read_only and repairs < self.config.max_repairs and
+                            exc.error["code"] in {"INVALID_MODEL_RESPONSE", "EMPTY_MODEL_RESPONSE", "INVALID_FINAL_PAYLOAD"}):
+                        self._budget.consume("repair")
+                        repairs += 1
+                        history.append({"role": "user", "content":
+                            "Response schema validation failed. Return the required response format using the same "
+                            "task, evidence and conditions. Do not change tools, permissions or data versions."})
+                        continue
+                    raise
                 if not response["tool_calls"]:
                     status, text = "completed", response["text"]
                     break
@@ -203,13 +238,15 @@ class ModelRuntime:
                     result = self._attempt(run_id, step, "tool", call,
                         invoke,
                         self._tool_response, call["name"])
+                    if self._tool_observer is not None:
+                        self._tool_observer(call['name'], json.loads(_json(args)), json.loads(_json(result)))
                     history.append({"role": "tool", "name": call["name"], "call_index": index, "content": _json(result)})
             else:
                 status, error = "step_limit", {"code": "STEP_LIMIT", "message": "Configured model step limit reached"}
         except _Failure as exc:
             error = exc.error
         except DomainError as exc:
-            error = {"code": exc.code, "message": "Bound identity lacks permission"}
+            error = {"code": exc.code, "message": "Execution policy or identity denied the request"}
         except Exception as exc:
             error = {"code": "RUNTIME_ERROR", "message": "Runtime failed", "error_type": type(exc).__name__}
         db.execute("UPDATE runtime_runs SET status=%s,finished_at=%s,output_hash=%s,error=%s WHERE id=%s",
@@ -217,7 +254,11 @@ class ModelRuntime:
         tool_ids = sorted({tid for row in db.execute("SELECT tool_run_ids FROM runtime_steps WHERE runtime_id=%s", (run_id,)) for tid in json.loads(row['tool_run_ids'])})
         result = {"ok": status == "completed", "run_id": run_id, "status": status, "text": text,
                 "model": self.config.model, "steps": steps, "tool_run_ids": tool_ids, "error": error,
-                "output_hash": _hash(text) if status == "completed" else None}
+                "output_hash": _hash(text) if status == "completed" else None,
+                "execution_budget": self._budget.snapshot(), "repairs": repairs}
+        config["execution_summary"] = self._budget.snapshot()
+        config["repairs_used"] = repairs
+        db.execute("UPDATE runtime_runs SET config=%s WHERE id=%s", (_json(config), run_id))
         if self.capture_tool_trace:
             result['tool_trace'] = trace
         return result

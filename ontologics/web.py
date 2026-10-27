@@ -627,6 +627,7 @@ def main():
     parser.add_argument('--schema', required=True, help='Dedicated development PostgreSQL schema')
     parser.add_argument('--env-file', help='Database settings file; never commit secrets')
     parser.add_argument('--model-env-file', help='Model settings file; defaults to .env/.env.local then process env')
+    parser.add_argument('--sandbox-socket', help='Trusted local parser controller socket; configured failures never fall back to host parsing')
     parser.add_argument('--user', choices=('alice', 'bob', 'reader'), help='Initial development user for a new browser; selector can switch presets')
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--reserve-l1', action='store_true', help='Seed only L configuration; register L1 through S2')
@@ -648,7 +649,12 @@ def main():
             factory = lambda names: OpenAIProvider(settings, names)
             model = settings.model
             embeddings = OpenAIEmbeddings(settings)
-        app = WebApplication(CommonHost(identities, database, embedding_provider=embeddings), DevelopmentContext('dev-' + args.user),
+        sandbox_client = None
+        if args.sandbox_socket:
+            from .sandbox import SandboxClient
+            sandbox_client = SandboxClient(args.sandbox_socket)
+        app = WebApplication(CommonHost(identities, database, embedding_provider=embeddings,
+                                       sandbox_client=sandbox_client), DevelopmentContext('dev-' + args.user),
                              provider_factory=factory, model=model)
         # Fail startup clearly for missing DB, without exposing its URL.
         context = app.dispatch('/api/context')

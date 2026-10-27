@@ -1,0 +1,10 @@
+# The parser build needs only reviewed code, never data, secrets or local evals.
+**
+!ontologics/
+!ontologics/__init__.py
+!ontologics/ingest.py
+!sandbox_jobs/
+!sandbox_jobs/parser_job.py
+!deploy/
+!deploy/docker/
+!deploy/docker/sandbox.Dockerfile

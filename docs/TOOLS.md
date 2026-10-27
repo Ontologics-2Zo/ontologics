@@ -161,6 +161,59 @@ B query: `{mode:'B', lot_id, unit_ids:[...], start, end, period_meaning:'install
 
 등록·정정은 `operations=[{'op':'put','node':{...}}]`다. 새 ID는 생성, 기존 ID는 해당 사실의 새 데이터 버전이다. 삭제는 제공하지 않는다. 소스·근거 노드는 같은 ID로 덮어쓸 수 없으며 수정 근거는 새 ID로 만든다. 등록·보완하는 노드들 사이의 참조를 한 묶음으로 검증한다.
 
+## 공통 Harness와 버전 Agent 계약
+
+기존 `CommonHost`·`IdentityProvider`·`ModelRuntime`·`AgentGateway`를 유지하며 책임을 작은 모듈로 추가했다. Python 패키지를 `app/`로 옮기거나 도메인 모델·승인 원장을 복제하지 않는다.
+
+| 책임·코드 | 추가 계약 | 유지되는 경계 |
+| --- | --- | --- |
+| `harness.py` / `ExecutionBudget` | 요청과 하위 Agent의 모델/도구/repair 한도·deadline 공유, 호스트 취소. 다른 새 예산으로 교체 불가 | 동기 호출 전후 검사. provider transport timeout은 별도이며 실행 중 강제 중단·달러 상한이 아님 |
+| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. ontology `graph-0.1`, context 형식 `context-1` 구분 |
+| `build_context_messages` | 동일 고정 조건 + 비신뢰 자료. baseline은 전체 자료, structured는 명시된 Evidence ID만 선별하고 생략 ID 표시 | 새로운 사실 요약·검색 정답 발견 기능 아님. 원자료는 호출자가 보존 |
+| `contracts.py` | `AgentSpec`·`AgentTask`·`AgentResult`, 얕은 `PayloadSchema`와 역할 검증기를 합성. 신원/승인 필드는 계약 권한으로 사용하지 않음 | Task `agent-task-1`·Result `agent-result-1`·역할 버전과 확정/초안 버전은 별개. DB migration/OWL 상속 기능 아님 |
+| `host.py` / `run_task` | 서버에 등록한 Spec·구현의 messages·Task·provider를 공통 실행기로 전달. 결과 data_version이 있으면 고정 정수 버전과 대조. 실제 도구 결과의 Evidence만 확정 원본 정보로 연결하고 역할 결과 검증기 실행 | 기존 `AgentRegistration`/`run_agent` 및 화면 역할별 검증 호환. 모든 기존 호출을 새 DTO로 전환한 것은 아님 |
+| `runtime.py` / `max_repairs` | 기본 0, 명시적 읽기 경로에서 설정값 0~2회 이내 형식 복구. 원래 목표·근거·권한 유지, 공유 잔여 예산에 차감 | 권한 거부·잘못된 버전·의미 검증 실패·부족 근거를 재시도로 사실화하지 않음. 쓰기 역할의 임의 반복 금지 |
+| `host.py` / `resume_task` | 반환된 읽기 작업의 동일 actor/task/base/model/config/provider/프롬프트·스키마·도구 fingerprint, 잔여 한도와 현재 권한 재검사. 원자적 1회 예약 | `runtime_runs.config`에 상태 참조 저장, 승인 원장 대체 안 함. 저장 전 강제 종료·모델 대화 그대로 이어가기·임의 쓰기 재생 미지원 |
+| `openai_provider.py` | 성공/불완전 출력의 보고 usage와 cached/reasoning 부분량 기록 | reasoning은 output에 포함된 부분량, cache는 input의 부분량. 미보고 비용은 0으로 단정하지 않음. 비밀/원문 외부 trace 자동 전송 없음 |
+
+`PayloadSchema`는 지원하는 필드/형식을 검사하며 사실의 진위를 보증하지 않는다. 역할의 의미 검증기는 호스트에 등록하고, 승인·시간·원본 검증은 기존 공통 도구가 수행한다. `SHARED_BUDGET_EXCEEDED`, `EXECUTION_CANCELLED`, `DEADLINE_EXCEEDED`, `PINNED_CONTEXT_MISMATCH`, `INVALID_FINAL_PAYLOAD`를 안전 오류로 반환한다. 체크포인트는 만료·재사용·변경된 기준/계약을 거부하고 새 사람 승인을 우회하지 않는다.
+
+typed `AgentResult`는 기존 `schema_version/agent_name/agent_version/payload/runtime/context`에 `evidence_refs`와 `error`를 제공한다. `EvidenceRef`는 `data_version/evidence_id/source_id/origin/locator/source_sha256`이며 실제 성공 도구 응답과 같은 확정 스냅샷의 Evidence/SourceDocument를 연결한 값이다. 역할 payload에 `evidence_ids`가 있으면 읽은 근거 안의 인용만 허용한다. 없는 근거·다른 버전·미반영 초안 근거를 확정 근거로 승격하지 않는다. `AgentError`는 기존 runtime의 안전한 `code/message`와 선택적 `error_type`을 재사용한다. 실패 payload는 null이다. 신뢰된 호스트의 잘못된 등록/입력 DTO는 실행 전 ValueError/DomainError로 거부하며 사용자 HTTP 오류 매핑은 기존 web 계약을 따른다.
+
+역할은 선택적으로 `validate_result(value, task, tool_results)`를 제공한다. `tool_results`는 실제 성공한 호출의 `name/arguments/result` 복사본이고, True가 아니면 `AGENT_RESULT_REJECTED`로 끝난다. 출력 검증기의 코드도 재개 fingerprint에 포함된다. 임의 자유문의 모든 주장을 자동 검증하는 기능은 아니며 역할 개발자가 해당 의미 검증을 맡는다.
+
+### 반복과 복구의 구분
+
+| 동작 | 설정·현재 지원 | 처리 경계 |
+| --- | --- | --- |
+| LLM 형식 수정 | `ModelConfig.max_repairs=0` 기본, 최대 2 | 읽기 역할의 응답/최종 JSON 형식 오류만 동일 조건으로 재요청. 권한·버전·근거·의미 오류는 반복 안 함 |
+| 검색 표현 수정·재검색 | 공통 자동 query-rewrite 루프 미구현 | 역할이 검색 도구를 다시 부르면 기존 도구/모델 한도를 사용. max_repairs를 켜도 자동 재검색이 생기지 않음 |
+| 일시 장애 재시도 | `max_attempts=2` 기본(최초 포함) | TimeoutError/ConnectionError만 같은 호출로 재시도. 공유 호출 한도에 매번 차감. 모든 오류의 자동 fallback 아님 |
+| 읽기 재개 | `resume_task`의 1회 예약·잔여 한도·만료 | 반환 후 저장된 실패한 읽기 작업을 같은 계약으로 재시작. 프로세스 사망 전 상태 저장·대화 이어쓰기는 미지원 |
+| 멱등 처리 | 기존 request_key·입력 hash | 초안·사람 검토·반영의 동일 요청은 같은 결과 재생. 다른 내용으로 같은 키를 사용하면 거부. 모델 반복과 별개 |
+
+### 공개 계약과 저장된 작업의 호환성
+
+공개 tool/HTTP 계약, `agent-task-1`/`agent-result-1` envelope, 역할 `AgentSpec.version`, payload schema, graph/temporal/data/draft 버전을 구분한다. 현재 payload schema 엔진은 version `1`만 지원하며 자동 migration은 없다. 내부 필드 추가도 기존 입력/출력이 읽히는지 검사하고 역할 버전·지침을 갱신한다. 필수 필드 삭제·타입/의미 변경은 공통 리뷰와 명시적 adapter 또는 migration을 먼저 마련한다. 호환되지 않는 저장물을 최신 의미로 조용히 읽지 않는다.
+
+- `tests.test_agent_contracts`: 기존 등록 호환, 저장 후 새 호스트에서 읽기 재개, provider/프롬프트/스키마/도구/검증기 변경 거부, 저장 초안의 별도 사용자 승인·정확 버전 반영을 확인한다. checkpoint 계약이 달라지면 새 작업을 만들며 승인된 초안을 자동 변환하지 않는다.
+- `tests.test_agent_extensions`: 서로 다른 역할 payload/단일·순차 내부 흐름이 같은 Harness를 사용하고 직접 A/B 결과와 일치하는지 확인한다. `tests.test_agent_workflows`·`tests.test_postgres`는 오래된 버전·재시도·중복/경쟁 반영의 기존 업무 규칙을 유지한다.
+- 실제 저장 형식 변경 시에는 변경 전 공개 버전으로 만든 비밀 없는 fixture를 보존하고 신·구 reader/adapter와 정확 승인 버전을 시험한다. 이번 변경은 DB DDL·초안 저장 형식을 바꾸지 않으며, 검사에서 생긴 저장 초안의 재연결을 과거 모든 배포 버전 migration 검증으로 확대하지 않는다.
+
+이벤트/Outbox 저장 경로는 현재 없어 이벤트 migration 검증을 완료로 표시하지 않는다. 실제 인증·운영 격리·RDF/Neo4j·AWS도 별도 목표다.
+
+## 제한된 파일 파싱 Sandbox
+
+`web --sandbox-socket` → `SandboxClient` → 별도 UDS controller → 고정 Docker 이미지의 `sandbox_jobs/parser_job.py` → 검증된 결과 → 기존 접수·초안·승인 경로다. JobSpec `sandbox-1`은 허용 kind(`olimex_ods`/`history_json`)와 content-addressed artifact/hash만 받는다. 요청에 image·명령·host path·mount·URL을 받지 않는다. 승인/DB/모델 API 자격증명·Docker socket은 job에 전달하지 않는다.
+
+- controller는 private socket과 허용 작업만 제공하며 요청을 순차 처리한다. trusted runner 자체의 동시 실행 상한은 기본 2개다. build context는 `.dockerignore` 허용 목록의 검토 코드뿐이다. 웹 프로세스를 실제 별도 OS 계정으로 분리하는 운영 배포는 아직 미완료다.
+- job은 non-root, read-only root와 입력 한 파일, cap-drop ALL/no-new-privileges/default seccomp, network none, CPU 0.5/메모리128MiB/PID32, 시간/출력/입력·압축 XML 크기 제한을 사용한다. Linux LSM/rootless 보증은 별도다.
+- 결과 JSON의 형식·kind/hash·크기·행/locator·위치를 다시 검사한다. 임의 파일 산출물/경로는 반환하지 않는다. Docker 비가용·timeout·불량 응답은 `SANDBOX_*` 오류이며 호스트 실행 fallback은 없다.
+- 격리 provenance는 접수 응답의 `parsing`에 남는다. 격리 모드에서는 legacy 비격리 receipt의 새 비교/초안에 `SANDBOX_REINTAKE_REQUIRED`를 반환한다. 기존 확정 데이터·작성자·원본 ID는 바꾸지 않는다.
+- trusted runner의 timeout/cancel은 컨테이너·자식·임시 입력을 정리한다. HTTP 취소 버튼과 실행 중 job 취소의 연결, controller 비정상 강제 종료 후 자동 청소 daemon은 미구현이다.
+
+공통 회귀/보안 검사는 `tests/test_harness.py`, `test_agent_contracts.py`, `test_sandbox.py`에 둔다. 실제 Docker 검사는 검토한 immutable image ID를 `ONTOLOGICS_TEST_SANDBOX_IMAGE`로 지정해야 실행된다. 미설정 skip은 실제 격리 성공으로 세지 않는다. 개인 비교·원시 결과·사업 효과 보고서는 이 저장소나 CI artifacts에 보관하지 않는다.
+
 ## 사람 검토·반영 접점
 
 호스트가 인증된 사용자로 호출한다. 아래 호출은 Agent 도구 목록에 포함하지 않는다.

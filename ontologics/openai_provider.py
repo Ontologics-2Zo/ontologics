@@ -178,11 +178,21 @@ class OpenAIProvider:
                 if len(raw) > 2_000_000: raise ProviderError('OPENAI_RESPONSE_TOO_LARGE', 'Provider response exceeded 2 MB')
             try: body = json.loads(raw)
             except (ValueError, UnicodeError): raise ProviderError('OPENAI_RESPONSE_INVALID', 'Provider response was not JSON') from None
-            normalized = self._normalize(body)
             if not isinstance(body.get('usage',{}),dict):
                 raise ProviderError('OPENAI_RESPONSE_INVALID', 'Invalid response usage')
-            event.update(status='completed', response_id=_safe_id(body.get('id')),
-                usage={k: v for k, v in body.get('usage', {}).items() if k in ('input_tokens', 'output_tokens', 'total_tokens') and type(v) is int})
+            # Even an incomplete/rejected model output can have billed usage.
+            # Keep only numeric accounting fields, never arbitrary provider data.
+            usage = {k: v for k, v in body.get('usage', {}).items()
+                     if k in ('input_tokens', 'output_tokens', 'total_tokens') and type(v) is int and v >= 0}
+            for field, detail, total in (('input_tokens_details', 'cached_tokens', 'input_tokens'),
+                                          ('output_tokens_details', 'reasoning_tokens', 'output_tokens')):
+                details = body.get('usage', {}).get(field)
+                value = details.get(detail) if isinstance(details, dict) else None
+                if type(value) is int and 0 <= value <= usage.get(total, -1):
+                    usage[field] = {detail: value}
+            event.update(response_id=_safe_id(body.get('id')), usage=usage)
+            normalized = self._normalize(body)
+            event.update(status='completed')
             assistant = {'role': 'assistant', 'content': normalized['text'], 'tool_calls': normalized['tool_calls']}
             self._outputs[digest(messages + [assistant])] = body['output']
             return normalized

@@ -75,6 +75,19 @@ class ProviderTests(unittest.TestCase):
         p,_=self.provider([response([tool()],status='incomplete')])
         with self.assertRaises(ProviderError) as e:p(model=MODEL,messages=[])
         self.assertEqual('OPENAI_RESPONSE_INCOMPLETE',e.exception.code)
+        self.assertEqual(7, p.calls[0]['usage']['total_tokens'])
+
+    def test_usage_details_are_subsets_and_untrusted_metadata_is_not_logged(self):
+        usage = {'input_tokens': 10, 'output_tokens': 5, 'total_tokens': 15,
+                 'input_tokens_details': {'cached_tokens': 4, 'secret': SECRET},
+                 'output_tokens_details': {'reasoning_tokens': 2, 'secret': SECRET}}
+        p, _ = self.provider([response([text()], usage=usage)])
+        p(model=MODEL, messages=[])
+        actual = p.calls[0]['usage']
+        self.assertEqual(15, actual['total_tokens'])
+        self.assertEqual({'cached_tokens': 4}, actual['input_tokens_details'])
+        self.assertEqual({'reasoning_tokens': 2}, actual['output_tokens_details'])
+        self.assertNotIn(SECRET, json.dumps(p.calls))
 
     def test_unexposed_tool_and_model_switch_are_rejected(self):
         p,t=self.provider([response([tool(name='apply')])])

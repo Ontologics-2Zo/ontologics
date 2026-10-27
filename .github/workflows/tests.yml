@@ -24,6 +24,13 @@ jobs:
         with:
           python-version: '3.10'
       - run: python -m pip install -e .
+      - name: Build reviewed parser image for sandbox regression tests
+        shell: bash
+        run: |
+          docker build --file deploy/docker/sandbox.Dockerfile --tag ontologics-parser:ci .
+          image_id=$(docker image inspect ontologics-parser:ci --format '{{.Id}}')
+          docker_binary=$(command -v docker)
+          printf 'ONTOLOGICS_TEST_SANDBOX_IMAGE=%s\nONTOLOGICS_TEST_DOCKER=%s\n' "$image_id" "$docker_binary" >> "$GITHUB_ENV"
       - run: python -m unittest discover -v
       - run: python -m examples.cq_check
       - run: python -m examples.agent_tools

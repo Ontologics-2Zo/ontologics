@@ -32,3 +32,16 @@
 Quality는 빠진 조건을 질문하고 사용자가 명시한 보드·로트·ISO 시각만 조건 제안으로 반환한다. 사용자 확인 전 조사로 계산하지 않는다. Knowledge의 semantic_search는 승인 버전·실제/가상 구분·색인 범위의 근거 후보다. 의미 검색에서 모델은 정수 data_version·answerable·반환 후보 내 selected_evidence_ids만 제출하고 서버가 원본 필드로 표시한다. source.version의 Git 커밋을 서비스 데이터 버전으로 바꾸거나 BOM populated를 임의로 미확인 처리하지 않는다. 근거 없음·부분 색인을 부재·안전·품목 동일성으로 설명하지 않는다. Supervisor는 명확한 등록·장착 조사 표현의 공통 역할 제한을 지켜 한 요청을 한 전문 역할로 인계하고 그 역할의 결과·질문·실패 상태를 유지한다. 임의 다중 업무 자동 실행이나 지속 대화 저장의 구현을 뜻하지 않는다.
 
 동료의 확장 접점은 `host.AgentRegistration`과 `examples/extension_agent.py`다. 시스템 지침·허용 도구를 호스트에서 등록하고 기존 ModelRuntime으로 실행한다. 사용자와 승인 권한은 IdentityProvider·CommonHost가 정하므로 확장 지침으로 바꾸지 않는다. 모델 대역 계약 검증과 해당 역할의 실제 모델 사례 평가는 구분한다.
+
+## 확장 Agent의 수정 경계
+
+| 위치·책임 | 동료가 변경할 내용 | 공통으로 유지할 내용 |
+| --- | --- | --- |
+| `examples/agents/model_reader.py`, `history_reader.py` | 고유 역할의 INPUT/OUTPUT·INSTRUCTIONS·messages·의미 검증을 참고해 자신의 모듈 추가. 단일 조회와 A→B 순차 흐름을 모두 실행 가능 | 모듈명만 맞춘 빈 폴더·Planner/Critic 복제는 불필요. 예제는 고유 업무 전체 구현이나 새 기본 Agent가 아님 |
+| `contracts.py`의 AgentSpec/Task/Result·EvidenceRef·AgentError | 역할 payload와 검증기를 합성. 성공/실패·근거·미확인을 설명 | 공개 envelope·버전 의미·필수 근거 형식을 바꾸면 공통 계약 검토 |
+| `host.py`·`harness.py`·`runtime.py` | `run_task` 또는 기존 `run_agent` 사용 | 신원·허용 도구 교집합·공유 한도·오류·체크포인트는 호스트 소유. 모델/문서로 권한·예산·등록을 변경하지 않음 |
+| `openai_provider.py`·`tool_specs.py`·`service.py`·`temporal.py` | 기존 고정 provider와 허용 도구 호출 | 직접 DB 쓰기·별도 A/B 계산·Agent 승인 금지. 새 도구·외부 전송·모델/비용 정책 변경은 공통 검토 |
+
+`validate_result(value, task, tool_results)`는 신뢰된 역할 코드이며 실제 성공한 도구 응답의 복사본을 받는다. 예제는 모델이 A/B 판정을 바꾸거나 조회하지 않은 제품을 추가하면 실패한다. 이 훅의 `True`는 사람 승인이나 범용 사실성 보증이 아니다. 근거 참조는 호스트가 확정 스냅샷과 대조해 조립하고, 미반영 초안/접수 자료를 확정 근거로 표시하지 않는다.
+
+프롬프트 표현·설명 방식·기존 payload 안의 내부 단계는 자율적으로 수정하되 역할 버전과 해당 회귀를 갱신한다. 공용 필드 삭제/의미 변경, 새 도메인/권한/승인 규칙, 외부 서비스나 저장소 추가는 공통 검토 대상이다. 같은 요청의 재시도는 같은 멱등 키를 사용한다. 실행/등록 명령은 [README](../README.md#동료의-확장-agent-연결), 계약 변경 시 보존할 초안·checkpoint 시험은 [TOOLS](TOOLS.md#공개-계약과-저장된-작업의-호환성)에 있다.

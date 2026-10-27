@@ -1,6 +1,41 @@
 # PROJECT_STATUS
 
-문서 확인일: **2026-10-26, Asia/Seoul**. 구현 검증은 아래 기록의 실행 기준을 따른다. 공통 코드·도구 계약 **v0.3.0**, 그래프 `graph-0.1`, 시간 규칙 `temporal-0.1`.
+문서 확인일: **2026-10-27, Asia/Seoul**. 구현 검증은 아래 기록의 실행 기준을 따른다. 공통 코드·도구 계약 **v0.3.0**, 그래프 `graph-0.1`, 시간 규칙 `temporal-0.1`.
+
+## 2026-10-27 — Harness·계약·격리 파싱 보완
+
+최신 main `7c5e2d9`는 기존 통합 PR #3의 병합 커밋이며 기존 코드와 파일 차이가 없었다. 별도 **`codex/harness-security-eval`**에서 후속 변경을 진행했다. 최초 구현에서는 공유를 보류했고, 이후 사용자가 공통 코드·검사·개발 문서의 commit·push·PR을 허가했다. 해당 브랜치를 main 대상 리뷰로 공유하며 자동 병합하지 않는다. 다른 worktree의 작업은 유지했다. 아래 2026-10-26 기록은 최초 통합 당시 근거다.
+
+| 이번 구현·검증 | 근거·실제 범위 | 남은 제한 |
+| --- | --- | --- |
+| 요청·하위 Agent의 공유 실행 예산, 문맥·읽기 형식 repair | `harness.py`, 기존 `host.py`/`runtime.py`; 모델·도구·repair·deadline, 예산 교체 차단, 조건/버전 검증 | 동기 호출 전후 검사. 호출 중 강제 취소·서비스 전체 달러 과금 한도는 미구현. repair 기본 0 |
+| 버전 AgentSpec/Task/Result와 기존 등록 호환 | `contracts.py`, `tests/test_agent_contracts.py`, `examples.extension_agent --typed` 실행 성공 | 새 run_task의 DTO 계약이며 기존 네 화면 역할의 검증을 전부 교체한 것이 아님. 사실 검증은 기존 도구/역할 검증기 책임 |
+| 읽기 작업의 제한된 재시작 | 현재 권한·확정 버전·모델/provider·프롬프트/스키마/도구 fingerprint·잔여 예산·1회 예약 확인 | 반환 후 저장된 checkpoint만 지원. 프로세스 강제 종료 전 자동 저장·대화 그대로 재개·임의 쓰기 재실행은 미지원 |
+| 제한된 Docker 파서와 실제 S1/S2 접수 | UDS controller/고정 이미지/network none/non-root/read-only/CPU·메모리·PID·시간·출력 한도. 실제 HTTP→L1 등록 승인 v2→가상 이력 보완 승인 v3 | Docker Desktop 검증. rootless·호스트 LSM·웹/runner 운영 계정 분리·VM급 격리 미검증 |
+| 보안·실패 경계 | 자기 승인 거부, U104 A 제외/B 포함·U106 미확인, legacy receipt 재접수, 불량 IPC·controller 부재 fail-closed, OOM/PID/timeout/cancel/출력 제한 후 회수 | UI 취소→실행 job 전달·controller 강제 종료 후 청소 daemon은 미구현. 미설정 legacy 파싱은 격리로 표시하지 않음 |
+| 사용량 기록 | provider의 불완전 응답도 보고 usage 보존, cached/reasoning 부분량 기록 | 미보고 사용량을 0으로 간주하지 않음. 사용량 기반 추정은 계정 청구서와 구분 |
+
+첫 전체 회귀 161개 이후 독립 검토에서 공유 예산 교체, 재개 계약 fingerprint, 결과 버전, legacy 접수 provenance, 잘못된 IPC 응답을 보완했다. 최종 **166개 검사 통과(27.816초, 실제 PostgreSQL·Docker 포함)** 및 새 typed CLI 예제 성공을 확인했다. 이후 결과 버전에서 bool을 정수로 인정하지 않는 보완은 해당 검사 1개(999·False/0·True/1 subtest, 0.093초)로 확인했다. 기존 CQ·demo는 공통 의미/원본 변경이 없어 앞선 근거를 재사용했다. S1/S2 실제 HTTP 통합은 새 Sandbox 경로로 확인했으며 이번에 브라우저 수동 업무·네 역할의 전체 실모델 업무를 다시 실행한 것은 아니다.
+
+네트워크 시험의 “인터페이스는 lo만 존재” 가정은 Docker Desktop의 비활성 터널 장치 때문에 실패했다. 정책을 완화하지 않고 실제 Docker NetworkMode none·비-loopback 인터페이스 DOWN·IPv4 기본 경로 부재와 연결 실패를 따로 관찰하도록 수정했다. 최종 검사는 통과했으며 실패 근거도 보존했다. 이는 OWASP 전체 인증이나 모든 공격에 대한 보증이 아니다.
+
+공통 코드·계약·회귀/보안 테스트는 팀 저장소 대상이다. 개인 실험 정의·정답·스크립트·원시 결과·비즈니스 효과 보고서는 저장소 밖 **`${EVAL_HOME}/reports/BUSINESS_IMPACT.md`**에만 보관한다. 개인 비교 수치와 원문은 이 문서·CI artifacts·원격 추적에 복제하지 않는다. 실제 사용자/동료 수행 시간·회사 생산성은 측정하지 않았으며 운영 인증·백업·RDF/Neo4j·AWS는 여전히 미완료다.
+
+다음 행동은 실제 인증 연결과 운영 경계 검증, 역할별 출력 계약의 추가 사용자 수용 검증이다. 개인 비교 결과의 채택/보류 판단은 해당 로컬 보고서에서 관리한다. 추가 모델·MCP·Outbox·대형 프레임워크를 이번 보완의 필수 조건으로 추가하지 않았다.
+
+### v2 공통 기반의 공유 전 완료 확인
+
+| 필수 결과 | 현재 완료 근거 | 적용 한계 |
+| --- | --- | --- |
+| 공통 입력·출력·근거·오류 계약 | AgentSpec/Task/Result, EvidenceRef/AgentError. `test_agent_contracts`에서 실제 읽은 확정 근거·origin·source/locator/hash 대조, 가짜/미조회 인용·버전·의미 오류 차단 | 자유문 전체 사실성이나 미반영 접수의 확정 승격을 보장하지 않음. 기존 웹 계약 유지 |
+| 역할별 고유 schema·지침·서로 다른 흐름 | `examples/agents/model_reader.py` 단일 lookup, `history_reader.py` A→B investigate. 같은 run_task/Harness로 실행하고 실제 도구 결과와 대조 | 실행 예제는 scripted provider. 새로운 동료 역할 전체나 실제 모델 품질 완료를 뜻하지 않음 |
+| 실행 한도·권한·A/B·사람 승인 보존 | 기존 `test_harness`·`test_agent_extensions`·S1/S2 회귀, 모델이 U106을 임의 제외한 답 거부 | 로컬 Python/DB 권한을 가진 개발자 격리나 실제 사용자 인증은 별도 |
+| 저장 초안·checkpoint 호환 확인 | 기존 저장 형식의 초안을 새 호스트에서 재조회·자기 승인 거부·Bob 승인·정확 버전 반영/재생. checkpoint의 schema/validator/provider 등 변경 거부 | DB DDL 변경 없음. 모든 과거 배포 버전의 자동 migration·임의 쓰기 재개는 미지원 |
+| 동료 연결과 공통 CI | README 실행 순서, AGENT_RUNTIME 수정 경계, TOOLS 호환·복구 구분. CI가 고정 파서 이미지를 빌드해 실제 Docker/HTTP 검사도 실행 | 외부 모델 키 없이 공통 회귀·보안 검사만 실행. 개인 자료/평가 결과 업로드 없음 |
+
+이번 필수 보완은 Agent 계약/runtime 영향 20개, 확장 예제 영향 5개 통과 후 **전체 171개 통과(33.751초, PostgreSQL·실제 Docker 포함, skip 없음)**로 확인했다. 새 계약의 실제 호출 예제와 기존 `ontologics.demo`를 전용 임시 schema에서 실행했다. demo는 데이터 v1→v2→v3, U104 보완 뒤 A 제외/B 포함을 유지했고, 두 typed CLI는 v3·원본 근거·정확한 도구 결과를 반환했다. 마지막 독립 검토에서 예제의 필수 근거 누락 허용을 수정한 뒤 정상 두 흐름·근거 누락·A/B 변조의 관련 2개 검사(0.301초)를 통과했다. 임시 schema는 종료 후 제거했다. 근거는 Git 제외 `artifacts/local/harness/share-final-tests.txt`, `share-evidence-fix-tests.txt`, `share-demo.json`, `share-example-model.json`, `share-example-history.json`이며 개인 비교 실험과는 별개다.
+
+v2의 필수 공통 경계·작동 예제·회귀 검증은 위 범위에서 완료했다. 추가 Skill/MCP/OpenRouter/Outbox/프레임워크는 실제 필요가 확인될 때의 조건부 항목이다. UI 추가 개발·실제 인증·운영 백업·rootless/LSM/VM급 격리·강제 종료 복구·RDF/Neo4j·AWS는 후속 목표다. 자동 재검색과 서비스 전체 달러 예산 통제는 미지원이며 현재 공통 한도는 호출 수·크기·시간 기준이다. 개인 평가의 측정/준비/미측정 및 적용 코드 버전은 저장소 밖 보고서에서 관리한다. 이번 추가 보완을 과거 실험의 효과로 소급하지 않는다.
 
 ## 현재 단계
 

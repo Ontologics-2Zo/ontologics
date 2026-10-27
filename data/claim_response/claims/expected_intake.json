@@ -1,0 +1,96 @@
+{
+  "example_only": true,
+  "description": "수작업으로 정의한 기대 변환 결과. 변환 기능을 실행하거나 그래프에 등록한 결과가 아님.",
+  "record_kind_candidate": "ClaimIntake",
+  "origin": "synthetic",
+  "source_files_are_alternatives": true,
+  "external_claim_id": "CLM-DEMO-C-20261026-001",
+  "customer_name": "가정 고객사 C-01",
+  "reported_at": "2026-10-26T10:00:00+09:00",
+  "reported_symptom": "전원 인가 후 상태 표시 없이 부팅되지 않음",
+  "reported_conditions": "실내 설치 후 최초 기동. 동일 조건의 다른 보드는 정상",
+  "requested_action": "원인 확인 및 교환 가능 여부 회신 요청",
+  "delivery_reference": "DO-DEMO-C-001",
+  "claimed_quantity": 5,
+  "unit": "piece",
+  "product_reference": {
+    "manufacturer": "OLIMEX",
+    "model": "ESP32-POE",
+    "revision": "L",
+    "variant": "WROOM"
+  },
+  "configuration_candidate_id": "config:esp32-poe:L:WROOM",
+  "unit_candidates": [
+    {
+      "serial": "C-D001",
+      "quantity": 1,
+      "unit": "piece",
+      "unit_id": null,
+      "match_state": "needs_lookup"
+    },
+    {
+      "serial": "C-D002",
+      "quantity": 1,
+      "unit": "piece",
+      "unit_id": null,
+      "match_state": "needs_lookup"
+    },
+    {
+      "serial": "C-D003",
+      "quantity": 1,
+      "unit": "piece",
+      "unit_id": null,
+      "match_state": "needs_lookup"
+    },
+    {
+      "serial": "C-D004",
+      "quantity": 1,
+      "unit": "piece",
+      "unit_id": null,
+      "match_state": "needs_lookup"
+    },
+    {
+      "serial": "C-D005",
+      "quantity": 1,
+      "unit": "piece",
+      "unit_id": null,
+      "match_state": "needs_lookup"
+    }
+  ],
+  "quality_case_id": null,
+  "intake_state": "needs_review",
+  "requires_separate_trace_data": [
+    "production_line_id",
+    "stored_unit_ids",
+    "root_cause",
+    "test_results"
+  ],
+  "provenance_examples": [
+    {
+      "file": "01_메일_클레임.eml",
+      "locator": "MIME text/plain 본문의 클레임 번호·제품 설명·일련번호 목록·현상 문단"
+    },
+    {
+      "file": "02_엑셀_클레임.xlsx",
+      "locator": "클레임!A1:M6; 일련번호 H2:H6, 신고 수량 I2:I6, 신고 일시 C2:C6(KST)"
+    },
+    {
+      "file": "03_CSV_클레임.csv",
+      "locator": "UTF-8 BOM, 1행 헤더, 데이터 2~6행. 일련번호 열과 불량 수량 열"
+    }
+  ],
+  "source_files": [
+    {
+      "file": "01_메일_클레임.eml",
+      "sha256": "48110e43eeceae9b9c89852f956ba5c5de28a389e0d9e2967805f74bceab149f"
+    },
+    {
+      "file": "02_엑셀_클레임.xlsx",
+      "sha256": "44a8e56e63eb0aab7acb59232c6e4352a4f30a2e1cb241330b8dde6c3ccc7ab4"
+    },
+    {
+      "file": "03_CSV_클레임.csv",
+      "sha256": "49d684f3b3d9c3c38f88e239ea9117a8b3706cdc0b49b0e84e1af701933eff8b"
+    }
+  ]
+}

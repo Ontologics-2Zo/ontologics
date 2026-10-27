@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 'graph-0.3'
+SCHEMA_VERSION = 'graph-0.5'
 ROOT = Path(__file__).resolve().parents[1]
 # Required fields and typed relationships. T-box is generated from these definitions.
 SCHEMA = {
@@ -32,16 +32,20 @@ SCHEMA = {
                            {'snapshot_id': 'FulfillmentSnapshot', 'configuration_id': 'Configuration'}),
     'ProductionWork': (['snapshot_id', 'company', 'configuration_id', 'observed_at', 'target_quantity', 'completed_quantity', 'unit', 'production_state'],
                        {'snapshot_id': 'FulfillmentSnapshot', 'configuration_id': 'Configuration'}),
+    'ProductionObservation': (['production_work_id', 'observed_at', 'produced_quantity', 'good_quantity', 'defective_quantity', 'unit'],
+                              {'production_work_id': 'ProductionWork'}),
     'Allocation': (['snapshot_id', 'delivery_round_id', 'quantity', 'unit'],
                    {'snapshot_id': 'FulfillmentSnapshot', 'delivery_round_id': 'DeliveryRound',
                     'stock_id': 'FinishedGoodsStock', 'production_work_id': 'ProductionWork'}),
     'Shipment': (['snapshot_id', 'allocation_id', 'quantity', 'unit', 'destination'],
                  {'snapshot_id': 'FulfillmentSnapshot', 'allocation_id': 'Allocation'}),
+    'DeliveryCondition': (['snapshot_id', 'delivery_round_id', 'preparation_seconds', 'transport_seconds', 'dispatch_mode'],
+                          {'snapshot_id': 'FulfillmentSnapshot', 'delivery_round_id': 'DeliveryRound'}),
 }
 REAL = {'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}
 SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement',
              'Contract', 'ContractItem', 'DeliveryRound', 'FulfillmentSnapshot',
-             'FinishedGoodsStock', 'ProductionWork', 'Allocation', 'Shipment'}
+             'FinishedGoodsStock', 'ProductionWork', 'Allocation', 'Shipment', 'ProductionObservation', 'DeliveryCondition'}
 OPTIONAL_REFERENCES = {'Allocation': {'stock_id', 'production_work_id'}}
 LIST_REFERENCES = {'FulfillmentSnapshot': {'round_ids': 'DeliveryRound'}}
 COMMON_FIELDS = {'id', 'type', 'origin', 'evidence'}
@@ -131,7 +135,9 @@ def validate_graph(nodes):
         # below. Checking shape before lookup/set operations makes validation total
         # for malformed JSON values instead of raising TypeError midway through it.
         structured = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications',
-                      'round_ids', 'confirmations', 'target_quantity', 'completed_quantity'}
+                      'round_ids', 'confirmations', 'target_quantity', 'completed_quantity',
+                      'produced_quantity', 'good_quantity', 'defective_quantity',
+                      'preparation_seconds', 'transport_seconds'}
         for key in ALLOWED_FIELDS[kind] - structured:
             if key in n and not (key in ('removed_at', 'confirmed_until') and n[key] is None) and not _text(n[key]):
                 error(nid, 'INVALID_FIELD_TYPE', key + ' must be nonempty text')
@@ -296,6 +302,10 @@ def validate_graph(nodes):
                 positions[key] = n['id']
     from .fulfillment_validation import validate_fulfillment
     validate_fulfillment(index, error)
+    from .production_validation import validate_production_observations
+    validate_production_observations(index, error)
+    from .delivery_validation import validate_delivery_conditions
+    validate_delivery_conditions(index, error)
     return {'valid': not errors, 'errors': errors, 'warnings': warnings}
 
 def graph_jsonld(nodes):

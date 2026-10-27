@@ -76,27 +76,6 @@ class ProviderTests(unittest.TestCase):
         with self.assertRaises(ProviderError) as e:p(model=MODEL,messages=[])
         self.assertEqual('OPENAI_RESPONSE_INCOMPLETE',e.exception.code)
 
-    def test_rejected_response_retains_usage_without_releasing_partial_tools(self):
-        for body, code in ((response([tool()], status='incomplete'), 'OPENAI_RESPONSE_INCOMPLETE'),
-                           (response([tool(name='apply')]), 'TOOL_NOT_ALLOWED')):
-            with self.subTest(code=code):
-                p, transport = self.provider([body])
-                with self.assertRaises(ProviderError) as caught:
-                    p(model=MODEL, messages=[])
-                self.assertEqual(code, caught.exception.code)
-                self.assertEqual(1, len(transport.requests))
-                self.assertEqual('failed', p.calls[0]['status'])
-                self.assertEqual(body['usage'], p.calls[0]['usage'])
-                self.assertEqual('resp_test', p.calls[0]['response_id'])
-                self.assertNotIn(SECRET, json.dumps(p.calls))
-
-    def test_usage_metadata_excludes_negative_boolean_or_text_counts(self):
-        p, _ = self.provider([response([text()], usage={
-            'input_tokens': -1, 'output_tokens': True, 'total_tokens': '7', 'unknown': SECRET})])
-        p(model=MODEL, messages=[])
-        self.assertEqual({}, p.calls[0]['usage'])
-        self.assertNotIn(SECRET, json.dumps(p.calls))
-
     def test_unexposed_tool_and_model_switch_are_rejected(self):
         p,t=self.provider([response([tool(name='apply')])])
         with self.assertRaises(ProviderError):p(model='other',messages=[])

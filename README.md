@@ -1,26 +1,6 @@
-# Ontologics 공통 기반 v0.4.0 — PostgreSQL + pgvector
-
-현재 작업은 B 보존 커밋 `f808b69`와 가져온 팀 main `7c5e2d9`의 통합이다. v0.4.0/`graph-0.3`의 B 확장과 팀 main의 호스트·웹·접수·검색 기능을 함께 유지한다. 통합 후 전체277개 회귀 검사와 B의 새 CommonHost 대역 연결을 확인했다. CQ01 접수/초안 작성·약속 조회와 CQ02 현황 조회는 각각 새 호스트에서 실제 LLM 정상 대표 사례1건을 통과했다. 범용 계약 파싱·예외/반복 신뢰도·웹/실제 인증은 별도다. 최신 진행·검증 범위는 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다.
+# Ontologics 공통 기반 v0.3.0 — PostgreSQL + pgvector
 
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
-
-v0.4.0은 B-CQ01의 계약·회차에 B-CQ02의 완성 보드 재고·생산 작업·배정·운송과 확인 범위를 연결해, 명시한 버전·관측 시점의 6상태 물량 현황을 조회한다(`graph-0.3`). B-CQ01과 별도로 B-CQ02의 읽기 전용 현황 역할도 기존 런타임에 연결한다. 생산·도착 예측과 납품 가능성 판단은 후속 범위다. 기존 장착 이력·승인·PostgreSQL 계약은 유지한다.
-
-## B-CQ02 물량 현황 예제
-
-```bash
-python -m examples.b_fulfillment --output artifacts/local/b_cq02_task08/example.json
-```
-
-LLM 없이 새 PostgreSQL 스키마에서 초안·검증·개발용 사람 검토 대역·반영·버전별 조회를 실행한다. 가상 B-01 1회차의 10시 현황은 납품 완료100·운송 중150·창고250·생산 중300·준비 완료100·대기100대다. 잔여 약속900대와 미배정0대를 구분한다. 자료가 없으면 0 대신 미확인으로 반환한다. [자료 규칙·도구·제한](docs/TOOLS.md#b-cq02-물량-현황-조회)을 따른다. 이 예제는 실제 업무 승인이나 Agent 모델 검증이 아니다.
-
-현황 Agent 연결은 기본적으로 API 없는 대역 실행이다.
-
-```bash
-python -m examples.b_fulfillment_agent --provider scripted --output artifacts/local/b_cq02_task09/scripted-new.json
-```
-
-실제 호출은 같은 명령에 `--provider openai`와 새 출력 경로를 명시한다. 고정 모델·정상 사례 하나·최대 API4회·재시도 없음·요청당 출력1024토큰으로 제한한다. 원문/근거를 읽는 모델 설명을 검사하며 수량은 공통 도구가 계산한다. 이전 보고서는 덮어쓰지 않는다. [연결·평가 계약](docs/TOOLS.md#b-cq02-agent-연결과-평가)을 따른다.
 
 ## 시작
 
@@ -67,37 +47,6 @@ python -m examples.agent_tools
 - 데이터 버전은 1(개발 시드) → 2(L1 승인 등록) → 3(U104 승인 보완).
 
 일반 실행 결과는 Git에서 제외된 `artifacts/local/demo_result.json`, CQ 결과는 `artifacts/local/cq_postgres.json`에 기록된다. 공유 검증은 [CQ 결과](artifacts/cq_postgres_verification.json)에서 확인한다. T-box와 인계 A-box를 의도적으로 갱신할 때만 `python -m ontologics.demo --export-graph`를 사용한다. 대상은 `ontology/tbox.ttl`과 `data/initial_graph.jsonld`다. 마지막 파일은 초기 인계용 그래프이며 시나리오 실행 후의 버전 3이다. 실행마다 ID·실행 시각은 달라질 수 있지만 업무 판정은 같다. 원본에서 `data/catalog.json`을 다시 만들려면 `python3 -m ontologics.ingest`를 실행한다.
-
-## B-CQ01 계약 약속 확인
-
-```bash
-python -m examples.b_contract
-```
-
-새 `b_cq01_<UUID>` PostgreSQL 스키마에서 기존 실제 설계 시드 → 가정 계약 초안·검증 → 승인 전 반영 차단 → 개발용 사람 역할 검토 → 버전 2 등록 → 약속·근거 조회를 실행한다. 모델 키 없이 공통 함수를 직접 호출하는 예제이며 실제 운영 승인이나 LLM 실행이 아니다.
-
-기대 답은 가상고객사 A에 ESP32-POE Rev L WROOM 보드 1000대를 `2026-10-27T15:00:00+09:00`까지 고객 창고에 도착시키는 약속이다. 현재 이행 가능성은 `fulfillment_assessed=false`다. 해시가 고정된 원문과 근거 메타데이터, 독립 정답은 [TOOLS](docs/TOOLS.md#b-cq01-계약-접수와-약속-조회)에 연결한다. 수량·기한 누락/모호함은 보완, 잘못된 숫자/참조는 검증 실패로 처리한다.
-
-보고서는 Git 제외 `artifacts/local/task08/b_cq01.json`에 남는다. 필요할 때만 `python -m examples.b_contract --export-graph`로 [B 대표 그래프](data/b_contract_graph.jsonld)와 공통 T-box를 재생성한다. 기존 `data/initial_graph.jsonld`·OLIMEX 원본·부품 입출고 예제는 보존한다. 첫 추출 형식은 고정된 Markdown 표의 항목 1개/회차 1개이며 범용 계약서 파서는 아니다.
-
-B 역할 연결 예제는 다음과 같다. 기존 런타임·provider를 재사용하며 별도 서버가 필요하지 않다.
-
-```bash
-python -m examples.b_agent --provider scripted
-python -m examples.b_agent --provider openai --output artifacts/local/task09/b_agent_live.json
-```
-
-기본 `scripted`는 연결 시험용 대역이다. 실제 LLM 품질을 검증하지 않는다. `openai`는 로컬 키를 검증한 뒤 기존 고정 모델을 실제 호출한다. `--mode intake`는 원문·기존 구성·근거 조회 → 계약 3노드 초안 → 검증 → 사람 검토 대기, `--mode promise`는 개발용 호스트가 미리 확정한 자료의 회차 → 약속·근거·미확인 설명이다. `both`가 기본이며 두 모드는 별도 새 DB 스키마를 사용한다. 모델 초안을 자동 승인하지 않는다.
-
-결과는 Git 제외 `artifacts/local/task09/b_agent.json`에 기록된다(`--output`으로 변경 가능). 실모델 실행에는 별도 경로를 권장한다. 키 누락은 DB 접수·API 호출 전에 `OPENAI_KEY_MISSING`으로 중단하며 대역 통과와 실모델 완료를 구별한다. 자동 평가는 원문 파서·독립 정답·실제 도구 기록·저장된 초안을 대조한다. 자유문 설명 전체와 임의 계약 PDF/OCR의 품질을 보증하지 않는다. 모드별 도구 권한과 입력/출력은 [TOOLS](docs/TOOLS.md#b-agent-연결-예제-task-09)를 따른다.
-
-새 CommonHost를 통한 B 연결 예제는 다음과 같다. 매 실행마다 새 개발 스키마를 사용하며 보고서 경로는 새 파일이어야 한다.
-
-```bash
-python -m examples.b_host_agent --mode all --env-file .env.local --output artifacts/local/b_host_first.json
-```
-
-[b_host_agent.py](examples/b_host_agent.py)는 기존 지침·도구·평가기를 `b_intake`·`b_promise`·`b_fulfillment`로 등록한다. 개발 사용자의 요청 신원으로 실행·초안 작성자를 기록하고, CQ02의 정확한 근거 인용 검사를 유지한다. 이 명령은 **대역 모델 전용이며 유료 API를 호출하지 않는다.** 기존 standalone 예제도 유지한다. 실제 로그인·B 웹 메뉴/Supervisor 인계와 예외/반복 신뢰도는 별도 확인이 필요하다. 새 호스트의 실제 정상 대표 사례는 CQ01 접수/초안 작성10회·14/14·미승인 초안, CQ01 약속 조회10회·14/14·전체5개 근거 보존, CQ02 현황 조회4회·17/17·정확11개 인용이며 각각 별도 의미 검토도 통과했다. 범용 계약 파싱/OCR·운영 승인 성공은 검증 범위 밖이다. 범위와 비용은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 위 CLI는 계속 대역 전용이다. 등록 방식과 권한은 [TOOLS](docs/TOOLS.md#b-역할의-commonhost-연결)를 따른다.
 
 ## S1·S2 웹 통합 — 개발 신원으로 실행
 
@@ -203,13 +152,11 @@ python -m unittest tests.test_agent_extensions -v
 
 [extension_agent.py](examples/extension_agent.py)는 연결 계약을 보여주는 모델 대역 예제다. 동료는 `EXTENSION`의 책임/도구와 provider·messages를 구현하고 기존 고정 모델 `OpenAIProvider(settings, registration.allowed_tools)`로 연결한다. 허용 도구 이탈·사용자 권한 부족·확정 데이터 불변을 검증한 뒤 실제 역할 사례를 평가한다. 웹에서 새 역할로 라우팅하는 부분은 담당자가 명시적으로 연결한다. Change·Supplier·Report 업무 로직이나 자동 플러그인 로더를 구현한 것은 아니다.
 
-B의 CQ01·CQ02는 [b_host_agent.py](examples/b_host_agent.py)의 `REGISTRATIONS`로 이 접점을 사용한다. 기존 기본 네 역할을 교체하지 않으며 B 웹 라우팅은 아직 연결하지 않았다.
-
 ## 저장소 공유 상태
 
-비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1·목표/완료 기준 PR #2·S1/S2 및 핵심 Agent 통합 PR #3은 가져온 main 이력에 포함되어 있다. 2026-10-27 로컬에서 가져온 기준은 `7c5e2d9`다. 이전 `codex/s1-s2-service`의 기준은 `189500e`였으며 해당 브랜치의 공통 호스트·S1·S2·네 Agent 변경이 이번 main에 들어왔다. 원격 CI 성공 여부는 해당 PR/커밋 checks에서 별도로 확인한다. 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
+비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1과 목표·완료 기준 문서 PR #2는 main에 병합됐다. 2026-10-26 확인한 통합 기준 main은 `189500e`다. 첫 번째 개발용 통합의 리뷰 대상은 **`codex/s1-s2-service`**이며 기존 개발용 호스트·S1·S2·네 Agent 변경을 함께 포함한다. main 반영 여부와 CI 결과는 해당 브랜치의 GitHub PR에서 확인한다. 이 기준 버전은 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
 
-현재 B 작업은 `feature/b-first-mvp`의 보존 커밋 `f808b69`를 남긴 뒤 위 main을 병합했다. 기존 작업을 보존한 상태에서 공통/CQ01·CQ02 회귀와 새 호스트의 제한된 대표 검증을 수행했으며, 세 B 경로의 실제 정상 대표 검증을 갖췄다. 다음은 CQ03의 기존 정의/의존성 점검이다. 브랜치를 받았다는 사실이나 충돌을 해결했다는 사실을 업무 검증 통과로 계산하지 않는다. 실행 기준은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
+저장소 접근 권한이 있는 팀원은 원격 브랜치가 게시된 뒤 `git fetch origin`과 `git switch --track origin/codex/s1-s2-service`로 새 로컬 브랜치를 받고 위 실행 순서를 따른다. 이미 같은 로컬 브랜치가 있거나 미커밋 작업이 있으면 해당 작업을 먼저 보존한다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 
 ## 개발 기준
 

@@ -182,54 +182,6 @@ class Service:
                 'components': [idx[cid] for cid in sorted({n['component_id'] for n in items})]}, version=version)
         return self._run(actor, 'configuration', {'configuration_id': configuration_id, 'version': version}, act)
 
-    def delivery_round(self, actor, delivery_round_id, *, version=None):
-        """Read a contract promise in one explicit snapshot; no fulfillment forecast."""
-        def act():
-            if isinstance(version, bool) or not isinstance(version, int) or version < 0:
-                raise DomainError('INVALID_VERSION', 'Delivery queries require an explicit nonnegative data version')
-            if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
-                raise DomainError('INVALID_INPUT', 'delivery_round_id must be nonempty text')
-            idx = {n['id']: n for n in self._nodes(version)}
-            round_node = idx.get(delivery_round_id)
-            if not round_node or round_node['type'] != 'DeliveryRound':
-                raise DomainError('NOT_FOUND', 'Unknown delivery round in the requested data version')
-            item = idx[round_node['contract_item_id']]
-            config = idx[item['configuration_id']]
-            revision = idx[config['revision_id']]
-            return self._envelope(ok=True, data={'contract': idx[item['contract_id']],
-                'contract_item': item, 'delivery_round': round_node, 'configuration': config,
-                'revision': revision, 'product': idx[revision['model_id']],
-                'fulfillment_assessed': False}, version=version,
-                warnings=[{'code': 'FULFILLMENT_NOT_ASSESSED',
-                           'detail': 'Contract promise only; stock, production and transport are not assessed'}])
-        return self._run(actor, 'delivery_round', {'delivery_round_id': delivery_round_id, 'version': version}, act)
-
-    def fulfillment_status(self, actor, delivery_round_id, as_of, *, version=None):
-        """Read an exact source-backed snapshot; never infer future feasibility."""
-        from .fulfillment import fulfillment_status
-        from .model import instant
-        def act():
-            if isinstance(version, bool) or not isinstance(version, int) or version < 0:
-                raise DomainError('INVALID_VERSION', 'Fulfillment queries require an explicit nonnegative data version')
-            if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
-                raise DomainError('INVALID_INPUT', 'delivery_round_id must be nonempty text')
-            try:
-                instant(as_of)
-            except (ValueError, TypeError) as exc:
-                raise DomainError('INVALID_TIME', str(exc)) from exc
-            nodes = self._nodes(version)
-            if not any(n['id'] == delivery_round_id and n['type'] == 'DeliveryRound' for n in nodes):
-                raise DomainError('NOT_FOUND', 'Unknown delivery round in the requested data version')
-            try:
-                data = fulfillment_status(nodes, delivery_round_id, as_of, queried_at=self.now())
-            except ValueError as exc:
-                raise DomainError('VALIDATION_FAILED', 'Invalid fulfillment graph', exc.args[0]) from exc
-            return self._envelope(ok=True, data=data, version=version,
-                warnings=data['warnings'] + [{'code': 'FULFILLMENT_NOT_ASSESSED',
-                    'detail': 'Snapshot only; production completion and future arrival are not forecast'}])
-        return self._run(actor, 'fulfillment_status',
-            {'delivery_round_id': delivery_round_id, 'as_of': as_of, 'version': version}, act)
-
     def compare_configurations(self, actor, left_id, right_id, *, version=None, draft_id=None, draft_version=None):
         def act():
             if draft_id is not None:
@@ -493,7 +445,6 @@ class AgentGateway:
     """Host binds identity once. Actor, review, apply and seed are not tool inputs."""
     ALLOWED = frozenset({'lookup', 'configuration', 'compare_configurations', 'component_usage', 'investigate',
                          'compare_investigation', 'prepare_draft', 'get_draft', 'validate_draft', 'export_graph', 'preview_investigation',
-                         'delivery_round', 'fulfillment_status',
                          'get_source_receipt', 'prepare_source_draft', 'search_evidence', 'semantic_search'})
     def __init__(self, service, actor, *, allowed_tools=None):
         self._service, self._actor = service, actor

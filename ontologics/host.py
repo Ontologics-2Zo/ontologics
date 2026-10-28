@@ -186,12 +186,16 @@ def _definition_fingerprint(spec, messages, provider, implementation=None):
             'name': getattr(validator, '__qualname__', type(validator).__qualname__),
             'code_hash': hashlib.sha256(marshal.dumps(code)).hexdigest() if code is not None else None,
         }
+    from .agents.registry import implementation_digest
     definition = {'name': spec.name, 'version': spec.version, 'instructions': spec.instructions,
                   'input_schema': asdict(spec.input_schema), 'output_schema': asdict(spec.output_schema),
                   'tools': sorted(spec.requested_tools), 'limits': asdict(spec.limits),
                   'messages': messages, 'provider': public, 'validator': identity(spec.validator),
                   'result_validator': identity(getattr(implementation, 'validate_result', None)),
                   'result_decoder': identity(getattr(implementation, 'decode_result', None))}
+    role_digest = implementation_digest(implementation)
+    if role_digest is not None:
+        definition['builtin_implementation'] = role_digest
     return hashlib.sha256(canonical(definition).encode()).hexdigest()
 
 
@@ -415,8 +419,8 @@ class RequestSession:
     def _task_spec(self, role, implementation, task):
         if not isinstance(task, AgentTask):
             raise ValueError('Select an AgentTask')
-        from .builtin_agents import BuiltinRole
-        if type(implementation) is BuiltinRole:
+        from .agents.registry import is_builtin
+        if is_builtin(implementation):
             if implementation.role != role:
                 raise ValueError('Builtin role does not match the task')
             return implementation.spec
@@ -427,9 +431,9 @@ class RequestSession:
 
     @staticmethod
     def _task_messages(implementation, task, supplied):
-        from .builtin_agents import BuiltinRole
+        from .agents.registry import is_builtin
         pinned = build_context_messages(task.context, [], profile='structured')
-        if type(implementation) is BuiltinRole:
+        if is_builtin(implementation):
             # Preserve the real role's existing first system/user messages. The
             # new host context is a system message, never an extra user request.
             return supplied[:1] + pinned[:1] + supplied[1:]

@@ -238,6 +238,11 @@ class WebTests(WebCase):
         self.alice.app.provider_factory = lambda names: ScriptedQuality()
         explained = self.ok(self.http(self.alice, '/api/quality', body))
         self.assertEqual('matched', explained['data']['consistency'])
+        contract = explained['data']['agent_result']
+        self.assertEqual('quality', contract['agent_name'])
+        self.assertEqual(explained['data']['verified_observations'], contract['payload']['observations'])
+        self.assertTrue(contract['evidence_refs'])
+        self.assertTrue(all(ref['data_version'] == 1 for ref in contract['evidence_refs']))
         self.assertNotIn('U106은 안전', explained['data']['display_text'])
         self.assertTrue(explained['data']['runtime']['output_withheld'])
         self.assertEqual('', explained['data']['runtime']['text'])
@@ -258,6 +263,21 @@ class WebTests(WebCase):
         rejected = self.failed(self.http(self.alice, '/api/quality', body), 502, 'AI_FACT_MISMATCH')
         self.assertEqual('', rejected['data']['runtime']['text'])
         self.assertEqual('not_verified', rejected['data']['consistency'])
+        self.assertIsNone(rejected['data']['agent_result']['payload'])
+        self.assertEqual('AI_FACT_MISMATCH', rejected['data']['agent_result']['error']['code'])
+        class CrossModeComparison(ScriptedQuality):
+            def __call__(self, **kwargs):
+                response = super().__call__(**kwargs)
+                if response['text']:
+                    value = json.loads(response['text'])
+                    # A/B are separate questions, never before/after phases.
+                    for row in value['observations']:
+                        if row['mode'] == 'B': row['before'] = copy.deepcopy(row['after'])
+                    response['text'] = json.dumps(value)
+                return response
+        self.alice.app.provider_factory = lambda names: CrossModeComparison()
+        rejected = self.failed(self.http(self.alice, '/api/quality', body), 502, 'AI_FACT_MISMATCH')
+        self.assertIsNone(rejected['data']['agent_result']['payload'])
         self.alice.app.provider_factory = lambda names: ScriptedQuality()
         draft = self.draft()
         self.ok(self.http(self.bob, '/api/review', self.review_body(draft)))
@@ -266,6 +286,25 @@ class WebTests(WebCase):
         self.assertTrue(all(call['name'] == 'compare_investigation' for call in compared['data']['tool_calls']))
         self.assertEqual('excluded', compared['data']['results']['A']['data']['after']['results'][0]['status'])
         self.assertEqual('included', compared['data']['results']['B']['data']['after']['results'][0]['status'])
+
+    def test_typed_quality_withholds_success_payload_when_post_model_audit_fails(self):
+        from ontologics.web import failure
+        self.alice.app.provider_factory = lambda names: ScriptedQuality()
+        body = {'queries': example_queries(), 'version': 1, 'question': '같은 A/B 조건을 설명해줘'}
+        with patch('ontologics.host.RequestSession.record_agent_check',
+                   return_value=failure('STORAGE_ERROR', 'Controlled audit persistence failure')):
+            failed = self.failed(self.http(self.alice, '/api/quality', body), 503, 'STORAGE_ERROR')
+        typed = failed['data']['agent_result']
+        self.assertIsNone(typed['payload'])
+        self.assertEqual([], typed['evidence_refs'])
+        self.assertFalse(typed['runtime']['ok'])
+        self.assertFalse(failed['data']['runtime']['ok'])
+        self.assertEqual(typed['runtime'], failed['data']['runtime'])
+        self.assertEqual('completed', typed['runtime']['execution_status'])
+        self.assertEqual('post_runtime_validation', typed['runtime']['failure_stage'])
+        self.assertEqual(failed['errors'][0]['code'], typed['error']['code'])
+        self.assertEqual('', failed['data']['display_text'])
+        self.assertFalse(typed['read_restart']['checkpoint_available'])
 
 
 if __name__ == '__main__':

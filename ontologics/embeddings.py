@@ -9,6 +9,7 @@ from urllib import error, request
 
 from .model import canonical
 from .openai_provider import OpenAISettings, ProviderError, _NoRedirect, _safe_id
+from .harness import begin_paid_call
 
 
 EMBEDDING_MODEL = 'text-embedding-3-small'
@@ -17,6 +18,8 @@ ENDPOINT = 'https://api.openai.com/v1/embeddings'
 MAX_TEXT_BYTES = 8192
 MAX_BATCH_SIZE = 32
 MAX_RESPONSE_BYTES = 2_000_000
+# Official maximum tokens across all inputs in one embeddings request.
+INPUT_TOKEN_RESERVATION_FLOOR = 300_000
 
 
 class OpenAIEmbeddings:
@@ -39,7 +42,8 @@ class OpenAIEmbeddings:
     def public_config(self):
         return {'provider': 'openai', 'endpoint': ENDPOINT, 'model': self.model,
                 'dimensions': self.dimensions, 'timeout_seconds': self.settings.timeout_seconds,
-                'max_attempts': 2, 'max_batch_size': MAX_BATCH_SIZE, 'max_text_bytes': MAX_TEXT_BYTES}
+                'max_attempts': 2, 'max_batch_size': MAX_BATCH_SIZE, 'max_text_bytes': MAX_TEXT_BYTES,
+                'input_token_reservation_floor': INPUT_TOKEN_RESERVATION_FLOOR}
 
     @staticmethod
     def validate_texts(texts):
@@ -85,14 +89,18 @@ class OpenAIEmbeddings:
         payload = canonical({'input': texts, 'model': self.model, 'encoding_format': 'float',
                              'dimensions': self.dimensions}).encode()
         for attempt in range(1, 3):
+            budget, reservation, timeout = begin_paid_call(self.model,
+                minimum_input_tokens=INPUT_TOKEN_RESERVATION_FLOOR,
+                output_tokens=0, timeout_seconds=self.settings.timeout_seconds)
             event = {'attempt': attempt, 'status': 'started', 'model': self.model,
-                     'dimensions': self.dimensions, 'input_count': len(texts)}
+                     'dimensions': self.dimensions, 'input_count': len(texts), 'timeout_seconds': timeout}
             self.calls.append(event)
             started = time.monotonic()
+            accounted_usage = None
             req = request.Request(ENDPOINT, data=payload, method='POST', headers={
                 'Authorization': 'Bearer ' + self.settings.api_key, 'Content-Type': 'application/json'})
             try:
-                with self._open(req, timeout=self.settings.timeout_seconds) as response:
+                with self._open(req, timeout=timeout) as response:
                     event.update(http_status=response.status, request_id=_safe_id(response.headers.get('x-request-id')))
                     raw = response.read(MAX_RESPONSE_BYTES + 1)
                     if response.status != 200 or len(raw) > MAX_RESPONSE_BYTES:
@@ -101,6 +109,14 @@ class OpenAIEmbeddings:
                     body = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
                 except (ValueError, UnicodeError):
                     raise ProviderError('OPENAI_EMBEDDING_RESPONSE_INVALID', 'Embedding response was not finite JSON') from None
+                # Preserve reported accounting even when vector validation fails.
+                raw_usage = body.get('usage') if isinstance(body, dict) else None
+                if isinstance(raw_usage, dict):
+                    usage = {k: raw_usage[k] for k in ('prompt_tokens', 'total_tokens')
+                             if type(raw_usage.get(k)) is int and raw_usage[k] >= 0}
+                    event['usage'] = usage
+                    if body.get('model') == self.model:
+                        accounted_usage = usage
                 vectors, usage = self._normalize(body, len(texts))
                 event.update(status='completed', usage=usage)
                 return vectors
@@ -114,11 +130,13 @@ class OpenAIEmbeddings:
                 # Never read the error body, which may echo request text or credentials.
                 exc.close()
                 if transient and attempt == 1:
+                    budget.backoff(attempt)
                     continue
                 raise ProviderError(code, 'Embedding request failed; inspect safe status and local account configuration') from None
             except (TimeoutError, socket.timeout):
                 event.update(status='failed', error_code='OPENAI_TIMEOUT')
                 if attempt == 1:
+                    budget.backoff(attempt)
                     continue
                 raise ProviderError('OPENAI_TIMEOUT', 'Embedding timeout retry budget exhausted') from None
             except error.URLError as exc:
@@ -126,6 +144,7 @@ class OpenAIEmbeddings:
                 code = 'OPENAI_TIMEOUT' if timeout else 'OPENAI_CONNECTION_FAILED'
                 event.update(status='failed', error_code=code)
                 if timeout and attempt == 1:
+                    budget.backoff(attempt)
                     continue
                 raise ProviderError(code, 'Embedding connection failed') from None
             except ProviderError as exc:
@@ -135,4 +154,7 @@ class OpenAIEmbeddings:
                 event.update(status='failed', error_code='OPENAI_CONNECTION_FAILED')
                 raise ProviderError('OPENAI_CONNECTION_FAILED', 'Embedding transport failed') from None
             finally:
+                usage = accounted_usage or {}
+                event['cost'] = reservation.settle(usage.get('prompt_tokens'), 0)
                 event['elapsed_seconds'] = round(time.monotonic() - started, 3)
+                budget.check()

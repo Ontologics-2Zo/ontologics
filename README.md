@@ -91,6 +91,55 @@ python3 -m unittest tests.test_host -v
 
 동료는 [host.py](ontologics/host.py)의 `CommonHost.request()`로 요청 신원을 한 번 고정하고 `RequestSession.agent('product'/'quality'/'knowledge'/'supervisor')` 또는 `run_agent()`를 사용한다. `review()`는 사람의 호스트 동작, `apply_approved()`는 서버 워크플로 동작이며 Agent에 노출하지 않는다. 신원 공급자는 [identity.py](ontologics/identity.py)의 `resolve(context)`·`lookup(subject)` 접점으로 교체한다. 개발 사용자 선택은 명시적 개발 HTTP 경로에만 있으며 운영 인증으로 사용하지 않는다. 호출 예제·권한·오류 경계는 [TOOLS](docs/TOOLS.md#개발용-사용자-호스트)를 따른다.
 
+## 실제 Agent 담당 폴더와 연결
+
+실제 네 Agent 구현은 `ontologics/agents/<역할>/`에 있다. 담당자는 해당 폴더의 `instructions.py`에서 지침, `workflow.py`에서 처리 순서, `schemas.py`에서 역할 payload, `agent.py`와 필요한 `validators.py`에서 결과 해석·검증을 수정한다. 공통 `RoleAgent`는 메시지 보존·필수 도구 호출 확인만 공유하고 역할의 해석은 각 구현에 위임한다. 모든 역할에 planner/critic 파일을 만들지 않았다.
+
+```text
+변경 전
+ontologics/
+  builtin_agents.py     # 네 역할 schema·결과 해석
+  assistant.py          # 역할 인계·등록·조건 제안·검색
+  web.py                # HTTP + Quality 조사·판정 검증
+examples/llm_agents.py  # CLI 실행 + Product/Quality 지침·평가
+
+변경 후
+ontologics/agents/
+  supervisor/          # agent.py, schemas.py, instructions.py, workflow.py
+  product/             # 위 파일 + validators.py, sample_cli.py
+  knowledge/           # 위 파일 + validators.py
+  quality/             # 위 파일 + validators.py, sample_cli.py
+  registry.py          # 고정 네 역할 등록·dispatch, Task 생성
+  base.py              # 공유 계약 연결, 역할별 decode 위임
+  execution.py         # 공통 읽기 실행·직접/Agent 결과 대조
+  service.py           # HTTP와 독립적인 AI 요청 진입점
+  sample_support.py    # 기존 소규모 CLI의 공통 fixture
+ontologics/web.py        # HTTP·개발 세션·화면 전송만
+ontologics/assistant.py  # 이전 import 호환 export만
+ontologics/builtin_agents.py # 이전 생성자·계약 목록 호환만
+examples/llm_agents.py   # CLI 실행·보고, 역할 폴더 구현 재사용
+```
+
+실제 화면 `/api/assistant` → `agents.service.assistant` → Supervisor 인계 또는 `registry.run_screen` → 담당 역할 `workflow` → `RequestSession.run_task` → 공통 Harness·provider·도구로 이어진다. `/api/quality`는 같은 `quality.workflow.investigate`를 사용한다. `AgentApplication`에는 호스트·호스트가 해석할 신원 context·고정 provider·모델만 전달한다. 역할 모듈은 HTTP 모듈을 import하지 않는다. 기존 CLI 두 행/U104 예제는 역할 폴더의 `sample_cli.py`를 사용하는 제한된 예제이며 전체 화면 흐름을 대신하지 않는다.
+
+1. 기존 역할 담당자는 해당 폴더만 수정하고 그 역할의 테스트를 실행한다. 보통의 지침·내부 순서·검증 수정에 다른 역할이나 공통 실행 코드 수정은 필요 없다.
+2. 공개 Task/Result payload·도구 인자·도메인·권한·외부 전송을 바꾸면 별도 공통 계약 검토가 필요하다. `schemas.py`에 있다는 이유로 공개 필드를 임의 변경하지 않는다. 의미가 바뀌는 지침/검증에는 역할 버전과 회귀 사례를 함께 검토한다.
+3. 새로운 동료 역할은 아래 [확장 Agent 연결](#동료의-확장-agent-연결)의 `AgentSpec`·호스트 등록을 사용한다. 고정 네 역할을 subclass로 사칭할 수 없으며 새 역할의 허용 도구는 호스트 검토로 등록한다.
+4. 신원·작성자·승인·A/B 계산·확정 저장·누적 한도·Sandbox는 기존 공통 모듈을 사용한다. Agent는 별도 예산 생성, 직접 DB 쓰기나 승인 호출을 하지 않는다.
+
+```bash
+# import/등록/의존 방향·checkpoint 계약: DB·모델 불필요
+python -m unittest tests.test_agent_packages -v
+# 담당 흐름의 HTTP·도구 검증: PostgreSQL, 모델은 테스트 대역
+python -m unittest tests.test_agent_workflows tests.test_assistant tests.test_web tests.test_semantic_search -v
+# 기존 CLI 입출력·근거 검사: PostgreSQL, 유료 호출 없음
+python -m unittest tests.test_llm_examples -v
+# 통합 마감에 한 번 전체 회귀. 실제 Docker 격리 시험 설정은 아래 보안 절 참조
+python -m unittest discover -v
+```
+
+저장 초안·DB·공개 HTTP 계약은 그대로다. 구현 위치/검증기 fingerprint가 달라진 **이전 builtin 읽기 checkpoint는 재개를 거부**하고 현재 조건으로 새 읽기를 시작한다. 신규 checkpoint는 역할 helper 변경도 감지한다. 이번 변경은 확장 Agent의 fingerprint에 불필요한 키를 추가하지 않는다. 쓰기 재실행·강제 종료 복구를 추가한 것은 아니다.
+
 ## 실제 LLM 실행과 동료 개발 시작
 
 공통 provider는 OpenAI Responses API와 **`gpt-5.4-mini-2026-03-17` 한 모델**을 사용한다. Python 표준 라이브러리로 연결하며 추가 SDK 설치는 없다. API 호출에는 계정 사용량이 발생한다. 예제는 공개 OLIMEX 행 정보와 가상 운영 기록을 전송한다.
@@ -102,7 +151,13 @@ OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini-2026-03-17
 OPENAI_TIMEOUT_SECONDS=30
 OPENAI_MAX_OUTPUT_TOKENS=4096
+ONTOLOGICS_REQUEST_MAX_COST_USD=
+ONTOLOGICS_MODEL_PRICES_JSON=
 ```
+
+실제 유료 호출 전에는 `.env.example`의 형식으로 **요청별 USD 상한과 고정 모델 단가를 모두 명시**해야 한다. 비어 있으면 `COST_POLICY_REQUIRED`로 외부 호출 전에 중단한다. 팀 운영 상한은 기본값으로 정하지 않았다. 키 설정과 비용 정책 설정은 별개이며, 직접 조회·초안·사람 승인에는 모델이 필요하지 않다. 웹 요청의 Supervisor→전문 역할·장애 재시도·의미 검색 임베딩은 같은 예산을 공유한다. `llm_agents --role both`는 두 예제 전체, `index_evidence`는 한 색인 실행 전체의 한도를 공유한다. 개인 평가 예산이나 계정 전체 청구 상한을 대신하지 않는다.
+
+예약은 고정 모델의 전체 입력 상한(Responses 400,000, 임베딩 요청 300,000 tokens)과 출력 한도로 계산한다. 작은 요청도 이 예약액을 수용해야 한다. 응답의 사용량이 확인되면 차액을 해제하고, 미보고·응답 유실은 예약을 유지한다. 캐시 할인은 한도 계산에서 가정하지 않는다. 단가는 운영자가 확인하며 [고정 모델 가격](https://developers.openai.com/api/docs/models/gpt-5.4-mini)과 [임베딩 가격](https://developers.openai.com/api/docs/models/text-embedding-3-small)을 참고한다. 추정 사용량 기록은 실제 청구서가 아니다.
 
 ```bash
 python3 -m examples.llm_agents --role both
@@ -116,8 +171,8 @@ python3 -m examples.llm_agents --role quality
 
 | 실행 | 기대 결과 | 동료가 수정할 위치 |
 | --- | --- | --- |
-| Product | 이미 파싱한 L1 U4·R50 두 행의 `awaiting_review` 초안과 검증 결과. R50은 `population=unknown`. 확정 데이터 버전 1 유지 | [examples/llm_agents.py](examples/llm_agents.py)의 `PRODUCT_PROMPT`, `product_task`, `evaluate_product` |
-| Quality | U104, L07, 버전 2→3 비교. A 미확인→제외, B 미확인→포함. 실제 BOM 근거와 가상 이력 근거 분리 | 같은 파일의 `QUALITY_PROMPT`, `quality_task`, `evaluate_quality` |
+| Product | 이미 파싱한 L1 U4·R50 두 행의 `awaiting_review` 초안과 검증 결과. R50은 `population=unknown`. 확정 데이터 버전 1 유지 | [product/sample_cli.py](ontologics/agents/product/sample_cli.py)의 지침·task·검사 (화면 구현은 같은 폴더의 workflow.py) |
+| Quality | U104, L07, 버전 2→3 비교. A 미확인→제외, B 미확인→포함. 실제 BOM 근거와 가상 이력 근거 분리 | [quality/sample_cli.py](ontologics/agents/quality/sample_cli.py)의 지침·task·검사 (화면 구현은 같은 폴더의 workflow.py) |
 | 공통 연결 | 신원 고정·도구 검증·실행 기록·제한된 재시도 | [runtime.py](ontologics/runtime.py), [openai_provider.py](ontologics/openai_provider.py), [tool_specs.py](ontologics/tool_specs.py). 역할별 복제 없이 재사용 |
 
 Quality 버전 2/3은 **모델 호출 전 호스트가 기존 데모 승인 경로로 준비한 시험 데이터**다. LLM 작성 초안을 자동 승인하는 기능이 아니다. Product 예제는 대표 두 행의 초안 작성까지이며, 전체 S2 등록·보완·승인 흐름은 위 오프라인 데모에서 확인한다.
@@ -150,13 +205,55 @@ python -m examples.extension_agent --schema web_s1_s2_team_001 --version 2 --env
 python -m unittest tests.test_agent_extensions -v
 ```
 
-[extension_agent.py](examples/extension_agent.py)는 연결 계약을 보여주는 모델 대역 예제다. 동료는 `EXTENSION`의 책임/도구와 provider·messages를 구현하고 기존 고정 모델 `OpenAIProvider(settings, registration.allowed_tools)`로 연결한다. 허용 도구 이탈·사용자 권한 부족·확정 데이터 불변을 검증한 뒤 실제 역할 사례를 평가한다. 웹에서 새 역할로 라우팅하는 부분은 담당자가 명시적으로 연결한다. Change·Supplier·Report 업무 로직이나 자동 플러그인 로더를 구현한 것은 아니다.
+[extension_agent.py](examples/extension_agent.py)는 연결 계약을 보여주는 모델 대역 예제다. 버전 계약을 사용하는 새 역할은 [역할별 예제 폴더](examples/agents/)를 시작점으로 삼는다. `model_reader.py`는 한 번의 제품 조회, `history_reader.py`는 A→B 순차 조회이며 각 파일에 고유 INPUT/OUTPUT·INSTRUCTIONS·messages·결과 검증기를 둔다. 공통 신원·실행·승인 로직은 복제하지 않는다.
+
+1. 고유 역할 모듈에 `AgentSpec`과 `messages(task)`, 필요하면 `validate_result(value, task, tool_results)`를 정의한다. 실제 도구 결과와 일치해야 하는 값은 검증기에서 대조한다.
+2. 신뢰된 호스트 시작 코드가 `AgentRegistration.from_spec(SPEC)`으로 등록하고 `AgentTask(payload, PinnedContext(...))`를 만든다. 요청 사용자는 IdentityProvider를 통해 고정한다.
+3. `request.run_task()`로 실행한다. 같은 고정 모델을 쓸 때는 기존 `OpenAIProvider(settings, SPEC.requested_tools)`를 주입한다. 기본 예제는 모델 대역이며 유료 호출이 없다.
+4. 아래 계약 검사를 실행하고 담당 역할의 사례를 추가한다. 웹 라우팅은 담당자가 명시적으로 연결하며 자동 플러그인 등록은 지원하지 않는다.
+
+```bash
+python -m examples.extension_agent --typed --flow model --schema web_s1_s2_team_001 --version 2 --env-file .env.local
+python -m examples.extension_agent --typed --flow history --schema web_s1_s2_team_001 --version 2 --env-file .env.local
+python -m unittest tests.test_agent_contracts tests.test_agent_extensions tests.test_harness -v
+```
+
+실제 존재하는 확정 버전을 지정한다. 기대 결과는 `runtime.ok=true`, `schema_version=agent-result-1`, 고정 context와 검증된 `evidence_refs`, `error=null`이다. history의 `by_mode`는 같은 버전 공통 investigate의 A/B 결과와 같고 U106은 미확인으로 남는다. 모형/가상 이력 데이터가 없는 DB에는 위 예제를 그대로 적용하지 않는다. 고유 기능 자율 변경과 공통 검토 경계는 [Agent 지침](docs/AGENT_RUNTIME.md#확장-agent의-수정-경계), 저장된 작업의 호환 확인은 [TOOLS](docs/TOOLS.md#공개-계약과-저장된-작업의-호환성)을 따른다.
+
+## 공통 실행 계약과 격리 파서 — 로컬 개발 보완
+
+기존 `run_agent` 호환과 네 화면 Agent의 업무 검증은 유지한다. 실제 화면 경로도 역할별 공통 Task/Result 어댑터를 사용한다. 요청·하위 Agent는 `ExecutionBudget`의 모델/도구/repair 횟수·deadline·명시한 비용 정책을 공유한다. **복구 반복 기본값 0은 읽기 작업의 LLM 응답 형식 수정(`max_repairs`)**이며 자동 재검색을 뜻하지 않는다. 설정 허용 범위는 0~2회지만 공통 잔여 한도를 넘지 못한다. 권한·버전·근거·의미 오류는 수정 반복으로 통과시키지 않는다. 일시 장애 재시도·읽기 재개·멱등 처리와의 차이는 [TOOLS](docs/TOOLS.md#반복과-복구의-구분)에 정리했다. deadline/취소는 호출 경계에서 검사하고 provider timeout을 잔여 시간으로 줄인다. 동기 호출·DB 작업을 강제 종료하는 기능은 아니다.
+
+입출력 계약이 필요한 확장 Agent는 `AgentSpec`의 이름·버전·PayloadSchema·필요 도구·한도를 정의하고 `AgentRegistration.from_spec()`으로 등록한다. `AgentTask`와 `PinnedContext`를 `request.run_task()`로 전달하는 예제는 다음과 같다. 기존 등록 방식도 사용할 수 있다.
+
+```bash
+python -m examples.extension_agent --typed --schema web_s1_s2_team_001 --version 2 --env-file .env.local
+```
+
+`resume_task()`는 반환된 읽기 작업을 동일 조건으로 다시 시작하는 제한된 접점이다. 신원·현재 버전·계약·provider·프롬프트·잔여 한도와 동일 비용 정책을 재검사한다. 미보고 사용량의 예약도 재개할 때 복원한다. 중간 강제 종료의 자동 복구나 Product 쓰기의 임의 재생은 지원하지 않는다. 상세 계약은 [TOOLS](docs/TOOLS.md#공통-harness와-버전-agent-계약)를 따른다.
+
+파일 파싱을 격리하려면 검토된 파서 이미지와 별도 로컬 controller를 실행한다. controller만 Docker를 제어하며 웹에는 제한된 Unix socket client만 전달한다.
+
+```bash
+docker build -f deploy/docker/sandbox.Dockerfile -t ontologics-parser:dev .
+mkdir -p /tmp/ontologics-parser-dev
+chmod 700 /tmp/ontologics-parser-dev
+docker image inspect ontologics-parser:dev --format '{{.Id}}'
+# 위 명령의 sha256:... 값을 사용한다. 별도 터미널에서 controller를 유지한다.
+python -m ontologics.sandbox --socket /tmp/ontologics-parser-dev/parser.sock --image-id sha256:확인한이미지ID --docker /usr/local/bin/docker
+# 다른 터미널에서 기존 개발 DB에 연결한다.
+python -m ontologics.web serve --development --user alice --port 8000 --schema web_s1_s2_team_001 --env-file .env.local --sandbox-socket /tmp/ontologics-parser-dev/parser.sock
+```
+
+Docker 실행 파일 위치는 설치 환경에 맞춘다. 이미지 ID·socket·mount·명령은 신뢰된 시작 설정이며 사용자가 화면/Agent로 지정할 수 없다. 설정된 controller가 없거나 실패하면 호스트 파서로 우회하지 않는다. 기존 비격리 접수는 읽을 수 있지만 격리 모드의 새 비교·초안에는 원본 재접수가 필요하다. 이미 저장된 초안의 같은 요청 키 재생은 중복 생성하지 않는다. 미설정 방식은 기존 개발 호환 경로로, ODS는 원본 manifest 해시 대조, 이력 JSON은 제출 바이트 해시 계산과 허용 스키마 검증을 사용한다. 이 경로는 격리 실행으로 표시하지 않는다.
+
+Sandbox는 네트워크 차단·non-root·읽기 전용 루트/입력·CPU/메모리/PID/시간/출력 제한을 적용한다. Docker Desktop 검증이며 rootless·호스트 LSM·운영 프로세스 격리 완료를 의미하지 않는다. 개인 비교 평가·정답·원시 결과는 저장소 밖 `EVAL_HOME`에 두며 Git·CI artifact·외부 추적 서비스로 자동 전송하지 않는다.
 
 ## 저장소 공유 상태
 
-비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1과 목표·완료 기준 문서 PR #2는 main에 병합됐다. 2026-10-26 확인한 통합 기준 main은 `189500e`다. 첫 번째 개발용 통합의 리뷰 대상은 **`codex/s1-s2-service`**이며 기존 개발용 호스트·S1·S2·네 Agent 변경을 함께 포함한다. main 반영 여부와 CI 결과는 해당 브랜치의 GitHub PR에서 확인한다. 이 기준 버전은 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
+비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1, 목표·완료 기준 문서 PR #2와 첫 개발용 통합 PR #3은 main에 병합됐다. 2026-10-27 확인한 main은 **`7c5e2d9`**이며 개발용 호스트·S1·S2·네 Agent를 포함한다. 이번 Harness·계약·Sandbox 보완의 리뷰 브랜치는 **`codex/harness-security-eval`**이다. 실제 push·PR·CI 상태는 해당 원격 브랜치와 PR에서 확인한다. 이 기준 버전은 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
 
-저장소 접근 권한이 있는 팀원은 원격 브랜치가 게시된 뒤 `git fetch origin`과 `git switch --track origin/codex/s1-s2-service`로 새 로컬 브랜치를 받고 위 실행 순서를 따른다. 이미 같은 로컬 브랜치가 있거나 미커밋 작업이 있으면 해당 작업을 먼저 보존한다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
+저장소 접근 권한이 있는 팀원은 main의 통합 기준을 받아 기존 실행 순서를 따른다. 미커밋 작업이 있으면 먼저 보존하고, 위의 신규 Harness·Sandbox 명령은 후속 변경이 공유된 뒤 사용한다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 
 ## 개발 기준
 

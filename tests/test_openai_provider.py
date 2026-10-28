@@ -10,6 +10,8 @@ from ontologics.openai_provider import MODEL, ENDPOINT, OpenAIProvider, OpenAISe
 from ontologics.runtime import ModelRuntime, ModelConfig
 from ontologics.service import Service
 from ontologics.tool_specs import function_tools, PRODUCT_TOOLS, QUALITY_TOOLS
+from ontologics.harness import BudgetLimits, ExecutionBudget, request_budget
+from ontologics.paid_budget import CostPolicy, ModelPrice
 
 SECRET = 'test-secret-not-a-real-key'
 
@@ -38,6 +40,14 @@ class Transport:
         return Reply(json.dumps(item).encode())
 
 class ProviderTests(unittest.TestCase):
+    def setUp(self):
+        # Synthetic test prices, mocked transport: no paid network calls.
+        self.budget=ExecutionBudget(BudgetLimits(max_model_calls=64),
+            cost_policy=CostPolicy('100',(ModelPrice(MODEL,'1','2',400000),)))
+        scope=request_budget('provider-test',self.budget)
+        scope.__enter__()
+        self.addCleanup(scope.__exit__,None,None,None)
+
     def provider(self,items,tools=('lookup',)):
         transport=Transport(items)
         return OpenAIProvider(OpenAISettings(SECRET),tools,opener=transport),transport
@@ -75,6 +85,19 @@ class ProviderTests(unittest.TestCase):
         p,_=self.provider([response([tool()],status='incomplete')])
         with self.assertRaises(ProviderError) as e:p(model=MODEL,messages=[])
         self.assertEqual('OPENAI_RESPONSE_INCOMPLETE',e.exception.code)
+        self.assertEqual(7, p.calls[0]['usage']['total_tokens'])
+
+    def test_usage_details_are_subsets_and_untrusted_metadata_is_not_logged(self):
+        usage = {'input_tokens': 10, 'output_tokens': 5, 'total_tokens': 15,
+                 'input_tokens_details': {'cached_tokens': 4, 'secret': SECRET},
+                 'output_tokens_details': {'reasoning_tokens': 2, 'secret': SECRET}}
+        p, _ = self.provider([response([text()], usage=usage)])
+        p(model=MODEL, messages=[])
+        actual = p.calls[0]['usage']
+        self.assertEqual(15, actual['total_tokens'])
+        self.assertEqual({'cached_tokens': 4}, actual['input_tokens_details'])
+        self.assertEqual({'reasoning_tokens': 2}, actual['output_tokens_details'])
+        self.assertNotIn(SECRET, json.dumps(p.calls))
 
     def test_unexposed_tool_and_model_switch_are_rejected(self):
         p,t=self.provider([response([tool(name='apply')])])
@@ -162,5 +185,42 @@ class ProviderTests(unittest.TestCase):
             self.assertFalse({'review','apply','bootstrap'} & {s['name'] for s in specs})
             self.assertTrue(all('actor' not in s['parameters']['properties'] for s in specs))
         with self.assertRaises(ValueError):function_tools(['review'])
+
+    def test_paid_call_requires_explicit_policy_and_reserves_before_transport(self):
+        for policy,code in ((None,'COST_POLICY_REQUIRED'),
+                (CostPolicy('0.01',(ModelPrice(MODEL,'1','2',400000),)),'COST_BUDGET_EXCEEDED'),
+                (CostPolicy('100',(ModelPrice(MODEL,'1','2',100),)),'COST_RESERVATION_CONFIG_INVALID')):
+            with self.subTest(code=code),request_budget('separate-paid-test',ExecutionBudget(cost_policy=policy)):
+                p,t=self.provider([response([text()])])
+                with self.assertRaises(Exception) as failure:p(model=MODEL,messages=[{'role':'user','content':'hi'}])
+                self.assertEqual(code,failure.exception.code)
+                self.assertEqual([],t.requests)
+
+    def test_unreported_usage_keeps_reservation_and_timeout_uses_remaining_deadline(self):
+        clock=[0.0]
+        budget=ExecutionBudget(BudgetLimits(deadline_seconds=2),clock=lambda:clock[0],
+            cost_policy=CostPolicy('0.5',(ModelPrice(MODEL,'1','2',400000),)))
+        with request_budget('remaining-time-test',budget):
+            clock[0]=1.5
+            p,t=self.provider([response([text()],usage={})])
+            p(model=MODEL,messages=[{'role':'user','content':'hi'}])
+            self.assertEqual(0.5,t.requests[0][1])
+            self.assertEqual('usage_unreported_reserved',p.calls[0]['cost']['status'])
+            self.assertIsNone(p.calls[0]['cost']['reported_cost_usd'])
+            self.assertEqual('0.408192',budget.snapshot()['cost']['unreported_reserved_usd'])
+            p2,t2=self.provider([response([text()])])
+            with self.assertRaises(Exception) as failure:p2(model=MODEL,messages=[])
+            self.assertEqual('COST_BUDGET_EXCEEDED',failure.exception.code)
+            self.assertEqual([],t2.requests)
+
+    def test_reported_usage_settles_even_incomplete_and_never_double_counts_reasoning(self):
+        p,_=self.provider([response([text()],status='incomplete',usage={'input_tokens':10,'output_tokens':5,
+            'input_tokens_details':{'cached_tokens':8},'output_tokens_details':{'reasoning_tokens':4}})])
+        with self.assertRaises(ProviderError):p(model=MODEL,messages=[])
+        self.assertEqual('0.00002',p.calls[0]['cost']['reported_cost_usd'])
+        cost=self.budget.snapshot()['cost']
+        self.assertEqual('0.00002',cost['reported_cost_usd'])
+        self.assertEqual('0',cost['unreported_reserved_usd'])
+        self.assertEqual(1,cost['paid_calls'])
 
 if __name__=='__main__':unittest.main()

@@ -29,6 +29,10 @@ const errorGuides = {
   DEVELOPMENT_SESSION_CHANGED: '다른 탭에서 개발 사용자가 변경되었거나 세션이 갱신되었습니다. 화면을 새로고침한 뒤 서버가 확인한 사용자로 작업하세요.',
   DEVELOPMENT_SESSION_EXPIRED: '개발 사용자 세션을 더 이상 사용할 수 없습니다. 화면을 새로고침해 서버가 제공한 개발 신원과 권한을 다시 확인하세요.',
   AI_NOT_CONFIGURED: '이 서버에 실제 모델이 설정되어 있지 않습니다. 공통 도구의 조회 결과는 계속 사용할 수 있습니다.',
+  COST_POLICY_REQUIRED: '서버의 AI 요청 비용 한도가 설정되지 않아 외부 호출을 중단했습니다. 담당자가 한도와 모델 단가를 설정해야 합니다. 직접 조회·등록·사람 승인은 계속 사용할 수 있습니다.',
+  COST_BUDGET_EXCEEDED: '이 요청의 남은 비용 한도로 다음 AI 호출을 진행할 수 없습니다. 확인된 도구 결과와 저장된 초안을 확인하세요.',
+  SHARED_BUDGET_EXCEEDED: '이 요청의 공통 호출 한도에 도달했습니다. 완료된 결과와 남은 작업을 확인하세요.',
+  DEADLINE_EXCEEDED: '이 요청의 실행 시간이 끝났습니다. 저장된 초안은 별도로 확인하고 같은 요청 키로 재시도하세요.',
   EMBEDDINGS_NOT_CONFIGURED: '의미 검색용 임베딩 API가 서버에 설정되지 않았습니다. 문자열 검색을 선택하거나 서버 설정을 확인하세요.',
   EVIDENCE_INDEX_NOT_READY: '선택한 승인 버전·자료 범위의 의미 검색 색인이 준비되지 않았습니다. 문자열 검색을 사용하거나 해당 버전의 색인 준비 후 다시 요청하세요.',
   INDEX_INTEGRITY: '색인 내용과 승인 원본의 일치성을 확인하지 못했습니다. 이 검색 결과를 사용하지 말고 서버의 색인 상태를 확인하세요.',
@@ -1148,6 +1152,7 @@ async function initialize() {
   $('current-version').textContent = '연결 시 데이터 v' + result.data_version;
   $('development-notice').textContent = context.development_notice || '로그인 없는 개발 신원입니다. 실제 사용자 인증 완료를 의미하지 않습니다. 보드·로트·장착/제거 기록은 시연용 가상 데이터입니다.';
   $('model-status').textContent = context.model?.configured ? '고정 모델 설정 있음 · 실제 연결은 요청 실행 후 확인합니다. ' + (context.model.model || '') : '실제 모델 미설정 · 공통 도구 조회는 사용할 수 있습니다.';
+  if (context.model?.configured && !context.model?.cost_policy_configured) $('model-status').textContent += ' · 비용 정책 미설정: 유료 호출은 차단됩니다.';
   storageKey = 'ontologics-s1:' + (context.database_schema || context.dataset || 'default') + ':' + context.identity.actor;
   try {
     const stored = JSON.parse(sessionStorage.getItem(storageKey));

@@ -83,12 +83,39 @@ class AgentWorkflowTests(WebCase):
         return self.http(self.alice, '/api/assistant', {'screen': 'investigation', 'version': 1,
             'context': {}, 'question': question})
 
+    def test_saved_draft_readback_failure_withholds_typed_result_and_retries_same_draft(self):
+        from ontologics.host import RequestSession
+        from ontologics.web import failure
+        receipt = self.upload_l1()
+        self.alice.app.provider_factory = lambda names: ScriptedReceipt()
+        original = RequestSession.call
+        def readback_failed(request, tool, arguments):
+            if tool == 'get_draft':
+                return failure('STORAGE_ERROR', 'Controlled readback failure')
+            return original(request, tool, arguments)
+        with patch.object(RequestSession, 'call', readback_failed):
+            failed = self.failed(self.ask_draft(receipt, 'readback-retry'), 502, 'AI_DRAFT_INCOMPLETE')['data']
+        typed = failed['agent_result']
+        self.assertEqual('draft_saved_model_failed', failed['action'])
+        self.assertIsNone(typed['payload'])
+        self.assertFalse(typed['runtime']['ok'])
+        self.assertEqual(typed['runtime'], failed['runtime'])
+        self.assertEqual('completed', typed['runtime']['execution_status'])
+        self.assertEqual('AI_DRAFT_INCOMPLETE', typed['error']['code'])
+        retried = self.ok(self.ask_draft(receipt, 'readback-retry'))['data']
+        self.assertEqual('draft_prepared', retried['action'])
+        self.assertEqual(failed['draft']['draft_id'], retried['draft']['draft_id'])
+        self.assertEqual(1, retried['draft']['draft_version'])
+
     def test_source_draft_failure_recovers_one_version_then_revision_requires_exact_human_approval(self):
         receipt = self.upload_l1()
         self.assertEqual(12, receipt['data']['unknown_count'])
         self.alice.app.provider_factory = lambda names: ScriptedReceipt(fail_after_save=True)
         partial = self.failed(self.ask_draft(receipt), 502, 'MODEL_ERROR')['data']
         self.assertEqual('draft_saved_model_failed', partial['action'])
+        self.assertEqual('product', partial['agent_result']['agent_name'])
+        self.assertIsNone(partial['agent_result']['payload'])
+        self.assertEqual('MODEL_ERROR', partial['agent_result']['error']['code'])
         self.assertEqual('', partial['runtime']['text'])
         first = partial['draft']
         self.assertEqual('awaiting_review', partial['draft_record']['status'])
@@ -99,6 +126,11 @@ class AgentWorkflowTests(WebCase):
         self.alice.app.provider_factory = lambda names: ScriptedReceipt()
         recovered = self.ok(self.ask_draft(receipt))['data']
         self.assertEqual('draft_prepared', recovered['action'])
+        self.assertEqual(first['draft_id'], recovered['agent_result']['payload']['draft_id'])
+        self.assertEqual(receipt['data']['receipt_id'], recovered['agent_result']['payload']['source_receipt_id'])
+        self.assertEqual('unapproved_candidate_or_draft', recovered['agent_result']['payload']['provenance_scope'])
+        self.assertEqual([], recovered['agent_result']['evidence_refs'])
+        self.assertIsNone(recovered['agent_result']['error'])
         self.assertEqual('matched', recovered['consistency'])
         self.assertEqual('', recovered['runtime']['text'])
         self.assertTrue(recovered['runtime']['output_withheld'])

@@ -56,6 +56,11 @@ class AssistantTests(WebCase):
         explained = self.ok(self.ask('review', context))['data']
         self.assertEqual('product', explained['role'])
         self.assertEqual('matched', explained['consistency'])
+        contract = explained['agent_result']
+        self.assertEqual(('agent-result-1', 'product'), (contract['schema_version'], contract['agent_name']))
+        self.assertEqual('free_text_unverified', contract['payload']['meaning_validation'])
+        self.assertEqual('unapproved_candidate_or_draft', contract['payload']['provenance_scope'])
+        self.assertEqual([], contract['evidence_refs'])
         self.assertEqual(['get_draft', 'validate_draft'], [c['name'] for c in explained['tool_calls']])
         expected_ref = {'draft_id': draft['draft_id'], 'version': draft['draft_version']}
         self.assertTrue(all(c['arguments'] == expected_ref for c in explained['tool_calls']))
@@ -76,6 +81,11 @@ class AssistantTests(WebCase):
         explained = self.ok(self.ask('evidence', context))['data']
         self.assertEqual('knowledge', explained['role'])
         self.assertEqual('matched', explained['consistency'])
+        contract = explained['agent_result']
+        self.assertEqual('knowledge', contract['agent_name'])
+        self.assertIsNone(contract['error'])
+        self.assertEqual('evidence:demo:initial', contract['evidence_refs'][0]['evidence_id'])
+        self.assertEqual('synthetic', contract['evidence_refs'][0]['origin'])
         self.assertEqual({'node_id': context['node_id'], 'version': 1}, explained['tool_calls'][0]['arguments'])
         direct = self.ok(self.tool('lookup', {'node_id': context['node_id'], 'version': 1}))
         self.assertEqual(direct['data'], explained['results'][0]['data'])
@@ -94,6 +104,10 @@ class AssistantTests(WebCase):
         data = result['data']
         self.assertEqual('knowledge', data['role'])
         self.assertEqual('knowledge', data['delegation']['role'])
+        route = data['delegation']['agent_result']
+        self.assertEqual('supervisor', route['agent_name'])
+        self.assertEqual('knowledge', route['payload']['target_role'])
+        self.assertEqual(data['agent_result']['context']['data_version'], route['context']['data_version'])
         self.assertEqual(1, result['data_version'])
         self.assertEqual({'node_id': context['node_id'], 'version': 1}, data['tool_calls'][0]['arguments'])
         ids = [data['runtime']['run_id'], data['delegation']['runtime']['run_id']]

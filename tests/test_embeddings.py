@@ -18,6 +18,8 @@ from ontologics.retrieval import EvidenceIndex
 from ontologics.service import DomainError, Service
 from tests.db import database_for_test
 from tests.test_service import PRINCIPALS
+from ontologics.harness import BudgetLimits, ExecutionBudget, request_budget
+from ontologics.paid_budget import CostPolicy, ModelPrice
 
 
 KEY = 'fake-key-do-not-log'
@@ -71,6 +73,13 @@ def http_error(status):
 
 
 class EmbeddingTransportTests(unittest.TestCase):
+    def setUp(self):
+        self.budget=ExecutionBudget(BudgetLimits(max_model_calls=64),
+            cost_policy=CostPolicy('100',(ModelPrice(EMBEDDING_MODEL,'1','0',300000),)))
+        scope=request_budget('embedding-test',self.budget)
+        scope.__enter__()
+        self.addCleanup(scope.__exit__,None,None,None)
+
     def adapter(self, transport):
         return OpenAIEmbeddings(OpenAISettings(KEY), opener=transport)
 

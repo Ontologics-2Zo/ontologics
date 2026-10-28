@@ -1,0 +1,155 @@
+"""C 1st phase end to end: claim file -> confirmed claim -> trace -> scopes -> request drafts.
+
+Same pattern as ontologics.demo: a fresh PostgreSQL schema, scripted development
+identities (not real operational approval) and a JSON summary in artifacts/local.
+No model or paid API call is made. Request drafts stop at awaiting_review because
+reviewing and sending them is a person's job.
+"""
+import argparse
+import json
+from pathlib import Path
+import uuid
+
+from ontologics import __version__
+from ontologics.claim_response.fixtures import claim_response_nodes, load_operations
+from ontologics.claim_response.intake import convert_claim
+from ontologics.claim_response.requests import (
+    REQUEST_DIR, REVIEW_LABELS, prepare_containment, serial_ranges, write_request)
+from ontologics.claim_response.trace import (
+    MATCHED, c_operations_shipments, c_operations_stock, candidate_scope, stored_scope, trace_claim)
+from ontologics.demo import fixture_nodes
+from ontologics.model import ROOT
+from ontologics.service import Service
+
+PRINCIPALS = {
+    'seed-admin': {'kind': 'human', 'roles': ['read', 'seed', 'audit']},
+    'claim-agent': {'kind': 'agent', 'roles': ['read', 'draft']},
+    'reviewer': {'kind': 'human', 'roles': ['read', 'review', 'audit']},
+    'workflow': {'kind': 'system', 'roles': ['read', 'apply']},
+}
+CLAIMS = ROOT / 'data/claim_response/claims'
+DEFAULT_CLAIM = CLAIMS / 'claim_table.csv'
+CONFIGURATION = 'config:esp32-poe:L:WROOM'
+COLLECTED_AT = '2026-10-26T10:30:00+09:00'
+PREPARED_AT = '2026-10-26T10:45:00+09:00'
+
+
+def must(response):
+    if not response['ok']:
+        raise RuntimeError(json.dumps(response['errors'], ensure_ascii=False))
+    return response
+
+
+def approve_and_apply(svc, operations, key, note):
+    """claim-agent drafts, a different human identity approves, the workflow applies."""
+    draft = must(svc.prepare_draft('claim-agent', operations, request_key=key + '-draft'))['data']
+    must(svc.review('reviewer', draft['draft_id'], draft['draft_version'], decision='approve', note=note,
+                    request_key=key + '-review'))
+    return must(svc.apply('workflow', draft['draft_id'], draft['draft_version'], request_key=key + '-apply'))
+
+
+def existing_nodes():
+    catalog = json.loads((ROOT / 'data/catalog.json').read_text(encoding='utf-8'))['nodes']
+    fictional, _ = fixture_nodes()
+    return catalog + fictional
+
+
+def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_dir=REQUEST_DIR):
+    svc = Service(database, schema=schema or ('claim_demo_' + uuid.uuid4().hex if database is None else None),
+                  principals=PRINCIPALS)
+    try:
+        if svc._version() != 0:
+            raise ValueError('The C demo requires a fresh schema; choose a new --schema')
+        # Version 1: existing real/synthetic data + C synthetic operations (boards, lines, production records).
+        seeded = must(svc.bootstrap('seed-admin', existing_nodes() + claim_response_nodes(), request_key='claim-seed'))
+
+        # Version 2: the converted claim is registered as needs_review after a human review of the draft.
+        conversion = convert_claim(claim_path, collected_at=COLLECTED_AT)
+        if conversion['report']['state'] != 'needs_review':
+            raise RuntimeError('Claim conversion is blocked: ' + json.dumps(conversion['report']['issues'], ensure_ascii=False))
+        registered = approve_and_apply(svc, [{'op': 'put', 'node': n} for n in conversion['nodes']], 'claim-intake',
+                                       'Development review: converted claim fields match the source file.')
+        intake = next(n for n in conversion['nodes'] if n['type'] == 'ClaimIntake')
+
+        # Version 3: a person confirms the claim (scripted reviewer identity in this demo).
+        confirmed = approve_and_apply(svc, [{'op': 'put', 'node': dict(intake, intake_state='confirmed')}],
+                                      'claim-confirm', 'Development review: customer claim confirmed for investigation.')
+        version = confirmed['data_version']
+
+        # 4-1 / 4-2 on the confirmed version through the existing read API.
+        trace = trace_claim(svc, 'claim-agent', intake['id'], version=version,
+                            configuration_id=conversion['report']['configuration_candidate_id'])
+        case = trace['quality_case']['node']
+        if case is None or trace['lines']['single_line'] is None:
+            raise RuntimeError('Trace needs a person: ' + json.dumps(trace['quality_case'], ensure_ascii=False))
+        line_id = trace['lines']['single_line']
+
+        # 4-3 / 4-4 with the temporary C operations basis (until the shared B stock/shipment types).
+        records = must(svc.lookup('claim-agent', kind='UnitProductionRecord', version=version))['data']
+        operations = load_operations()
+        stock, shipments = c_operations_stock(operations), c_operations_shipments(operations)
+        hold = stored_scope(case, line_id, records, stock, shipments)
+        candidate = candidate_scope(case, line_id, records, shipments)
+
+        # 5-1 / 5-2 / 5-3: request drafts wait for a human review; nothing is sent.
+        containment = prepare_containment(case, line_id, records, hold, prepared_at=PREPARED_AT,
+                                          external_claim_id=intake['external_claim_id'],
+                                          configuration_id=CONFIGURATION)
+        extra = [candidate['node']] if candidate['node'] else []
+        draft = must(svc.prepare_draft('claim-agent', [{'op': 'put', 'node': n} for n in [case, *containment['nodes'], *extra]],
+                                       request_key='containment-draft'))['data']
+        status = must(svc.get_draft('claim-agent', draft['draft_id'], draft['draft_version']))['data']['status']
+        again = prepare_containment(case, line_id, records, hold, prepared_at=PREPARED_AT,
+                                    external_claim_id=intake['external_claim_id'], configuration_id=CONFIGURATION,
+                                    review_status=status)
+        documents = [str(write_request(text, name, base_dir=request_dir)) for name, text in again['documents'].items()]
+
+        return {
+            'contract_version': __version__, 'database_schema': svc.schema,
+            'mode': 'development demonstration; scripted human identities, not real operational approval; no model calls',
+            'versions': {'seed': seeded['data_version'], 'claim_registered': registered['data_version'],
+                         'claim_confirmed': version, 'after_request_drafts': svc._version()},
+            'claim': {'file': conversion['report']['file'], 'external_claim_id': intake['external_claim_id'],
+                      'claimed_quantity': intake['claimed_quantity'], 'reported_serials': intake['reported_serials']},
+            'links': {'matched': [l['unit_id'] for l in trace['links'] if l['match_state'] == MATCHED],
+                      'open': [l for l in trace['links'] if l['match_state'] != MATCHED]},
+            'production_line_id': line_id,
+            'quality_case_id': case['id'],
+            'hold_scope': {'state': hold['state'], 'basis': hold.get('basis'),
+                           'units': serial_ranges(hold['node']['unit_ids']) if hold['node'] else None,
+                           'count': len(hold['node']['unit_ids']) if hold['node'] else 0},
+            'candidate_scope': {'state': candidate['state'], 'basis': candidate.get('basis'),
+                                'units': serial_ranges(candidate['node']['unit_ids']) if candidate['node'] else None,
+                                'count': len(candidate['node']['unit_ids']) if candidate['node'] else 0},
+            'requests': [{'id': n['id'], 'kind': n['request_kind'], 'scope_id': n['scope_id']}
+                         for n in containment['nodes'] if n['type'] == 'ContainmentRequest'],
+            'skipped_requests': containment['skipped'],
+            'request_draft': {'draft_id': draft['draft_id'], 'draft_version': draft['draft_version'],
+                              'status': status, 'review_label': REVIEW_LABELS.get(status, status),
+                              'sending': '미송부', 'on_site': '미확인'},
+            'documents': documents,
+        }
+    finally:
+        svc.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--schema', default=None, help='Fresh PostgreSQL schema; default unique claim_demo_<id>')
+    parser.add_argument('--claim', default=str(DEFAULT_CLAIM), help='Claim file (.csv, .xlsx or .eml)')
+    parser.add_argument('--output', default='artifacts/local/claim_response/run_demo.json')
+    args = parser.parse_args()
+    summary = run_demo(schema=args.schema, claim_path=Path(args.claim))
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps({'schema': summary['database_schema'], 'output': str(output), 'versions': summary['versions'],
+                      'claim': summary['claim']['external_claim_id'], 'matched_boards': len(summary['links']['matched']),
+                      'production_line': summary['production_line_id'],
+                      'hold': summary['hold_scope'], 'candidate': summary['candidate_scope'],
+                      'request_draft': summary['request_draft'], 'documents': summary['documents']},
+                     ensure_ascii=False, indent=2))
+
+
+if __name__ == '__main__':
+    main()

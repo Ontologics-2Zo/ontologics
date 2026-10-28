@@ -29,6 +29,8 @@ from .openai_provider import MODEL, OpenAIProvider, OpenAISettings, ProviderErro
 from .embeddings import OpenAIEmbeddings
 from .runtime import ModelConfig
 from .service import AgentGateway, DomainError, RULE_VERSION, Service
+from .builtin_agents import builtin_task
+from .contracts import withhold_agent_result
 
 
 HTTP_CONTRACT = 'web-0.3'
@@ -117,6 +119,10 @@ def http_status(result):
         return 409
     if code in {'STORAGE_ERROR', 'IDENTITY_PROVIDER_UNAVAILABLE', 'AI_NOT_CONFIGURED', 'AI_BUSY', 'EMBEDDINGS_NOT_CONFIGURED', 'EVIDENCE_INDEX_NOT_READY', 'SOURCE_STORAGE_ERROR', 'DEVELOPMENT_SESSION_LIMIT'}:
         return 503
+    if code in {'COST_POLICY_REQUIRED', 'COST_CONFIG_INVALID', 'MODEL_PRICE_REQUIRED', 'COST_RESERVATION_CONFIG_INVALID'}:
+        return 503
+    if code in {'COST_BUDGET_EXCEEDED', 'SHARED_BUDGET_EXCEEDED'}:
+        return 429
     if code == 'METHOD_NOT_ALLOWED':
         return 405
     if code == 'INPUT_TOO_LARGE':
@@ -251,7 +257,8 @@ class WebApplication:
                     result['data'] = {'identity': request.context, 'csrf_token': self.csrf_token,
                         'database_schema': self.host._database.schema,
                         'default_queries': example_queries(), 'http_contract': HTTP_CONTRACT,
-                        'model': {'configured': self.provider_factory is not None, 'model': self.model},
+                        'model': {'configured': self.provider_factory is not None, 'model': self.model,
+                                  'cost_policy_configured': self.host._cost_policy is not None},
                         'embeddings': {'configured': self.host._embedding_provider is not None,
                             **({} if self.host._embedding_provider is None else {
                                 'model': self.host._embedding_provider.model,
@@ -339,14 +346,21 @@ class WebApplication:
                 '"after":{"status":"정확한 상태 코드","evidence":["해당 보드 행의 evidence만"]}}]}이다. '
                 'A/B 모든 보드를 한 번씩 넣는다. 비교에서는 before도 status/evidence 객체로 넣고, '
                 '초기 조회만 before=null이다. results[].evidence 배열을 보드와 before/after별로 그대로 복사한다. '
+                'A와 B는 서로 다른 시간 질문이며 보완 전후 단계가 아니다. '
+                'supplied_calls의 도구가 investigate이면 A와 B의 모든 before는 반드시 null이다. '
+                'compare_investigation일 때만 같은 mode의 도구 data.before에서 before를 가져온다. '
+                'A 결과를 B의 before로 옮기지 않는다. '
                 '배열이 비면 []로 유지한다. 다른 보드·전체 결과·ProductUnit의 근거를 빌리지 않는다. '
                 '판정·근거는 observations에만 쓴다. 자유문 요약은 추가하지 않는다.')
-            runtime = request.run_agent('quality', scoped,
+            implementation, task = builtin_task('quality', 'investigation', body['question'], body['version'], calls,
                 [{'role': 'system', 'content': prompt}, {'role': 'user', 'content': canonical({
                     'question': body['question'], 'supplied_calls': calls})}],
+                conditions={k: body[k] for k in ('queries', 'before_version') if k in body})
+            agent_result = request.run_task('quality', implementation, task, scoped,
                 config=ModelConfig(model=self.model, max_steps=6), capture_tool_trace=True)
+            runtime = agent_result['runtime']
             trace = runtime.pop('tool_trace', [])
-            data = {'runtime': runtime, 'results': results, 'conditions': {
+            data = {'runtime': runtime, 'agent_result': agent_result, 'results': results, 'conditions': {
                 k: body[k] for k in ('queries', 'version', 'before_version') if k in body},
                 'consistency': 'not_verified', 'provider_calls': getattr(provider, 'calls', []),
                 'tool_calls': [{'name': t['name'], 'arguments': t['arguments'],
@@ -360,6 +374,7 @@ class WebApplication:
                 fields = ('ok', 'data', 'data_version', 'evidence', 'conflicts', 'rule_version', 'schema_version')
                 if not matching or any(any(r[k] != results[mode][k] for k in fields) for r in matching):
                     runtime['text'] = ''
+                    withhold_agent_result(agent_result, 'AI_RESULT_MISMATCH', 'Direct and Agent reads differ')
                     return failure('AI_RESULT_MISMATCH', '직접 조회와 AI 도구 결과의 일치를 확인하지 못했습니다.', data=data)
             try:
                 data['display_text'], data['verified_observations'] = verified_quality_text(runtime['text'], results)
@@ -368,6 +383,7 @@ class WebApplication:
                 data['explanation_mode'] = 'verified_template'
             except DomainError as exc:
                 runtime['text'] = ''
+                withhold_agent_result(agent_result, exc.code, exc.message)
                 # A completed model transport is not a verified explanation.
                 checked = request.record_agent_check(runtime['run_id'], accepted=False, code=exc.code)
                 checked['data'] = data
@@ -376,6 +392,8 @@ class WebApplication:
             if not checked['ok']:
                 data['display_text'] = ''
                 runtime['text'] = ''
+                error = checked['errors'][0]
+                withhold_agent_result(agent_result, error['code'], error['message'])
                 checked['data'] = data
                 return checked
             data['consistency'] = 'matched'
@@ -627,6 +645,7 @@ def main():
     parser.add_argument('--schema', required=True, help='Dedicated development PostgreSQL schema')
     parser.add_argument('--env-file', help='Database settings file; never commit secrets')
     parser.add_argument('--model-env-file', help='Model settings file; defaults to .env/.env.local then process env')
+    parser.add_argument('--sandbox-socket', help='Trusted local parser controller socket; configured failures never fall back to host parsing')
     parser.add_argument('--user', choices=('alice', 'bob', 'reader'), help='Initial development user for a new browser; selector can switch presets')
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--reserve-l1', action='store_true', help='Seed only L configuration; register L1 through S2')
@@ -643,12 +662,19 @@ def main():
         identities = DevelopmentIdentityProvider(USERS, enabled=True)
         factory, model, embeddings = None, MODEL, None
         settings_values = environment_values(args.model_env_file)
+        from .paid_budget import cost_policy_from_environment
+        cost_policy = cost_policy_from_environment(settings_values)
         if settings_values.get('OPENAI_API_KEY'):
             settings = OpenAISettings.from_environment(environ=settings_values)
             factory = lambda names: OpenAIProvider(settings, names)
             model = settings.model
             embeddings = OpenAIEmbeddings(settings)
-        app = WebApplication(CommonHost(identities, database, embedding_provider=embeddings), DevelopmentContext('dev-' + args.user),
+        sandbox_client = None
+        if args.sandbox_socket:
+            from .sandbox import SandboxClient
+            sandbox_client = SandboxClient(args.sandbox_socket)
+        app = WebApplication(CommonHost(identities, database, embedding_provider=embeddings,
+                                       sandbox_client=sandbox_client, cost_policy=cost_policy), DevelopmentContext('dev-' + args.user),
                              provider_factory=factory, model=model)
         # Fail startup clearly for missing DB, without exposing its URL.
         context = app.dispatch('/api/context')
@@ -657,7 +683,8 @@ def main():
             return 1
         server = WebServer(app, args.port)
         print(canonical({'url': server.origin, 'identity': 'dev-' + args.user, 'schema': database.schema,
-                         'mode': 'development', 'model_configured': factory is not None}), flush=True)
+                         'mode': 'development', 'model_configured': factory is not None,
+                         'cost_policy_configured': cost_policy is not None}), flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:
@@ -665,6 +692,10 @@ def main():
         finally:
             server.server_close()
         return 0
+    except DomainError as exc:
+        print(canonical({'ok': False, 'error': exc.code,
+                         'message': '공통 실행 정책 설정을 확인하세요. 비밀값은 로그에 기록하지 않습니다.'}))
+        return 1
     except (DatabaseError, IdentityError, ProviderError, OSError):
         print(canonical({'ok': False, 'error': '시작하지 못했습니다. DB·모델 설정·포트·파일 접근을 확인하세요.'}))
         return 1

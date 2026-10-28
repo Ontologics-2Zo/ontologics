@@ -161,6 +161,65 @@ B query: `{mode:'B', lot_id, unit_ids:[...], start, end, period_meaning:'install
 
 등록·정정은 `operations=[{'op':'put','node':{...}}]`다. 새 ID는 생성, 기존 ID는 해당 사실의 새 데이터 버전이다. 삭제는 제공하지 않는다. 소스·근거 노드는 같은 ID로 덮어쓸 수 없으며 수정 근거는 새 ID로 만든다. 등록·보완하는 노드들 사이의 참조를 한 묶음으로 검증한다.
 
+## 공통 Harness와 버전 Agent 계약
+
+기존 `CommonHost`·`IdentityProvider`·`ModelRuntime`·`AgentGateway`를 유지하며 책임을 작은 모듈로 추가했다. Python 패키지를 `app/`로 옮기거나 도메인 모델·승인 원장을 복제하지 않는다.
+
+| 책임·코드 | 추가 계약 | 유지되는 경계 |
+| --- | --- | --- |
+| `harness.py` / `ExecutionBudget` | 요청과 하위 Agent의 모델/도구/repair 한도·deadline·비용 원장 공유, 호스트 취소. 다른 새 예산으로 교체 불가 | provider timeout을 잔여 시간으로 제한. 호출 중 강제 중단·계정 전체 과금 통제는 아님 |
+| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. ontology `graph-0.1`, context 형식 `context-1` 구분 |
+| `build_context_messages` | 동일 고정 조건 + 비신뢰 자료. baseline은 전체 자료, structured는 명시된 Evidence ID만 선별하고 생략 ID 표시 | 새로운 사실 요약·검색 정답 발견 기능 아님. 원자료는 호출자가 보존 |
+| `contracts.py` | `AgentSpec`·`AgentTask`·`AgentResult`, 얕은 `PayloadSchema`와 역할 검증기를 합성. 신원/승인 필드는 계약 권한으로 사용하지 않음 | Task `agent-task-1`·Result `agent-result-1`·역할 버전과 확정/초안 버전은 별개. DB migration/OWL 상속 기능 아님 |
+| `host.py` / `run_task` | 서버에 등록한 Spec·구현의 messages·Task·provider를 공통 실행기로 전달. `builtin_agents.py`의 고정 역할/flow 어댑터로 실제 네 화면 역할도 같은 경로 사용. 결과 data_version이 있으면 고정 정수 버전과 대조. 실제 도구 결과의 Evidence만 확정 원본 정보로 연결하고 역할 결과 검증기 실행 | 기존 `AgentRegistration`/`run_agent` 호환. 웹 응답의 `data.agent_result`에 공통 DTO 추가; 자유 설명은 `free_text_unverified`로 구분 |
+| `runtime.py` / `max_repairs` | 기본 0, 명시적 읽기 경로에서 설정값 0~2회 이내 형식 복구. 원래 목표·근거·권한 유지, 공유 잔여 예산에 차감 | 권한 거부·잘못된 버전·의미 검증 실패·부족 근거를 재시도로 사실화하지 않음. 쓰기 역할의 임의 반복 금지 |
+| `host.py` / `resume_task` | 반환된 실패 읽기 작업의 동일 actor/task/base/model/config/provider/프롬프트·스키마·도구 fingerprint, 잔여 호출·비용·시간과 현재 권한 재검사. 원자적 1회 예약 | `runtime_runs.config`에 상태 참조 저장, 승인 원장 대체 안 함. 저장 전 강제 종료·모델 대화 그대로 이어가기·임의 쓰기 재생 미지원 |
+| `openai_provider.py` | 성공/불완전 출력의 보고 usage와 cached/reasoning 부분량 기록 | reasoning은 output에 포함된 부분량, cache는 input의 부분량. 호출 전 비용 예약·보고 사용량 정산. 미보고/유실 비용의 예약을 유지하며 0으로 간주하지 않음. 비밀/원문 외부 trace 자동 전송 없음 |
+
+`PayloadSchema`는 지원하는 필드/형식을 검사하며 사실의 진위를 보증하지 않는다. 역할의 의미 검증기는 호스트에 등록하고, 승인·시간·원본 검증은 기존 공통 도구가 수행한다. `SHARED_BUDGET_EXCEEDED`, `EXECUTION_CANCELLED`, `DEADLINE_EXCEEDED`, `PINNED_CONTEXT_MISMATCH`, `INVALID_FINAL_PAYLOAD`를 안전 오류로 반환한다. 체크포인트는 만료·재사용·변경된 기준/계약을 거부하고 새 사람 승인을 우회하지 않는다.
+
+typed `AgentResult`는 기존 `schema_version/agent_name/agent_version/payload/runtime/context`에 `evidence_refs`와 `error`를 제공한다. `EvidenceRef`는 `data_version/evidence_id/source_id/origin/locator/source_sha256`이며 실제 성공 도구 응답과 같은 확정 스냅샷의 Evidence/SourceDocument를 연결한 값이다. 역할 payload에 `evidence_ids`가 있으면 읽은 근거 안의 인용만 허용한다. 없는 근거·다른 버전·미반영 초안 근거를 확정 근거로 승격하지 않는다. `AgentError`는 기존 runtime의 안전한 `code/message`와 선택적 `error_type`을 재사용한다. 실패 payload는 null이다. 신뢰된 호스트의 잘못된 등록/입력 DTO는 실행 전 ValueError/DomainError로 거부하며 사용자 HTTP 오류 매핑은 기존 web 계약을 따른다.
+
+역할은 선택적으로 `validate_result(value, task, tool_results)`를 제공한다. `tool_results`는 실제 성공한 호출의 `name/arguments/result` 복사본이고, True가 아니면 `AGENT_RESULT_REJECTED`로 끝난다. 출력 검증기의 코드도 재개 fingerprint에 포함된다. 임의 자유문의 모든 주장을 자동 검증하는 기능은 아니며 역할 개발자가 해당 의미 검증을 맡는다.
+
+`paid_budget.py`의 `CostPolicy`는 운영자가 명시한 요청별 USD 상한·고정 모델 단가와 입력 상한을 관리한다. `CommonHost(..., cost_policy=...)` 또는 신뢰된 CLI의 `ExecutionBudget(cost_policy=...)`로 전달하며 사용자 body/Agent 출력에서 선택하지 않는다. 설정은 `ONTOLOGICS_REQUEST_MAX_COST_USD`, `ONTOLOGICS_MODEL_PRICES_JSON`이다. 누락 시 유료 provider/임베딩은 네트워크 전 `COST_POLICY_REQUIRED`로 중단한다. 가격 누락·잘못된 설정·잔여 예약 부족도 fail-closed다. 모델 키만 있는 설정은 유료 실행 준비 완료가 아니다.
+
+공통 원장은 각 전송 전에 고정 모델 전체 입력 상한×단가+설정 출력 상한×단가를 예약한다. 현재 adapter가 요구하는 최소 입력 예약은 Responses 400,000, 임베딩 요청 300,000 tokens다. 작은 요청도 이 예약을 수용해야 하며 입력을 잘라서 맞추지 않는다. 사용량이 보고되면 실제 토큰 수로 정산하되 캐시 할인은 가정하지 않아 청구서보다 보수적일 수 있다. 보고가 없으면 예약을 유지하고 다음 호출·재시도·읽기 재개가 이를 소비한 것으로 처리한다. 가격/예약 상한 위반은 기록하고 추가 실행을 차단한다. 원장 snapshot은 `execution_budget.cost`에 있고 새 DB 테이블/승인 상태를 만들지 않는다. 개인 평가 누적 예산·계정 전체 또는 여러 독립 HTTP 요청의 월간 예산과 별개다. 시간·호출 상한은 신뢰된 `ExecutionBudget(BudgetLimits(...))` 주입으로 조정하며 현재 웹 CLI의 별도 환경변수로 제공하지 않는다. 역할의 잔여 횟수와 요청 전체 누적은 `runtime.execution_budget`·`request_execution_budget`로 구분한다.
+
+`read_restart`는 반환된 실패 읽기의 체크포인트 유무와 조건을 알린다. 현재 실제 역할의 읽기 flow도 호스트에서 같은 `resume_task`를 사용한다. 실행 중(`running`)인 작업은 재시작하지 않으며 자동 HTTP 재개·대화 이어쓰기·프로세스 강제 종료 복구는 제공하지 않는다. Product 저장 후 실패는 정확한 초안과 같은 request_key의 기존 멱등 경로로 확인한다. 과거 저장 형식은 변환하지 않으며 새 runtime 설정/fingerprint와 맞지 않는 checkpoint는 명시적으로 거부한다.
+
+### 반복과 복구의 구분
+
+| 동작 | 설정·현재 지원 | 처리 경계 |
+| --- | --- | --- |
+| LLM 형식 수정 | `ModelConfig.max_repairs=0` 기본, 최대 2 | 읽기 역할의 응답/최종 JSON 형식 오류만 동일 조건으로 재요청. 권한·버전·근거·의미 오류는 반복 안 함 |
+| 검색 표현 수정·재검색 | 공통 자동 query-rewrite 루프 미구현 | 역할이 검색 도구를 다시 부르면 기존 도구/모델 한도를 사용. max_repairs를 켜도 자동 재검색이 생기지 않음 |
+| 일시 장애 재시도 | `max_attempts=2` 기본(최초 포함) | TimeoutError/ConnectionError만 같은 호출로 재시도. 최대 1초의 지수 backoff가 남은 시간 안에서만 실행되며 공유 호출·비용 한도에 매번 차감. 모든 오류의 자동 fallback 아님 |
+| 읽기 재개 | `resume_task`의 1회 예약·잔여 한도·만료 | 반환 후 저장된 실패한 읽기 작업을 같은 계약으로 재시작. 프로세스 사망 전 상태 저장·대화 이어쓰기는 미지원 |
+| 멱등 처리 | 기존 request_key·입력 hash | 초안·사람 검토·반영의 동일 요청은 같은 결과 재생. 다른 내용으로 같은 키를 사용하면 거부. 모델 반복과 별개 |
+
+### 공개 계약과 저장된 작업의 호환성
+
+공개 tool/HTTP 계약, `agent-task-1`/`agent-result-1` envelope, 역할 `AgentSpec.version`, payload schema, graph/temporal/data/draft 버전을 구분한다. 현재 payload schema 엔진은 version `1`만 지원하며 자동 migration은 없다. 내부 필드 추가도 기존 입력/출력이 읽히는지 검사하고 역할 버전·지침을 갱신한다. 필수 필드 삭제·타입/의미 변경은 공통 리뷰와 명시적 adapter 또는 migration을 먼저 마련한다. 호환되지 않는 저장물을 최신 의미로 조용히 읽지 않는다.
+
+- `tests.test_agent_contracts`: 기존 등록 호환, 저장 후 새 호스트에서 읽기 재개, provider/프롬프트/스키마/도구/검증기 변경 거부, 저장 초안의 별도 사용자 승인·정확 버전 반영을 확인한다. checkpoint 계약이 달라지면 새 작업을 만들며 승인된 초안을 자동 변환하지 않는다.
+- `tests.test_agent_extensions`: 서로 다른 역할 payload/단일·순차 내부 흐름이 같은 Harness를 사용하고 직접 A/B 결과와 일치하는지 확인한다. `tests.test_agent_workflows`·`tests.test_postgres`는 오래된 버전·재시도·중복/경쟁 반영의 기존 업무 규칙을 유지한다.
+- 실제 저장 형식 변경 시에는 변경 전 공개 버전으로 만든 비밀 없는 fixture를 보존하고 신·구 reader/adapter와 정확 승인 버전을 시험한다. 이번 변경은 DB DDL·초안 저장 형식을 바꾸지 않으며, 검사에서 생긴 저장 초안의 재연결을 과거 모든 배포 버전 migration 검증으로 확대하지 않는다.
+
+이벤트/Outbox 저장 경로는 현재 없어 이벤트 migration 검증을 완료로 표시하지 않는다. 실제 인증·운영 격리·RDF/Neo4j·AWS도 별도 목표다.
+
+## 제한된 파일 파싱 Sandbox
+
+`web --sandbox-socket` → `SandboxClient` → 별도 UDS controller → 고정 Docker 이미지의 `sandbox_jobs/parser_job.py` → 검증된 결과 → 기존 접수·초안·승인 경로다. JobSpec `sandbox-1`은 허용 kind(`olimex_ods`/`history_json`)와 content-addressed artifact/hash만 받는다. 요청에 image·명령·host path·mount·URL을 받지 않는다. 승인/DB/모델 API 자격증명·Docker socket은 job에 전달하지 않는다.
+
+- controller는 private socket과 허용 작업만 제공하며 요청을 순차 처리한다. trusted runner 자체의 동시 실행 상한은 기본 2개다. build context는 `.dockerignore` 허용 목록의 검토 코드뿐이다. 웹 프로세스를 실제 별도 OS 계정으로 분리하는 운영 배포는 아직 미완료다.
+- job은 non-root, read-only root와 입력 한 파일, cap-drop ALL/no-new-privileges/default seccomp, network none, CPU 0.5/메모리128MiB/PID32, 시간/출력/입력·압축 XML 크기 제한을 사용한다. Linux LSM/rootless 보증은 별도다.
+- 결과 JSON의 형식·kind/hash·크기·행/locator·위치를 다시 검사한다. 임의 파일 산출물/경로는 반환하지 않는다. Docker 비가용·timeout·불량 응답은 `SANDBOX_*` 오류이며 호스트 실행 fallback은 없다.
+- 격리 provenance는 접수 응답의 `parsing`에 남는다. 격리 모드에서는 legacy 비격리 receipt의 새 비교/초안에 `SANDBOX_REINTAKE_REQUIRED`를 반환한다. 기존 확정 데이터·작성자·원본 ID는 바꾸지 않는다.
+- trusted runner의 timeout/cancel은 컨테이너·자식·임시 입력을 정리한다. HTTP 취소 버튼과 실행 중 job 취소의 연결, controller 비정상 강제 종료 후 자동 청소 daemon은 미구현이다.
+
+공통 회귀/보안 검사는 `tests/test_harness.py`, `test_agent_contracts.py`, `test_sandbox.py`에 둔다. 실제 Docker 검사는 검토한 immutable image ID를 `ONTOLOGICS_TEST_SANDBOX_IMAGE`로 지정해야 실행된다. 미설정 skip은 실제 격리 성공으로 세지 않는다. 개인 비교·원시 결과·사업 효과 보고서는 이 저장소나 CI artifacts에 보관하지 않는다.
+
 ## 사람 검토·반영 접점
 
 호스트가 인증된 사용자로 호출한다. 아래 호출은 Agent 도구 목록에 포함하지 않는다.
@@ -234,7 +293,7 @@ with host.request(DevelopmentContext('dev-alice')) as request:
 
 | 경로 | 입력·응답과 권한 |
 | --- | --- |
-| `GET /api/context` | 현재 개발 신원/서버 권한·선택 가능한 development_users·CSRF 토큰·예시 A/B·model/embeddings 설정 여부·데이터 버전. 최초 호출은 개발 세션 쿠키를 설정하며 만료 후 재접속은 session_reset=true로 기본 사용자를 알림. `read` 검사. 모델 configured는 실제 통신 성공이 아님 |
+| `GET /api/context` | 현재 개발 신원/서버 권한·선택 가능한 development_users·CSRF 토큰·예시 A/B·model/embeddings 설정 여부·데이터 버전. 최초 호출은 개발 세션 쿠키를 설정하며 만료 후 재접속은 session_reset=true로 기본 사용자를 알림. `read` 검사. 모델 configured는 실제 통신 성공이 아님. `model.cost_policy_configured`로 유료 정책 설정을 따로 표시 |
 | `POST /api/development-user` | `{user:"alice" 또는 "bob" 또는 "reader"}`만 허용. 현재 개발 세션+CSRF 필수. 서버 허용 목록→DevelopmentContext→IdentityProvider로 신원을 확인하고 cookie/CSRF를 회전·이전 세션 폐기. 응답은 context와 같은 형태. 권한/actor 입력과 비개발 모드는 거부하며 Agent 도구가 아님 |
 | `POST /api/tools/{tool}` | JSON body는 기존 도구 arguments. 도구의 공통 envelope를 그대로 반환. actor/principals/작성자 주입·review/apply/seed는 불허 |
 | `POST /api/review` | `{draft_id,version,decision,note,request_key}`. `decision=approve/request_changes/reject`, 의견 필수. 요청 사용자로 review하고 승인 성공이면 내부 `apply_approved`를 같은 정확 버전으로 호출. 결과 `data.review`·`data.application`은 각각 공통 envelope; 승인 성공·반영 실패를 보존 |
@@ -259,7 +318,7 @@ AI 초안 경로는 `get_source_receipt → prepare_source_draft → validate_dr
 
 HTTP 클라이언트는 먼저 GET /api/context를 호출하고 반환된 쿠키를 후속 요청에 보낸다. POST는 Content-Type: application/json과 현재 /api/context의 X-CSRF-Token이 필요하다. payload는 1 MB 이하 유한 JSON 객체다. 서버는 127.0.0.1만 bind하고 정확한 Host·same-origin 요청을 확인하며 CORS는 열지 않는다. CSP·프레임 금지·no-store를 적용하고 HTML 원문이나 모델 응답을 실행하지 않는다. 쿠키 이름은 포트별 ontologics_dev_<port>이며 HttpOnly·SameSite=Strict·Path=/를 사용한다. 개발 세션은 서버 메모리에 최대 128개·8시간 유지되고 재시작하면 만료된다. 토큰은 로그인 증명이 아니다. 전환 후 이전 쿠키는 DEVELOPMENT_SESSION_EXPIRED, 현재 쿠키+이전 CSRF는 CSRF_REJECTED로 거부하며 변경 요청을 기본 사용자로 자동 대체하지 않는다. GET /api/context만 세션 복구를 허용한다. 이미 시작된 요청은 시작 당시 신원으로 끝나고 전환은 그 요청의 작성자를 바꾸지 않는다. X-Ontologics-Development-Subject 응답 헤더가 화면 신원과 다르면 프런트엔드는 결과를 적용하지 않고 새로고침을 요구한다. 실제 인증 도입 시 이 개발 선택 경로는 활성화하지 않는다. 요청마다 `X-Request-ID`를 발급한다. 원문 payload·환경 비밀값을 HTTP 로그에 기록하지 않으며 실제 업무 감사는 기존 runs/review_events/runtime 기록을 사용한다. DB 연결 이전 HTTP 실패의 영속 감사 기록은 아직 없다.
 
-공통 성공은 HTTP 200이다. 입력/검증 오류는 400, 신원/권한·CSRF/Origin·개발 세션 만료는 403, 없는 대상/경로는 404, 오래된 초안/기준·중복 키 충돌은 409, 본문 초과는 413, 모델 실패는 502, DB/신원 공급자 장애·모델 미설정/처리 중은 503이다. HTTP 경계 실패도 공통 필드를 반환하되 확정할 수 없는 data_version/run_id는 null이다. `prepare_draft.ok=true`와 `validation.valid=true`는 별도 판단이다.
+공통 성공은 HTTP 200이다. 입력/검증 오류는 400, 신원/권한·CSRF/Origin·개발 세션 만료는 403, 없는 대상/경로는 404, 오래된 초안/기준·중복 키 충돌은 409, 본문 초과는 413, 모델 실패는 502, DB/신원 공급자 장애·모델 미설정/처리 중은 503이다. 비용/호출 한도 초과는 429, 비용 정책 미설정은 503이다. HTTP 경계 실패도 공통 필드를 반환하되 확정할 수 없는 data_version/run_id는 null이다. `prepare_draft.ok=true`와 `validation.valid=true`는 별도 판단이다.
 
 ```json
 POST /api/tools/investigate
@@ -271,7 +330,7 @@ POST /api/review
 
 브라우저는 작업 내용별 request_key와 초안 ID·버전을 sessionStorage에 유지한다. 응답 유실 뒤 같은 내용은 같은 키로 재시도하고, 변경된 내용은 새 키를 쓴다. 반려 뒤 별도 안을 제출하려면 **별도의 새 보완안 시작**으로 새 업무 키를 발급한다. 데이터는 서버가 결정하며 브라우저 캐시는 DB schema와 사용자별로 분리한다. 서버 반영 키는 초안 ID·정확 버전에서 생성한다. 별도 public apply endpoint는 없다. 승인 이후 반영 실패는 같은 검토 요청으로 복구하며, 승인 재생이 있어도 오래된 초안/STALE_BASE를 우회하지 않는다. 승인과 반영을 하나의 DB transaction으로 묶지 않으므로 승인만 저장된 중간 상태를 명확히 표시한다. 브라우저 기록 삭제·다른 기기에서 이전 조사 재개는 영속 업무 기능으로 구현하지 않았다.
 
-직접 조회·AI 모두 동일한 공통 조회와 버전 의미를 사용한다. A/B를 순서대로 읽을 때 첫 조회의 데이터 버전으로 두 번째를 고정하고, 보완 전후 비교는 저장된 보드 집합·로트·원래 offset을 포함한 같은 query를 재사용한다. AI에는 그 query와 버전을 고정해 전달한다. 모델이 다른 도구·조건·버전을 선택하면 **실행 전에** 거부하고 실제 도구 결과를 직접 조회와 대조한다. 자유문 설명의 정확성을 전부 보증하는 평가는 아니며 구조화 판정·근거가 기준이다. 역할은 Quality 그대로이고 승인 도구는 공개하지 않는다. 추적을 위해 `request.run_agent(..., capture_tool_trace=True)`를 선택적으로 사용하며 HTTP 반환은 조건·도구 run ID와 결과를 제공하고 키·환경값은 포함하지 않는다.
+직접 조회·AI 모두 동일한 공통 조회와 버전 의미를 사용한다. A/B를 순서대로 읽을 때 첫 조회의 데이터 버전으로 두 번째를 고정하고, 보완 전후 비교는 저장된 보드 집합·로트·원래 offset을 포함한 같은 query를 재사용한다. AI에는 그 query와 버전을 고정해 전달한다. 모델이 다른 도구·조건·버전을 선택하면 **실행 전에** 거부하고 실제 도구 결과를 직접 조회와 대조한다. 자유문 설명의 정확성을 전부 보증하는 평가는 아니며 구조화 판정·근거가 기준이다. 역할은 Quality 그대로이고 승인 도구는 공개하지 않는다. 실제 웹 역할은 `request.run_task(..., capture_tool_trace=True)`의 공통 계약을 사용하며 HTTP 반환은 조건·도구 run ID와 결과를 제공하고 키·환경값은 포함하지 않는다.
 
 화면 판정은 `included→장착 이력 확인`, `excluded→조건상 제외`, `needs_confirmation→추가 이력 확인 필요`로 표시한다. 결함/안전 판정으로 바꾸지 않는다. awaiting_review는 작성 시 검증을 통과한 검토 대기, needs_changes는 검증 오류 또는 보완 요청, approved는 승인 저장, applied는 정확 버전 반영 완료다. validate_draft는 저장 상태를 자동 전환하지 않는다. 신규 submit 상태/API를 만들지 않고 한 초안의 생성·검증·검토를 이어간다. 보완 preview는 미반영임을 표시한다.
 

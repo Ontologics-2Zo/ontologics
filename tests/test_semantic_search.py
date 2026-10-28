@@ -133,6 +133,10 @@ class SemanticSearchTests(WebCase):
             self.assertEqual('knowledge', data['role'])
             self.assertEqual('matched', data['consistency'])
             self.assertTrue(data['runtime']['ok'])
+            typed = data['agent_result']
+            self.assertEqual('knowledge', typed['agent_name'])
+            self.assertEqual(['evidence:olimex-L-wroom:row-55'], typed['payload']['evidence_ids'])
+            self.assertEqual('real', typed['evidence_refs'][0]['origin'])
             self.assertEqual(['semantic_search'], [call['name'] for call in data['tool_calls']])
             self.assertEqual(args, data['tool_calls'][0]['arguments'])
             self.assertEqual(direct['data'], data['results'][0]['data'])

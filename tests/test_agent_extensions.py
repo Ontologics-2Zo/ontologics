@@ -135,6 +135,69 @@ class ExtensionHostTests(unittest.TestCase):
         self.assertEqual('APPROVAL_REQUIRED', self.host.apply_approved(draft['draft_id'], draft['draft_version'],
                          request_key='extension-unapproved')['errors'][0]['code'])
 
+    def test_distinct_typed_flows_share_tools_evidence_and_time_results(self):
+        from examples.extension_agent import run_contract_example
+        from ontologics.demo import example_queries
+        model = run_contract_example(self.database, version=1, flow='model')
+        history = run_contract_example(self.database, version=1, flow='history')
+        for result in (model, history):
+            self.assertTrue(result['runtime']['ok'], result)
+            self.assertEqual('agent-result-1', result['schema_version'])
+            self.assertEqual(1, result['context']['data_version'])
+            self.assertIsNone(result['error'])
+            self.assertTrue(result['evidence_refs'])
+            self.assertTrue(all(ref['data_version'] == 1 and ref['source_sha256']
+                                for ref in result['evidence_refs']))
+        self.assertEqual(['lookup'], [r['name'] for r in model['runtime']['tool_trace']])
+        self.assertEqual(['investigate', 'investigate'], [r['name'] for r in history['runtime']['tool_trace']])
+        self.assertEqual(2, model['runtime']['execution_budget']['attempted_calls']['model'])
+        self.assertEqual(3, history['runtime']['execution_budget']['attempted_calls']['model'])
+        with self.host.request(DevelopmentContext(self.reader.subject)) as request:
+            for mode, query in example_queries().items():
+                direct = request.call('investigate', {'query': query, 'version': 1})
+                self.assertEqual(direct['data'], history['payload']['by_mode'][mode])
+                by_unit = {r['unit_id']: r for r in direct['data']['results']}
+                self.assertEqual('needs_confirmation', by_unit['unit:U106']['status'])
+        self.assertEqual(1, self.audit._version())
+
+    def test_role_output_cannot_drop_evidence_or_replace_common_AB_judgement(self):
+        from examples.extension_agent import run_contract_example
+        from examples.agents.history_reader import ScriptedHistoryReader
+        from ontologics.contracts import AgentTask
+        from ontologics.harness import PinnedContext
+        from ontologics.demo import example_queries
+        task = AgentTask({'purpose': 'Read', 'modes': ['A', 'B']},
+                         PinnedContext('Read', 1, conditions={'queries': example_queries()}))
+        class MisleadingProvider(ScriptedHistoryReader):
+            def __call__(self, **kwargs):
+                response = super().__call__(**kwargs)
+                if not response['tool_calls']:
+                    value = json.loads(response['text'])
+                    next(r for r in value['by_mode']['A']['results']
+                         if r['unit_id'] == 'unit:U106')['status'] = 'excluded'
+                    response['text'] = json.dumps(value)
+                return response
+        result = run_contract_example(self.database, version=1, flow='history', provider=MisleadingProvider(task))
+        self.assertFalse(result['runtime']['ok'])
+        self.assertEqual('AGENT_RESULT_REJECTED', result['error']['code'])
+        self.assertIsNone(result['payload'])
+        self.assertEqual(0, result['runtime']['repairs'])
+        from examples.agents.model_reader import ScriptedModelReader
+        for flow, base in [('model', ScriptedModelReader), ('history', ScriptedHistoryReader)]:
+            with self.subTest(missing_evidence=flow):
+                class MissingEvidence(base):
+                    def __call__(self, **kwargs):
+                        response = super().__call__(**kwargs)
+                        if not response['tool_calls']:
+                            value = json.loads(response['text'])
+                            value['evidence_ids'] = []
+                            response['text'] = json.dumps(value)
+                        return response
+                result = run_contract_example(self.database, version=1, flow=flow, provider=MissingEvidence(task))
+                self.assertFalse(result['runtime']['ok'])
+                self.assertEqual('AGENT_RESULT_REJECTED', result['error']['code'])
+                self.assertIsNone(result['payload'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,6 +13,8 @@ from ontologics.ingest import build_catalog
 from ontologics.model import canonical
 from ontologics.openai_provider import OpenAIProvider, OpenAISettings, ProviderError
 from ontologics.runtime import ModelConfig, ModelRuntime
+from ontologics.harness import ExecutionBudget
+from ontologics.paid_budget import cost_policy_from_environment
 from ontologics.service import Service
 from ontologics.database import DatabaseSettings, environment_values
 from ontologics.tool_specs import PRODUCT_TOOLS, QUALITY_TOOLS
@@ -169,7 +171,7 @@ def evidence_details(service, ids, actor):
             'source_id':source['id'],'url':source['url'],'path':source['path'],'sha256':source['sha256'],'version':source['version']})
     return result
 
-def run_role(role, settings, directory, *, provider_factory=OpenAIProvider, execution_mode='live_api', database=None):
+def run_role(role, settings, directory, *, provider_factory=OpenAIProvider, execution_mode='live_api', database=None, budget=None):
     database = database or DatabaseSettings.from_environment(schema='llm_' + role + '_' + uuid.uuid4().hex)
     if role == 'product':
         service, selected = setup_product(database)
@@ -188,7 +190,7 @@ def run_role(role, settings, directory, *, provider_factory=OpenAIProvider, exec
     try:
         before = service.lookup(actor)['data_version']
         provider = provider_factory(settings,tools)
-        runtime = ModelRuntime(service,actor,provider,config=ModelConfig(model=settings.model,max_steps=12),capture_tool_trace=True)
+        runtime = ModelRuntime(service,actor,provider,config=ModelConfig(model=settings.model,max_steps=12),capture_tool_trace=True,budget=budget)
         result = runtime.run([{'role':'system','content':prompt},{'role':'user','content':canonical(task)}])
         if role == 'product': checks, answer = evaluate_product(service,selected,result,before)
         else: checks, answer = evaluate_quality(service,task,result,before)
@@ -217,10 +219,14 @@ def main():
             'warning':'Public OLIMEX and fictional demo data only. Local role output is untrusted; review before sharing.'}
     try:
         env_file=args.env_file
-        settings=OpenAISettings.from_environment(environ=environment_values(env_file))
+        values=environment_values(env_file)
+        settings=OpenAISettings.from_environment(environ=values)
+        # Both example roles share one explicitly configured CLI allowance.
+        # This is a service execution limit, not a personal evaluation budget.
+        budget=ExecutionBudget(cost_policy=cost_policy_from_environment(values))
         for role in (['product','quality'] if args.role=='both' else [args.role]):
             report['roles'].append(run_role(role,settings,directory,database=DatabaseSettings.from_environment(
-                schema='llm_' + role + '_' + uuid.uuid4().hex,env_file=env_file)))
+                schema='llm_' + role + '_' + uuid.uuid4().hex,env_file=env_file),budget=budget))
         passed=all(r['runtime']['ok'] and r['evaluation']['automatic_pass'] for r in report['roles'])
         report['status']='completed' if passed else 'failed_checks_or_runtime'
     except ProviderError as exc:

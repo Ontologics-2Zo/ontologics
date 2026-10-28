@@ -125,9 +125,11 @@ def trace_claim(service, actor, intake_id, *, version, configuration_id=None):
 
 
 # ------------------------------------------------------------ 4-3 / 4-4
-# Temporary source: C operations record values. When the shared B types
-# (FinishedGoodsStock, Shipment with board lists) exist, replace only these two
-# adapters; stored_scope() and candidate_scope() keep the same inputs.
+# Temporary source: C operations record values. B agreed (2026-10-28 reply) to add
+# unit_ids / unit_ids_complete to FinishedGoodsStock and Shipment and delivery_reference
+# to Shipment; when those types exist, replace only these two adapters.
+# List completeness (unit_ids_complete) and event completeness after an observation
+# (events_complete_until) are separate: both are needed before a hold scope is final.
 
 C_OPERATIONS_BASIS = 'c_operations_record'
 
@@ -135,7 +137,8 @@ C_OPERATIONS_BASIS = 'c_operations_record'
 def c_operations_stock(raw):
     """Stock observations from data/claim_response/operations.json (temporary, not a stock record)."""
     return [{'unit_ids': ['unit:' + s for s in batch_serials(b)], 'location': b['stock']['location'],
-             'observed_at': b['stock']['observed_at'], 'complete': b['stock']['complete'] is True,
+             'observed_at': b['stock']['observed_at'], 'unit_ids_complete': b['stock']['unit_ids_complete'] is True,
+             'events_complete_until': b['stock'].get('events_complete_until'),
              'evidence': ['evidence:claim_response:batch:' + b['name']], 'basis': C_OPERATIONS_BASIS}
             for b in raw['batches'] if 'stock' in b]
 
@@ -144,8 +147,8 @@ def c_operations_shipments(raw):
     """Shipments from data/claim_response/operations.json (temporary, not a shipment record)."""
     return [{'unit_ids': ['unit:' + s for s in batch_serials(b)], 'departed_at': b['shipment']['departed_at'],
              'customer_name': b['shipment']['customer_name'],
-             'external_document': b['shipment']['external_document'],
-             'complete': b['shipment']['complete'] is True,
+             'delivery_reference': b['shipment']['delivery_reference'],
+             'unit_ids_complete': b['shipment']['unit_ids_complete'] is True,
              'evidence': ['evidence:claim_response:batch:' + b['name']], 'basis': C_OPERATIONS_BASIS}
             for b in raw['batches'] if 'shipment' in b]
 
@@ -164,8 +167,10 @@ def _scope_node(case, line_id, as_of, unit_ids, state, evidence):
 def stored_scope(case, line_id, records, stock, shipments=(), *, as_of=None):
     """4-3: boards from the claim's line that are in stock at as_of -> QualityScope(hold).
 
-    Uses the latest stock observation at or before as_of. An incomplete list never
-    becomes a scope; boards that departed between the observation and as_of are removed.
+    Uses the latest stock observation at or before as_of. The scope is final only when
+    the observed list is complete AND departures/moves after the observation are
+    confirmed up to as_of (events_complete_until). A departure at the exact observation
+    time is not ordered against it, so it needs a person to confirm.
     """
     as_of = as_of or case['reported_at']
     moment = instant(as_of)
@@ -175,9 +180,18 @@ def stored_scope(case, line_id, records, stock, shipments=(), *, as_of=None):
     latest_at = max(instant(o['observed_at']) for o in seen)
     latest = [o for o in seen if instant(o['observed_at']) == latest_at]
     basis = sorted({o['basis'] for o in latest})
-    if not all(o['complete'] for o in latest):
+    if not all(o['unit_ids_complete'] for o in latest):
         return {'state': 'stock_list_incomplete', 'node': None, 'basis': basis}
+    covered = [o.get('events_complete_until') for o in latest]
+    if any(c is None for c in covered) or min(instant(c) for c in covered) < moment:
+        return {'state': 'events_unconfirmed', 'node': None, 'basis': basis,
+                'reason': 'departures after the observation are not confirmed up to as_of'}
     in_stock = {u for o in latest for u in o['unit_ids']}
+    same_time = sorted(u for s in shipments if instant(s['departed_at']) == latest_at
+                       for u in s['unit_ids'] if u in in_stock)
+    if same_time:
+        return {'state': 'same_time_departure', 'node': None, 'basis': basis, 'unit_ids': same_time,
+                'reason': 'departure at the observation time; order needs a person'}
     departed = {u for s in shipments for u in s['unit_ids'] if latest_at < instant(s['departed_at']) <= moment}
     units = (in_stock & _line_units(records, line_id)) - departed - set(case['unit_ids'])
     if not units:
@@ -196,7 +210,7 @@ def candidate_scope(case, line_id, records, shipments, *, as_of=None):
     if not departed:
         return {'state': 'no_shipment', 'node': None, 'basis': None}
     basis = sorted({s['basis'] for s in departed})
-    if not all(s['complete'] for s in departed):
+    if not all(s['unit_ids_complete'] for s in departed):
         return {'state': 'shipment_list_incomplete', 'node': None, 'basis': basis}
     shipped = {u for s in departed for u in s['unit_ids']}
     units = (shipped & _line_units(records, line_id)) - set(case['unit_ids'])

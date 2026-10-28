@@ -19,10 +19,10 @@
       "statement": "Delivered to the fictional customer 가정 고객사 C-01 on 2026-09-25 under delivery document DO-DEMO-C-001. Recorded as a statement only until the shared shipment type is defined.",
       "shipment": {
         "customer_name": "가정 고객사 C-01",
-        "external_document": "DO-DEMO-C-001",
+        "delivery_reference": "DO-DEMO-C-001",
         "departed_at": "2026-09-25T14:00:00+09:00",
         "departed_at_note": "Assumed demo time; the delivery document gives the date only.",
-        "complete": true
+        "unit_ids_complete": true
       }
     },
     {
@@ -47,7 +47,9 @@
       "stock": {
         "location": "Demo warehouse",
         "observed_at": "2026-10-26T10:00:00+09:00",
-        "complete": true
+        "unit_ids_complete": true,
+        "events_complete_until": "2026-10-26T10:00:00+09:00",
+        "events_note": "Departures and moves after the observation are confirmed only up to this time."
       }
     }
   ]

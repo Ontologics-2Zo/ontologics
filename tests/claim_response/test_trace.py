@@ -131,9 +131,11 @@ class ScopeTests(unittest.TestCase):
     def test_operations_values_are_read_as_temporary_c_basis(self):
         self.assertEqual(1, len(self.stock))
         self.assertEqual(120, len(self.stock[0]['unit_ids']))
+        self.assertTrue(self.stock[0]['unit_ids_complete'])
+        self.assertEqual('2026-10-26T10:00:00+09:00', self.stock[0]['events_complete_until'])
         self.assertEqual('2026-10-26T10:00:00+09:00', self.stock[0]['observed_at'])
         self.assertEqual(1, len(self.shipments))
-        self.assertEqual('DO-DEMO-C-001', self.shipments[0]['external_document'])
+        self.assertEqual('DO-DEMO-C-001', self.shipments[0]['delivery_reference'])
         self.assertEqual(80, len(self.shipments[0]['unit_ids']))
         self.assertEqual({C_OPERATIONS_BASIS}, {o['basis'] for o in self.stock + self.shipments})
 
@@ -152,7 +154,7 @@ class ScopeTests(unittest.TestCase):
         mixed = [dict(self.stock[0], unit_ids=self.stock[0]['unit_ids'] + ['unit:C-R001'])]
         units = stored_scope(self.case, LINE_C01, self.records, mixed)['node']['unit_ids']
         self.assertNotIn('unit:C-R001', units)
-        partial = [dict(self.stock[0], complete=False)]
+        partial = [dict(self.stock[0], unit_ids_complete=False)]
         self.assertEqual('stock_list_incomplete', stored_scope(self.case, LINE_C01, self.records, partial)['state'])
         early = stored_scope(self.case, LINE_C01, self.records, self.stock, as_of='2026-10-26T09:00:00+09:00')
         self.assertEqual('no_stock_observation', early['state'])
@@ -160,11 +162,29 @@ class ScopeTests(unittest.TestCase):
 
     def test_boards_that_left_after_the_observation_are_not_held(self):
         later = [{'unit_ids': ['unit:C-S001', 'unit:C-S002'], 'departed_at': '2026-10-26T11:00:00+09:00',
-                  'complete': True, 'evidence': [], 'basis': C_OPERATIONS_BASIS}]
-        result = stored_scope(self.case, LINE_C01, self.records, self.stock, self.shipments + later,
+                  'unit_ids_complete': True, 'evidence': [], 'basis': C_OPERATIONS_BASIS}]
+        checked = [dict(self.stock[0], events_complete_until='2026-10-26T12:00:00+09:00')]
+        result = stored_scope(self.case, LINE_C01, self.records, checked, self.shipments + later,
                               as_of='2026-10-26T12:00:00+09:00')
         self.assertEqual(118, len(result['node']['unit_ids']))
         self.assertEqual(['unit:C-S001', 'unit:C-S002'], result['departed_after_observation'])
+
+    def test_events_after_the_observation_must_be_confirmed_up_to_as_of(self):
+        unconfirmed = stored_scope(self.case, LINE_C01, self.records, self.stock, self.shipments,
+                                   as_of='2026-10-26T12:00:00+09:00')
+        self.assertEqual('events_unconfirmed', unconfirmed['state'])
+        self.assertIsNone(unconfirmed['node'])
+        unknown = stored_scope(self.case, LINE_C01, self.records,
+                               [dict(self.stock[0], events_complete_until=None)], self.shipments)
+        self.assertEqual('events_unconfirmed', unknown['state'])
+
+    def test_departure_at_the_observation_time_is_not_ordered(self):
+        same = [{'unit_ids': ['unit:C-S007'], 'departed_at': '2026-10-26T10:00:00+09:00',
+                 'unit_ids_complete': True, 'evidence': [], 'basis': C_OPERATIONS_BASIS}]
+        result = stored_scope(self.case, LINE_C01, self.records, self.stock, self.shipments + same)
+        self.assertEqual('same_time_departure', result['state'])
+        self.assertEqual(['unit:C-S007'], result['unit_ids'])
+        self.assertIsNone(result['node'])
 
     def test_candidate_scope_is_the_75_other_delivered_boards(self):
         result = candidate_scope(self.case, LINE_C01, self.records, self.shipments)
@@ -175,7 +195,7 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual([C_OPERATIONS_BASIS], result['basis'])
         before = candidate_scope(self.case, LINE_C01, self.records, self.shipments, as_of='2026-09-25T13:00:00+09:00')
         self.assertEqual('no_shipment', before['state'])
-        partial = candidate_scope(self.case, LINE_C01, self.records, [dict(self.shipments[0], complete=False)])
+        partial = candidate_scope(self.case, LINE_C01, self.records, [dict(self.shipments[0], unit_ids_complete=False)])
         self.assertEqual('shipment_list_incomplete', partial['state'])
 
     def test_case_and_scopes_are_valid_graph_additions(self):

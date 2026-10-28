@@ -184,3 +184,94 @@ B의 CQ01·CQ02·CQ03·CQ04는 [b_host_agent.py](../../examples/order_fulfillmen
 > 원문 위치: Ontologics 공통 기반 v0.8.0 — PostgreSQL + pgvector / 저장소 공유 상태 (308–308행)
 
 현재 B 작업은 `feature/b-first-mvp`의 보존 커밋 `f808b69`를 남긴 뒤 위 main을 병합했다. 기존 작업을 보존한 상태에서 공통/CQ01·CQ02 회귀와 새 호스트의 제한된 대표 검증을 수행했으며, 세 B 경로의 실제 정상 대표 검증을 갖췄다. CQ03의 정의 재점검 뒤 공통 생산 실적/예측 도구를 추가했고, Task09 전용 읽기 Agent·호스트 연결과 실제 정상 대표 검증까지 통과했으며 Task10 최종 점검과 개발 범위 수락까지 완료했다. CQ04 Task07의 도착/출고/운송 조건과 기본·별도 혼합 정답 정의도 완료했다. CQ04 Task08 공통 조건 계약과 계산 구현도 완료했다. CQ04 Task09도 읽기 Agent·근거 설명·실제 기본/혼합 대표 검증을 완료했다. CQ04 Task10도 전체448개·설계36개·예제20개와 원본 보존을 확인해 위 개발 범위를 수락했다. CQ05 Task07~10은 제한된 개발 범위에서 수락했고 CQ06 정의는 아직이다. 반복 신뢰도 검사는 후속으로 남긴다. 브랜치를 받았다는 사실이나 충돌을 해결했다는 사실을 업무 검증 통과로 계산하지 않는다. 실행 기준은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
+
+## 2026-10-28 복구 Task11 — CQ01~06 재사용 실행 진입점
+
+`examples.order_fulfillment.b_run`은 기존 Task10의 보호된 Host 실행 경로를 B 예제로 옮긴 진입점이다. 기존 `b_host_agent`의 대역 CLI와 역할 Provider·평가기·공통 코드·정답은 유지한다. 지원 입력은 아래 **고정 합성 10대표의 순서 있는 부분집합**이다. 임의 계약/업무 JSON, 운영 DB·사용자 인증·웹·배포·반복 신뢰도는 이번 범위가 아니다.
+
+저장소 루트에서 PostgreSQL 17+pgvector와 기존 Python 환경을 사용한다. macOS `sandbox-exec`가 필수이며 보호 없는 대체 실행은 하지 않는다. 기본 PostgreSQL 실행 파일은 `/usr/local/opt/postgresql@17/bin`, 다른 설치 위치는 `--pg-bin /absolute/postgresql/bin`으로 지정한다.
+
+```bash
+# 지원 사례 확인: 외부 API 및 DB 호출 없음
+.venv/bin/python -B -m examples.order_fulfillment.b_run list
+
+# 전체 무료 검증: --output은 존재하지 않는 새 절대 경로
+.venv/bin/python -B -m examples.order_fulfillment.b_run free \
+  --output "$PWD/artifacts/local/order_fulfillment/cq_free_새실행명"
+
+# CQ02 이후 8대표만: --case를 고정 순서로 반복한다
+.venv/bin/python -B -m examples.order_fulfillment.b_run free \
+  --case cq02_normal --case cq03_normal \
+  --case cq04_normal --case cq04_mixed \
+  --case cq05_normal --case cq05_mixed \
+  --case cq06_defects11 --case cq06_transport2h \
+  --output "$PWD/artifacts/local/order_fulfillment/cq02_06_free_새실행명"
+
+.venv/bin/python -B -m examples.order_fulfillment.b_run status \
+  --output "$PWD/artifacts/local/order_fulfillment/cq_free_새실행명"
+```
+
+전체 순서는 `cq01_intake → cq01_promise → cq02_normal → cq03_normal → cq04_normal/mixed → cq05_normal/mixed → cq06_defects11/transport2h`다. 무료 모드는 실제 Provider→Host→Service→평가기 경로에 명시적인 HTTP 응답 대역을 넣는다. API 호출·키 로드는 0이며 새 클러스터·DB·사용자·Unix socket·HOME·TMPDIR·UUID 스키마를 만들고 종료를 확인한다. 기존 DB/환경/인증 입력과 외부 네트워크를 차단한다. 원본 입력은 검토된 37개 파일만 해시 검사·복사하며 일부 기존 로더가 읽는 같은 원본 파일도 읽기만 허용한다.
+
+대표당 최대 **4요청**, 전체 10대표 최대 **40요청**(CQ02~06만이면 32)이다. 고정 `gpt-5.4-mini-2026-03-17`, 출력 1,024토큰, 요청당 30초 hard deadline, 자동 재시도 0회다. 입력 토큰·금액의 별도 상한은 설정하지 않는다. 전송 전 예산을 영속 기록하고 실패/미완료/검사 불합격 후 후속 전송·재시작·이전 예산 이월을 거부한다. 키가 응답에 그대로 나오면 원문 SHA와 마스킹 표시를 남기고 중단한다.
+
+출력의 `campaign/reports/`, `campaign/wire/`, `campaign/layers/`는 원문 응답·모델 제출·런타임·구조화 답·자동 검사를 구분해 보존한다. `campaign/http_budget.jsonl`은 요청 원장, `safety.json`은 원래 psycopg 접속의 주소·실제 서버 확인, `shutdown.json`은 소유 서버/PID/socket 종료 증거다. 성공한 무료 실행만 코드·입력·사례·요약/종료 해시에 결합한 `free_gate.json`을 남긴다. 실패 실행 폴더와 pgdata도 삭제하거나 덮어쓰지 않는다. 같은 `--output`은 다시 사용할 수 없다.
+
+CQ01 접수 단독은 미승인 초안에서 끝난다. 접수와 약속을 함께 선택하면 무료에서는 **명시된 개발 검토 대역**으로 정확 draft/version/hash를 승인·반영한다. 향후 실제 실행에서는 모델 의미 검토와 별도로 고정된 다른 개발 검토자의 정확 승인 입력이 필요하다. 약속 단독은 승인된 개발 fixture를 새 DB에 재구성한다. CQ06은 별도 개발 검토·반영을 거친 **v2→v3**를 사용한다. Agent에는 review/apply 권한이 없다.
+
+### 향후 실제 실행 조건 — Task11은 유료 호출을 승인하지 않음
+
+`live --output /absolute/새폴더 --authorization /absolute/새승인.json --free-gate /absolute/무료폴더/free_gate.json`은 **새 명시적 사용자 승인 후에만** 사용한다. Task10의 승인을 재사용하지 않는다. 승인 JSON은 다음 필드가 정확히 있어야 하며 승인 전 예시는 `approved:false`로 둔다.
+
+```json
+{
+  "approved": false,
+  "source": "explicit_user_confirmation_with_mandatory_free_gate",
+  "run_id": "/absolute/새폴더",
+  "cases": ["cq01_intake", "cq01_promise", "cq02_normal", "cq03_normal", "cq04_normal", "cq04_mixed", "cq05_normal", "cq05_mixed", "cq06_defects11", "cq06_transport2h"],
+  "per_case_request_cap": 4, "total_request_cap": 40, "cq01_request_cap": 8,
+  "model": "gpt-5.4-mini-2026-03-17",
+  "endpoint": "https://api.openai.com/v1/responses",
+  "max_output_tokens": 1024, "timeout_seconds": 30, "automatic_retries": 0,
+  "input_and_money_caps_unfixed_acknowledged": true,
+  "free_gate_sha256": "무료 free_gate.json 파일의 SHA256",
+  "source_sha256": "그 free_gate.json의 source_sha256 값"
+}
+```
+
+부분집합은 cases·총한도·CQ01한도를 정확히 함께 줄여야 한다. `run_id`는 새 출력 폴더의 **전체 절대 경로**다. 무료 게이트와 현재 코드/입력/선택이 다르거나 원래 증거가 바뀌면 키 로드 이전에 거부한다. 승인 뒤에도 `.env.local`의 OPENAI_API_KEY만 기존 파서로 좁게 읽으며 그 DB 설정은 사용하지 않는다. OS는 443 포트를 허용하고 Python은 전송 중에만 고정 API 호스트·미리 고정한 IP·정확 endpoint/method를 허용한다. 프록시·redirect·자동 재시도는 없다.
+
+각 실제 대표의 자동 검사 후 `submissions/<case>-separate_korean_semantic_review.requested.json`을 확인하고 같은 이름의 `.requested` 없는 JSON을 별도 검토자가 제출해야 다음 대표로 진행한다. 요청의 case·report_sha256·bound_output_hash를 그대로 결합하고 `kind:separate_korean_semantic_review`, `passed:true`, 근거 있는 한국어 `notes`가 필요하다. CQ01 연결은 추가 `cq01_intake-cq01_draft_review.requested.json`의 draft_id/version/content_hash/author/reviewer를 검토해 `decision:approve`·한국어 notes를 제출한다. 이는 개발용 신원이며 운영 인증을 대신하지 않는다. 리뷰 대기는 최대 1시간이고, `submissions/stop.json` 생성 또는 프로세스 중단 시 후속 호출을 멈추고 소유 서버를 종료한다. 실패 후 수정하더라도 새 유료 실행은 자동 시작하지 않는다.
+
+Task11 최종 검증과 보존 결과는 [B 작업 기록](PROJECT_STATUS.md)의 Task11 항목을 따른다. 기존 Task10 실제 성공 10대표와 Task11 무료 대역 성공은 별개의 증거다.
+
+
+## 2026-10-28 CQ01~06 발표용 노트북 초안
+
+[시연 노트북](../../notebooks/CQ01_06_시연.ipynb)과 [사용 안내](../../notebooks/README.md)를 추가했다. Task11 무료 대역 구조화 결과를 내장해 약속·현황·생산·도착·대응 초안·변경 비교를 설명한다. 저장된 출력으로 읽을 수 있고 기본 전체 실행은 외부 API·DB·키/환경 파일과 프로세스에 접근하지 않는다. 선택 원본 확인은 명시된 JSON 14개만 해시 대조하며, 무료 재실행 셀은 기존 보호 CLI 명령만 출력한다. 실제 업무 재실행·유료 호출은 이번 노트북 작성에서 하지 않았다. 독립 설치·무료 재현 및 실제 Jupyter 커널/화면 확인은 후속 Task12 범위이며 아직 완료하지 않았다.
+
+
+## 2026-10-28 CQ04 실제 실행 시연 노트북 연결·무료 검증
+
+[새 실제 실행용 노트북](../../notebooks/CQ04_실제실행_시연.ipynb)은 고정 가상 CQ04 기본1대표를 기존 보호 CLI에 연결한다. [단계별 안내](../../notebooks/README.md)를 따른다. 기존 CQ01~06 저장 결과 설명용 파일과 별도다. 새 보고서가 없으면 없다고 표시하며 이전 답변을 대신 표시하지 않는다.
+
+기본 전체 실행은 작업을 시작하지 않는다. 무료 사전검사와 종료 확인 뒤, 본인이 새 경로·CQ04 최대4요청·고정모델·출력1024·30초·재시도0·입력/금액 별도상한 없음을 확인하고 정확한 승인 문구를 직접 입력해야 유료 실행을 연다. 새 응답의 도구·근거·사용량·자동 검사 뒤 사람이 한국어 의미 검토를 직접 제출해야 최종 성공/종료를 확인한다. 커널 재시작 전 STOP_RUN으로 중단·서버 종료를 확인한다.
+
+이번에는 실제 Jupyter 기본12셀, 새 DB의 CQ04 무료4대역 요청·별도 한국어 검토, 실제 중단/종료 및 전체705회귀(skip0)를 통과했다. 실제 API·키로드0이며 이 연결의 실제 유료 품질은 아직 검증하지 않았다. 새 B 소스가 추가되어 과거 무료 게이트를 새 실행에 사용하지 않으며, 새 세션의 현재 코드 무료 게이트가 필요하다. 임의 입력·다른 CQ 확장·독립 설치/패키징·배포는 이번 완료 범위가 아니다.
+
+
+## 2026-10-28 CQ01~06 전체 대표 실제 실행 노트북 연결
+
+- 고정 사례를 실제 LLM에 넣어 새 답변을 얻으려는 요청에 따라 [전체 실제 실행 노트북](../../notebooks/CQ01_06_실제실행_시연.ipynb)을 추가했다. CQ04만 선택했던 범위를 전체10대표로 확장했다. 기존 CQ04 실제 실행 노트북과 저장 결과 설명용 노트북은 보존했다.
+- 순서는 CQ01 접수·약속 → CQ02 정상 → CQ03 정상 → CQ04 기본·혼합 → CQ05 기본·혼합 → CQ06 불량 증가·운송 변경이다. 대표당최대4·전체최대40·CQ01최대8 포함, 고정모델·출력1024·30초·재시도0을 유지한다. 입력·금액 별도상한 없음은 새 실행 승인에 명시한다.
+- B 노트북 helper만 다중대표 선택·현재 결과 라우팅·검토 진행으로 확장했다. 기존 보호 CLI·Provider·Host·Service·평가기·원본 fixture와 독립 정답을 재사용한다. 새 무료 게이트와 본인의 실행 경로에 결합된 정확 승인 문구를 확인한 뒤에만 실제 호출한다. 기본 전체 실행은 API·DB·키·작업프로세스를 시작하지 않는다.
+- 각 실제 대표의 자동 검사 후 사람이 정확 보고서·출력 해시에 결합된 한국어 의미 검토를 제출해야 다음으로 진행한다. CQ01 접수는 의미 검토 후 정확 draft/version/content_hash·작성자·변경 내용을 표시하고, 작성자와 다른 개발 검토자의 별도 승인/거절을 받는다. 개발용 identity는 실제 인증 계정을 의미하지 않는다. 자동 통과·이전 답변 fallback·자동 유료 재실행은 없다.
+- 새 보호 DB에서 전체10대표·40 HTTP 대역 요청의 무료 검사를 통과했다. 별도 한국어 의미 검토10개, 서버 종료코드3·소유PID/pidfile/socket부재·cleanup오류0을 확인했다. 현재 실제 ipykernel에서 기본11셀 실행·커널 종료를 확인했다. 실제 유료 호출·키로드·승인된 유료 실행 생성은0이다. 이 노트북으로 실제 유료 성공을 새로 얻었다고 보고하지 않는다.
+- 기존 실제 성공 증거235개 SHA, 원본 입력37개 및 새 helper를 제외한 기존 source digest dc1016c5248e676fa7c7312bc4b3d8d46bf3e6d0cd723a1dd6338ec02926b3f6가 동일하다. 새 helper 포함 source digest는4a5ca62714002e8eb8fd8f85c8e57b4302344dbb58820369c7f43e78fe5b44b1이다. 이전 무료 게이트를 수정 소스에 재사용하지 않는다. 새 의존성·기존 DB/settings/controller 실행·commit/push 없음.
+- 커널·전체 무료·별도 의미 검토·보존 근거: artifacts/local/order_fulfillment/notebook_full_live_wiring_20261028T081315_c3a73283/. 무료 실행 원본: artifacts/local/order_fulfillment/notebook_61da7e63ca464d8e_free/.
+- 최종 전체717개 수집·실행 전부 통과(노트북 경계검사29개 포함), 실패/오류/skip0. CI cq_check15항목·agent_tools도 통과했다. 새 소유 DB 실제psycopg1445연결을 대조했고 API/키읽기0·접근차단0, 서버/PID/pidfile/socket 종료를 확인했다. AST/메모리컴파일/공백 검사 통과, 별도 lint/typecheck 설정·새 의존성 없음. 전체 회귀·보호·종료 근거: artifacts/local/order_fulfillment/notebook_full_regression_20261028T081524_8c705fcc9709/.
+
+
+## 2026-10-28 노트북 승인 셀의 중복 시작 안내 수정
+
+두 실제 실행 노트북의 승인 셀에서 기존 live 시작 여부를 먼저 확인하고 현재 상태·5번 답변/6번 검토 안내를 표시한다. 최초 실행의 정확 승인·free gate 및 core 중복 실행 차단은 유지했다. 무료 검사 중·종료·비활성·새 사람 승인 등2노트북×5조건10검사 통과, 실제 API/프로세스/키읽기0. 사용자가 저장한 모든 다른 셀·출력·실행 카운터를 보존했고 B source/helper를 수정하지 않아 실행 중 캠페인과 free gate에 영향을 주지 않는다. 증거: artifacts/local/order_fulfillment/notebook_start_guard_20261028T083456_3b0cbefe/validation.json.

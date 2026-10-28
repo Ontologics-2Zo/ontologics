@@ -579,3 +579,114 @@ Task09 실제 두 대표의 코드·자료·원문·판정 바인딩을 확인�
 명시 승인 입력·고정 가상 자료·공통 계산·읽기 Agent의 CQ06 Task07~10 개발 범위를 수락했다. CQ01~05와 S1/S2 전체 회귀는 통과했으나 각 CQ의 기존 한계를 해제하거나 전체MVP·반복 신뢰도·운영을 수락하지 않는다. 새CQ/유료반복/웹·Supervisor/실제 승인·발송·출고는 시작하지 않았다.
 
 근거는 `artifacts/local/b_cq06_task10_20261027/`의 verification, design_verified, golden_examples_verified, live_evidence_verified, independent_acceptance_review, acceptance다. 학습용 Task10·설계 대응표는 JunhwaDocs CQ06 폴더에 추가했다. 기존 업무 코드·자료·환경 파일·이전 실행 원문과 개인 Git 제외·브랜치/main을 보존했고 fetch/commit/push0이다.
+
+
+## 복구 Task09 — 전체 구동·보존 확인 (2026-10-28)
+
+완료. audit_checked 최종 실행: 전체 unittest55모듈/641개(공통144·B497) 통과, 실패/오류/skip/필수미실행/중복0. subTest16,070은 별도 이벤트다. Task08 이월 경로2개 포함. 원래 B 예제58개(Host35개 포함), 그래프4개, 원래 공통 demo version1→2→3, 업무5테이블/data_version 읽기 불변34개를 확인했다. 이번 원문 CQ05 11개·CQ06 독립5개 별도 의미 검토, 독립 승인쌍5개/승인10건 확인.
+
+기존 안전 파일232개는 문서 기록 직전 모두 동일했다. model/CQ06테스트 SHA, refs/HEAD/index/기존 source diff 보존. 기존 DB13곳은 lstat만 대조했으며 본문 보존은 주장하지 않는다. 기존 DB/환경/인증/compose 본문 읽기와 실제 API 호출0. 새 전용 PostgreSQL5개 모두 종료·PID/postmaster.pid/socket 부재 확인. 내부 loopback HTTP289건은 공통 테스트 통신이다.
+
+제품/공통 코드·기존 테스트/fixture/expected 변경 없이 공유 상태 이력과 개인 결과 신규 문서 및 로컬 증거만 작성했다. 실행기 설정 실패·의도 중단은 별도 이력이며 최종 성공 수에 합산하지 않았다. Git 접근 제한 경고로 전체 untracked inventory 완전성은 주장하지 않는다. ScriptedProvider 의미 검토를 실제 LLM 품질 검증으로 확대하지 않는다. wheel/배포/독립 두 번째 replay는 미검증.
+
+개인 결과: [복구_Task09_전체구동_보존확인.md](/Users/junhwa/Desktop/Ontol/ontologics/JunhwaDocs/06_B체인_분리/복구_Task09_전체구동_보존확인.md)
+증거: [task09_20261028T115716+0900_52863238](/Users/junhwa/Desktop/Ontol/ontologics/artifacts/local/order_fulfillment/task09_20261028T115716+0900_52863238)
+집계·보존·종료·재현: [results_summary.json](/Users/junhwa/Desktop/Ontol/ontologics/artifacts/local/order_fulfillment/task09_20261028T115716+0900_52863238/results_summary.json), [final_preservation_check.json](/Users/junhwa/Desktop/Ontol/ontologics/artifacts/local/order_fulfillment/task09_20261028T115716+0900_52863238/final_preservation_check.json), [final_process_check.json](/Users/junhwa/Desktop/Ontol/ontologics/artifacts/local/order_fulfillment/task09_20261028T115716+0900_52863238/final_process_check.json), [REPRODUCE.md](/Users/junhwa/Desktop/Ontol/ontologics/artifacts/local/order_fulfillment/task09_20261028T115716+0900_52863238/REPRODUCE.md).
+
+Task09 완료에서 종료. Task10 미착수.
+
+
+## 2026-10-28 복구 Task10 무료 준비·유료 범위 확인 대기
+
+- Task10 미완료: 실제 API0·실제 LLM 성공0/10·미실행10. 미승인 전체40요청을 실행하지 않음. 입력/캐시입력/출력 usage와 청구액은 미측정(null).
+- 새 전체 discovery56모듈 고유647개(공통144/B503) 통과, 실패/오류/skip/필수미실행/중복0. subTest16,430 별도. Task09 수치를 이번 결과로 재사용하지 않음.
+- B CQ01 선택형 bounded adapter/회귀6개만 새로 추가. 기존 공통/Service/모델/스키마/설정/fixture/독립정답/기존테스트 동결. 실제LLM 초안 작성에 oracle을 주입하지 않음.
+- finalguards 무료 HTTP 대역10대표 각각4요청·합계40, 실제 Host→Runtime→Provider/도구→Service→새 PostgreSQL/pgvector 통과. CQ01 다른 개발검토자 정확 초안 반영, CQ06 독립 승인쌍2/승인4 확인. 정확 출력hash에 묶인 별도 한국어 의미 검토10개 통과. 이 결과는 실제LLM 품질/모델가용성/1024내실제생성 증명이 아님.
+- 5번째 전송전 차단·영속예산·실패/timeout소진·재시작방지·HTTPError 원문과 비객체JSON·usage null·실제Host 오류5종 중단을 무료검증. 원응답/Provider/Runtime/파싱답/Service/Python설명/queried_at 원본 구분보존.
+- 기존 안전파일201개 중 공유문서 외200개 동일, 이 문서는 원문보존 후 추가. 고정 model/CQ06복구테스트 해시·HEAD/refs/index 동일·이번 공유문서 추가 외 기존 diff 보존. 이전DB18개는 lstat만 일치. 키/기존환경/인증/compose/DB본문 읽기·해시·복사0. Git 제한 경고 때문에 전체untracked inventory 보존은 주장하지 않음. 이번 서버6개 모두 status3/PID/pidfile/socket부재 확인.
+- 전체 유료범위는 고정모델gpt-5.4-mini-2026-03-17·Responsesendpoint·10대표최대40·사례4·출력1024·timeout30·재시도0의 제안이며, CQ01확정4+4/8은 재질문하지 않음. 입력/금액상한 미확정. 승인 후 새live자원·정확키/endpoint예외·각응답별 별도 의미검토로만 진입.
+- Service장문 synthetic구조화필드/짧은Agent구조화답 병독/선택근거≠그래프삭제 등 Task09 표현 한계 유지. wheel/배포/독립두번째전체bootstrap/반복성공률/운영수락 제외.
+- 개인결과: `JunhwaDocs/06_B체인_분리/복구_Task10_CQ01_06_실제LLM_대표검증.md`
+- 증거: `artifacts/local/order_fulfillment/task10_20261028T135137+0900_068ff4bd`
+
+
+## 2026-10-28 복구 Task10 유료 승인 실행 — CQ01 첫 요청 실패로 중단
+
+전체10대표/최대40 유료승인 후 새 보호 연결부·새 소유DB로 실제 호출했다. **HTTP1/completed1, 대표성공0/10·실패1·후속미실행9, Task10미완료**. 고정모델gpt-5.4-mini-2026-03-17/reasoning none/출력1024/30초/재시도0 유지. 첫 응답lookup1개로7동시조회검사를 통과하지못해 CQ01_BOUNDED_PHASE로중단, 도구실행/초안/승인/반영0·업무5테이블행불변. 한국어별도검토도실패. 실제입력2251/캐시0/출력31(총2282), 미실행usage null, 비용추정없음. 남은예산으로재시도하지않음.
+
+원인은B의named forced function(정확1회)과7개batch요구충돌. 여러조회단계만required로B2파일최소수정하고 정확배치/버전/도구범위/예산/제한유지. 수정전실패→수정후통과·실제실패원문무통신재생·새전체회귀56모듈고유648(공통144/B504)통과·실패/오류/skip/미실행/중복0·subTest16,468별도·무료10대표40가짜요청/의미검토10통과·실제Host오류5종중단통과. required는정확7개보장이아니며 수정후실제모델품질미검증. 전체유료재실행없음.
+
+새유료단계안전파일205중기타201동일/B2최소수정/개인·공유2문서원문보존추가. model/CQ06독립테스트고정해시·HEAD/refs/index/cached diff·기존diff보존(요청된2문서추가제외), 알려진이전DB18 lstat일치. 키는승인후기존경로로만사용/비로그. OS TCP443+Python정확endpoint/IP/전송창·DBUnix보호유지. 이번서버5모두status3/PID/pidfile/socket부재, 앞무료6종료기록유지. Git제한으로전체untrackedinventory주장없음. 원문/Provider/Runtime/답/Service/Python설명·usage/queried_at구분보존. 이전Task09와실패기록유지. 새유료범위확정전자동재개금지.
+
+최신개인결과: `JunhwaDocs/06_B체인_분리/복구_Task10_CQ01_06_실제LLM_대표검증.md`. 최신증거: `artifacts/local/order_fulfillment/task10_20261028T135137+0900_068ff4bd/paid_20261028T142128_9f3edb15`. 기존무료단계결과는당시기록으로유지한다.
+
+
+## 2026-10-28 복구 Task10 수정 연결부 유료 재실행 — CQ02 실패로 중단
+
+새 사용자 승인 10대표/최대40요청으로 새 격리 환경에서 실제 실행했다. **Task10 미완료: 실제10요청, 대표 성공2(CQ01 접수4·약속4), 실패1(CQ02 정상2), 후속미실행7.** CQ01 두 대표는 completed·자동·별도 한국어 의미 검토를 통과했고 정확 초안 버전/content_hash의 다른 개발 검토자 승인·버전2 반영을 확인했다. CQ02는 snapshot coverage enum 밖 계약 Evidence 조회를 반환해 기존 B가 도구 실행 전 거부했다. 빈 최종답/null hash를 실패로 보존하고 후속 유료 호출을 중단했다. CQ02와 약속 조회의 업무5테이블 전체 행은 불변이다.
+
+고정모델 gpt-5.4-mini-2026-03-17/reasoning none/출력1024/30초/대표4·CQ01합8·전체40/재시도0/실패소진·예산이전금지·재시작차단을 유지했다. 사용량 입력33,377/캐시0/출력1,469/총34,846, 미실행usage null. 비용 추정 없음. 남은30요청으로 재개하지 않았다.
+
+B CQ02의 단계별 복사 스키마에 strict=True 한 줄과 새 테스트2개만 추가했다. 기존 사후 검사/권한/이력/도메인 의미·공통·기존 테스트/정답은 유지했다. 수정 전 실패→수정 후 통과, 실제 실패 무통신 재생, 독립 코드 리뷰·무료10대표40회/별도 의미10개·오류5종·새 전체57모듈 고유650(공통144/B506) 통과, 실패/오류/skip/누락/중복0, subTest16,552별도. 수정 후 실제 LLM 품질은 미검증이며 추가 유료 재실행 없음.
+
+안전205개 중202동일/B1최소수정/개인·공유2문서원문보존추가, 새테스트1별도해시. 고정hash·HEAD/refs/index/cached diff·허용변경 외기존diff·이전DB29 lstat대조, 이번서버4 status3/PID/pidfile/socket부재로종료확인. 실제실패traceback <unknown>읽기2건차단, 채택무료예상밖차단0. 키비로그·OS443/Python정확endpoint/IP/전송창·새DB보호유지. Git경고로전체untrackedinventory보존주장없음. 과거실패기록보존/새유료범위승인전자동재개금지.
+
+개인 결과: `JunhwaDocs/06_B체인_분리/복구_Task10_CQ01_06_실제LLM_대표검증.md`. 최신 증거: `artifacts/local/order_fulfillment/task10_rerun_20261028T144704_5901341434`. 기존 무료·유료 기록은 당시 결과로 보존한다.
+
+
+## 2026-10-28 Task10 CQ02~CQ06 새 승인 실행 — 남은 8대표 실제 검증 통과
+
+기존 CQ01 실제 접수·약속2성공(4+4요청)은 원본 report/review/output hash·승인 버전 기록 그대로 보존하고 이번 CQ01 실제호출0. CQ02~06 새8대표/최대32요청의 실제 실행은 32요청, 성공8·실패0·미실행0. 기존2+이번성공은 10/10으로 별도scope 결과를 구분한다. 과거 실패를 덮어쓰지 않았다.
+
+새DB/사용자/pgdata/socket/HOME/TMPDIR·대표별schema, 동결fixture 무료재구성·실제 snapshot/task일치 확인, CQ06 별도검토 before2/after3 승인 연결을 유지했다. 수정CQ02 관련36검사+무료8대표32fake+오류5종+별도의미8+독립소스감사 통과 후 실제진입. 고정모델/출력1024/30초/대표4·전체32/CQ01=0/재시도0/실패소진·이전금지·재시작차단, 실패시후속중단·자동유료재실행금지를 유지했다. 입력155,747/캐시2,816/출력6,500/총162,247, usage누락0, 비용추정없음.
+
+기존650회귀 통과와 안전212개·고정hash·이전DB33 lstat·HEAD/refs/index·기존diff·CQ01증거 보존, 문서원문뒤추가 및 이번소유서버 status3/PID/pidfile/socket부재는 최신 final검증에 기록한다. 키비로그/정확endpoint·IP전송창/원래psycopg실제접속전후·스레드보호유지. Git경고와 보호차단 보존, 전체untrackedinventory·운영보증주장없음.
+
+개인 상세: JunhwaDocs/06_B체인_분리/복구_Task10_CQ01_06_실제LLM_대표검증.md. 새증거: `artifacts/local/order_fulfillment/task10_cq02_06_20261028T151651_47e8d191d2`.
+
+
+## 2026-10-28 복구 Task11 — CQ01~06 보호된 재사용 실행과 무료 검증 완료
+
+- 새 B 예제 `b_run` CLI와 workflow/transport/isolation 모듈 4개를 추가했다. Task10 전용 artifact를 import하거나 과거 controller/settings/DB를 실행하지 않는다. 기존 대역 CLI·역할 Provider·평가기·공통 코드·모델/정답·원문은 보존했다. 사용법은 [B 개발 안내의 Task11 항목](README.md#2026-10-28-복구-task11--cq0106-재사용-실행-진입점)을 따른다.
+- 최종 공개 진입점으로 새 cluster/DB/user/socket/HOME/TMPDIR에서 **10대표·40 HTTP 대역**, 자동 검사·원문/모델/런타임 출력 결합·별도 한국어 의미 검토를 통과했다. **이번 실제 API 호출 0·키 로드 0**이다. CQ01 접수 단독 미승인과 별도 개발 검토 대역의 정확 draft/version/hash 반영·새 연결 약속 조회, CQ06 별도 승인 v2/v3, 후속9개 조회의 업무5테이블 불변성을 확인했다.
+- 전체 수집 당시 685개(skip0)를 실행하고, 최종 신규 모듈 38개(skip0)를 별도 새 DB에서 다시 실행했다. 중복35개를 제외한 **고유688개 전부 통과**이며 기존650개를 포함한다. 기본 strict 원장과 무료 모의 검토를 분리하고 예산·중단·재시작·오래된 승인/다른 범위·정확 한국어 의미 검토·HTTP 오류/timeout·키 echo 마스킹을 검증했다. 새7개 Python 파일의 AST/메모리 컴파일/import/공백 검사를 통과했고 별도 ruff/mypy/pyright는 설치되지 않았다. 새 의존성은 없다.
+- 대표당4/전체40(부분집합4×사례수), 고정 gpt-5.4-mini-2026-03-17·출력1024·hard deadline30초·재시도0을 유지한다. 새 절대 출력 경로에 결합한 명시 사용자 승인과 현재 코드/입력/사례가 같은 무료 게이트 없이는 실제 실행을 열지 않는다. 각 실제 대표의 자동 검사와 별도 exact-report 한국어 의미 검토, CQ01 연결의 별도 정확 초안 검토 입력이 필요하다. 실패/stop/프로세스 중단 시 후속 호출을 차단하고 종료한다. 수정 뒤 유료 재실행은 자동 시작하지 않는다.
+- 초기 무료 통합 실패4개는 원래 기록을 보존한 채 최소 B 수정 후 새 환경에서 재검증했다. 정상10대표 실행을 반복 확인했고, 의도적 SIGTERM 중단에서도 소유 worker와 DB 종료를 확인했다. 기존 Task10 실제 성공 **CQ01 2대표 + 별도 후속 범위 CQ02~06 8대표**는 이번 무료 성공과 구별해 보존·해시 검증한다. 이번 결과를 실제 모델 반복 신뢰도·임의 입력·운영 인증/배포·전체 MVP 완료로 확대하지 않는다.
+- 증거 폴더: `artifacts/local/order_fulfillment/task11_20261028T154144_5b548e6e98/`. 최종 `public_free_final/free_gate.json`, `free_final_independent_semantic_review.json`, `completion_summary.json`, `final_preservation_check.json`, `final_process_check.json`에 실행·검토·보존·종료 근거를 둔다. 과거 성공/실패·원문/정답·기존 DB·Git 참조/인덱스·기존 작업과 개인 Git 제외를 보존하고 commit/push는 하지 않았다.
+
+
+## 2026-10-28 CQ01~06 시연 노트북 초안 — Task12 착수 전
+
+- notebooks/CQ01_06_시연.ipynb와 사용 안내를 추가했다. 24셀 중 코드11셀, 저장된 출력 포함. Task11의 무료 대역 구조화 답 10개에서 표시 자료를 만들고 실제 LLM/HTTP 원문·DB·환경·키·개발 신원은 포함하지 않았다. Task10 실제 LLM 성공10대표와 무료 대역 결과를 명시적으로 구분한다. 각 CQ 대표 자료가 하나의 연속 상태가 아니라는 점, 조건부 예측·미발송/미등록 초안·별도 검토 권한을 설명한다.
+- 모든 기본 코드 셀을 저장소 루트와 별도 임시 작업 폴더에서 각각 실행했다. audit hook으로 파일 열기·socket·subprocess·system/fork 시도를 차단한 상태에서 모두 통과했으며 접근 시도0이다. 구조화 답10개와 원본 JSON14개의 해시 일치, 원본 변조 모의/상대 경로 거부를 확인했다. 선택 무료 실행은 명령문 출력만 한다. API0·DB연결0·키로드0·새서버0이며 새 실제 성공을 주장하지 않는다.
+- 기존 Python source fingerprint dc1016c5248e676fa7c7312bc4b3d8d46bf3e6d0cd723a1dd6338ec02926b3f6과 원본14개 해시가 동일하다. 공통 코드·모델·독립 정답·기존 실행기·기존 DB·과거 성공/실패 기록은 수정하지 않았다. 새 의존성·commit/push 없음.
+- 프로젝트 및 제공된 번들 Python 환경에 nbformat/nbclient/ipykernel이 없으므로 실제 Jupyter 커널·화면 검증은 미실행이다. 표준 Python으로 코드 셀을 실행한 결과와 구분한다. 권장 후속 Task12는 이 노트북을 최종 시연물로 삼는 독립 설치·무료 재현·커널 검증이며 이번 작업으로 완료 처리하지 않는다.
+- 검증 근거: artifacts/local/order_fulfillment/notebook_demo_20261028T072509_65548756/validation.json.
+
+
+## 2026-10-28 CQ04 실제 실행 시연 연결·무료 검증
+
+- 사용자가 저장 결과 표시와 실제 LLM 실행의 차이를 지적해, CQ04_실제실행_시연.ipynb를 별도 추가했다. B b_notebook.py는 기존 보호 b_run CLI만 새 프로세스로 실행하며 자체 API/DB 구현·과거 결과 fallback·임의 입력 지원을 추가하지 않는다. 기존 설명용 노트북의 실행/저장 작업은 덮어쓰지 않았다.
+- 기본 스위치 모두False, 새 무료 성공·종료·현재 소스/사례/해시 결합 뒤 본인의 정확한 새 실행 승인 입력만 유료 경로를 연다. CQ04 기본1대표/최대4·CQ01=0·고정모델·출력1024·30초·재시도0와 입력/금액 별도상한 없음 확인을 유지한다. Agent 자동 승인·자동 의미 검토가 없고, 사람의 정확보고서·출력 해시 한국어 검토를 기다린다. 실패/중단 후 자동 재실행 없음.
+- 새 경계검사17개 포함 전체705개 수집·실행 전부 통과, 실패/오류/skip0. 새 원본과 동일한 안전 사본·새 DB에서 실제 psycopg1442개를 주소/반환연결 대조하고 실제 소유 서버를 확인했다. 앞선 검증기2개는 원본 쓰기 차단/과도한 계측으로 의도 중단 후 새 소유 환경에서 재검증했고 기록·종료 증거를 보존했다. 완료 수에 합산하지 않는다. 기존 공통·모델·정답·fixture·Task11 코드 무변경, 새 의존성 없음. AST/메모리컴파일/import/공백 통과. ruff/mypy/pyright 미설치.
+- 현재 실제 ipykernel에서 기본12셀 실행 통과, 기본 API/DB/키/작업프로세스 시작0 및 커널 종료 확인. 새 보호 CLI CQ04 무료1대표4대역 요청·자동29항목·별도 한국어 의미 검토, 미승인 계획 생성만 확인했다. 별도 새 무료 캠페인의 의도 중단에서 예약요청0·worker/서버/PID/socket 종료 확인. 첫 내부 중첩 sandbox 실행제한은 원문 보존하고 기존 자체 OS 보호를 유지한 별도 무료 환경으로 재검증했다. 실제 API0·키로드0·실제 유료 승인 생성0이다.
+- 원본 Task10 실제 성공 증거235개 SHA와 기존 Task11 소스 fingerprint dc1016c5248e676fa7c7312bc4b3d8d46bf3e6d0cd723a1dd6338ec02926b3f6 일치. B 새 helper 포함 현재 digest는1224bd1cac1e0472d075c0014eedf363408c3a339927732b0ed9a43a15a1bb02다. 과거 무료 게이트를 현재 소스에 재사용하지 않는다. 이번 생성 PG 서버5개(무료성공1·중단1·회귀3) 모두 종료. 원본 DB·settings/controller 실행·Git commit/push 없음.
+- 실제 유료 모델 품질·반복 신뢰도·임의 질문/입력·독립 설치/패키징·다른 OS/웹/운영/배포는 미검증이다. Task12의 설치 검증 전체를 완료했다고 확대하지 않는다. 새 노트북에서 본인 승인 뒤 실제 호출·별도 검토·종료를 완료해야 새 실제 성공으로 보고한다.
+- 연결/커널/무료/검토/보존 근거: artifacts/local/order_fulfillment/notebook_live_wiring_20261028T075214_c7fb61e5/. 전체회귀/안전/종료: artifacts/local/order_fulfillment/notebook_regression_20261028T075925_34af8ec70bf3/.
+
+
+## 2026-10-28 CQ01~06 전체 대표 실제 실행 노트북 연결
+
+- 고정 사례를 실제 LLM에 넣어 새 답변을 얻으려는 요청에 따라 [전체 실제 실행 노트북](../../notebooks/CQ01_06_실제실행_시연.ipynb)을 추가했다. CQ04만 선택했던 범위를 전체10대표로 확장했다. 기존 CQ04 실제 실행 노트북과 저장 결과 설명용 노트북은 보존했다.
+- 순서는 CQ01 접수·약속 → CQ02 정상 → CQ03 정상 → CQ04 기본·혼합 → CQ05 기본·혼합 → CQ06 불량 증가·운송 변경이다. 대표당최대4·전체최대40·CQ01최대8 포함, 고정모델·출력1024·30초·재시도0을 유지한다. 입력·금액 별도상한 없음은 새 실행 승인에 명시한다.
+- B 노트북 helper만 다중대표 선택·현재 결과 라우팅·검토 진행으로 확장했다. 기존 보호 CLI·Provider·Host·Service·평가기·원본 fixture와 독립 정답을 재사용한다. 새 무료 게이트와 본인의 실행 경로에 결합된 정확 승인 문구를 확인한 뒤에만 실제 호출한다. 기본 전체 실행은 API·DB·키·작업프로세스를 시작하지 않는다.
+- 각 실제 대표의 자동 검사 후 사람이 정확 보고서·출력 해시에 결합된 한국어 의미 검토를 제출해야 다음으로 진행한다. CQ01 접수는 의미 검토 후 정확 draft/version/content_hash·작성자·변경 내용을 표시하고, 작성자와 다른 개발 검토자의 별도 승인/거절을 받는다. 개발용 identity는 실제 인증 계정을 의미하지 않는다. 자동 통과·이전 답변 fallback·자동 유료 재실행은 없다.
+- 새 보호 DB에서 전체10대표·40 HTTP 대역 요청의 무료 검사를 통과했다. 별도 한국어 의미 검토10개, 서버 종료코드3·소유PID/pidfile/socket부재·cleanup오류0을 확인했다. 현재 실제 ipykernel에서 기본11셀 실행·커널 종료를 확인했다. 실제 유료 호출·키로드·승인된 유료 실행 생성은0이다. 이 노트북으로 실제 유료 성공을 새로 얻었다고 보고하지 않는다.
+- 기존 실제 성공 증거235개 SHA, 원본 입력37개 및 새 helper를 제외한 기존 source digest dc1016c5248e676fa7c7312bc4b3d8d46bf3e6d0cd723a1dd6338ec02926b3f6가 동일하다. 새 helper 포함 source digest는4a5ca62714002e8eb8fd8f85c8e57b4302344dbb58820369c7f43e78fe5b44b1이다. 이전 무료 게이트를 수정 소스에 재사용하지 않는다. 새 의존성·기존 DB/settings/controller 실행·commit/push 없음.
+- 커널·전체 무료·별도 의미 검토·보존 근거: artifacts/local/order_fulfillment/notebook_full_live_wiring_20261028T081315_c3a73283/. 무료 실행 원본: artifacts/local/order_fulfillment/notebook_61da7e63ca464d8e_free/.
+- 최종 전체717개 수집·실행 전부 통과(노트북 경계검사29개 포함), 실패/오류/skip0. CI cq_check15항목·agent_tools도 통과했다. 새 소유 DB 실제psycopg1445연결을 대조했고 API/키읽기0·접근차단0, 서버/PID/pidfile/socket 종료를 확인했다. AST/메모리컴파일/공백 검사 통과, 별도 lint/typecheck 설정·새 의존성 없음. 전체 회귀·보호·종료 근거: artifacts/local/order_fulfillment/notebook_full_regression_20261028T081524_8c705fcc9709/.
+
+
+## 2026-10-28 노트북 승인 셀의 중복 시작 안내 수정
+
+두 실제 실행 노트북의 승인 셀에서 기존 live 시작 여부를 먼저 확인하고 현재 상태·5번 답변/6번 검토 안내를 표시한다. 최초 실행의 정확 승인·free gate 및 core 중복 실행 차단은 유지했다. 무료 검사 중·종료·비활성·새 사람 승인 등2노트북×5조건10검사 통과, 실제 API/프로세스/키읽기0. 사용자가 저장한 모든 다른 셀·출력·실행 카운터를 보존했고 B source/helper를 수정하지 않아 실행 중 캠페인과 free gate에 영향을 주지 않는다. 증거: artifacts/local/order_fulfillment/notebook_start_guard_20261028T083456_3b0cbefe/validation.json.

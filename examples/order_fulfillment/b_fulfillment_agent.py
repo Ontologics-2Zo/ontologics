@@ -301,6 +301,7 @@ class ProvenanceProvider:
                                              for key, values in choices.items()}
                 parameters['required'] = list(choices)
                 scoped[0]['description'] += ' Only the listed exact IDs and version are valid at this step.'
+                scoped[0]['strict'] = True
             self.provider.tools = scoped
         request_messages = messages
         if name is None:

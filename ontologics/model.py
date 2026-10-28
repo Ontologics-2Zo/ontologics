@@ -300,11 +300,11 @@ def validate_graph(nodes):
                 key = (n.get('configuration_id'), pos)
                 if key in positions: error(n['id'], 'DUPLICATE_BOM_POSITION', positions[key])
                 positions[key] = n['id']
-    from .fulfillment_validation import validate_fulfillment
+    from .order_fulfillment.fulfillment_validation import validate_fulfillment
     validate_fulfillment(index, error)
-    from .production_validation import validate_production_observations
+    from .order_fulfillment.production_validation import validate_production_observations
     validate_production_observations(index, error)
-    from .delivery_validation import validate_delivery_conditions
+    from .order_fulfillment.delivery_validation import validate_delivery_conditions
     validate_delivery_conditions(index, error)
     return {'valid': not errors, 'errors': errors, 'warnings': warnings}
 

@@ -25,6 +25,23 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 
 실제 설계 다섯 타입은 `real`, 운영 다섯 타입은 현재 기준 데이터 정책에 따라 `synthetic`만 허용한다. 제품 소속·로트 부품·장착 위치가 실장 확인된 BOM과 맞아야 한다. 추가 필드로 검사·고장 원인·가동 정보를 끼워 넣을 수 없다. 새 종류의 사양은 공통 계약의 명시적 확장으로 추가한다.
 
+#### C 클레임 대응 확장 타입
+
+C 클레임 대응 Agent가 고객 클레임 → 품질 사건 → 생산라인 추적 → 영향 범위 → 중단 요청서 초안을 남기기 위해 추가한 타입이다. 모두 `synthetic`만 허용하며 실제 OLIMEX 품질·생산 기록이 아니다. 기존 12개 타입의 필드·의미는 바꾸지 않는다. 자료 정책은 [C 자료 정책](claim_response/DATA_POLICY.md)을 따른다.
+
+| type | 주요 필드·관계 |
+| --- | --- |
+| ProductionLine | company, line_code, name. (company, line_code) 중복 금지 |
+| UnitProductionRecord | unit_id → ProductUnit, production_line_id → ProductionLine, produced_at. 보드당 1개. 선택 production_work_id는 공통 ProductionWork 타입이 정의되기 전까지 어떤 값도 거부 |
+| ClaimIntake | external_claim_id, customer_name, reported_at, reported_symptom, claimed_quantity(양의 정수), reported_serials(고유 문자열 목록), intake_state=needs_review/confirmed/rejected. 선택 reported_conditions, requested_action, delivery_reference. 신고 수량과 일련번호 수가 다르면 경고 |
+| QualityCase | intake_id → ClaimIntake(confirmed만), customer_name, reported_at, reported_symptom, unit_ids → ProductUnit 목록 |
+| QualityScope | case_id → QualityCase, production_line_id → ProductionLine, as_of, unit_ids → ProductUnit 목록, scope_state=hold/candidate, 선택 start/end |
+| ContainmentRequest | case_id → QualityCase, scope_id → QualityScope(같은 사건), request_kind=production_stop/shipment_hold, prepared_at, document_ref. production_stop은 production_line_id 필수. 선택 draft_id/draft_version |
+
+`reported_symptom`은 고객이 신고한 표현일 뿐 확인된 불량이나 원인이 아니다. 목록 참조(`unit_ids`)와 선택 참조는 JSON-LD에서 ID 관계로 직렬화한다. 요청서는 그래프에 문서 참조만 남기며 생성·검토가 송부나 현장 반영을 뜻하지 않는다.
+
+C 추적 경로: `ClaimIntake.reported_serials → ProductUnit.serial`(사람 확인 후 `QualityCase.unit_ids`), `UnitProductionRecord.unit_id → ProductUnit`, `UnitProductionRecord.production_line_id → ProductionLine`, `QualityScope.case_id → QualityCase`, `ContainmentRequest.scope_id → QualityScope`.
+
 시간은 `2026-09-20T10:00:00+09:00`처럼 명시적 시각·UTC offset이 필요하다. 날짜만 있는 원본은 이 필드에 임의로 넣지 않고 보완 대상으로 둔다. 구간은 `[start,end)`다. `confirmed_until`은 그 시각 이전까지 장착을 확인했다는 유한한 근거이며 제거 시각이 아니다. 조회의 이력 완전성은 사건 목록만 있는 상태를 뜻하지 않는다.
 
 대표 CQ의 실제 조회 경로는 다음과 같다. 화살표는 필드 참조 방향이며 역방향은 노드 검색이다. [SERVICE_SPEC의 CQ 표](SERVICE_SPEC.md#cq와-원본검증-연결)에서 원본·미확인·업무 기대 결과를 함께 확인한다.

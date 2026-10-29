@@ -62,13 +62,24 @@ SPEC = AgentSpec('claim_response', '1.0.0', CLAIM_RESPONSE_INSTRUCTIONS, TRACE_I
 CLAIM_RESPONSE = AgentRegistration.from_spec(SPEC)
 
 
+def _same_read(args, wanted):
+    """Exact arguments; a node_id read may also name kind=ClaimIntake, which only narrows that one node.
+
+    Any other extra filter (query, limit, a kind on a list read) could hide rows, so it is not the same read.
+    """
+    if args == wanted:
+        return True
+    return ('node_id' in wanted and args.get('kind') == 'ClaimIntake'
+            and {k: v for k, v in args.items() if k != 'kind'} == wanted)
+
+
 def _lookup_data(tool_results, version, **arguments):
-    """Data of the latest successful lookup with exactly these arguments at the pinned version."""
+    """Data of the latest successful lookup with these arguments at the pinned version."""
     wanted = dict(arguments, version=version)
     found = None
     for call in tool_results:
         args = {k: v for k, v in call['arguments'].items() if v is not None}
-        if call['name'] == 'lookup' and args == wanted and call['result'].get('ok'):
+        if call['name'] == 'lookup' and _same_read(args, wanted) and call['result'].get('ok'):
             found = call['result']['data']
     return found
 
@@ -111,7 +122,20 @@ class ClaimTraceAgent:
             'question': payload['question'], 'intake_id': payload['intake_id'],
             'data_version': task.context.data_version,
             'plan': ['lookup node_id=intake_id', 'lookup kind=ProductUnit', 'lookup kind=UnitProductionRecord',
-                     'return the JSON result without approving or sending anything']}, ensure_ascii=False)}]
+                     'return the JSON result without approving or sending anything'],
+            # 7-1: exact arguments, because the answer is checked against reads with these arguments only.
+            'lookup_rule': 'call lookup once per object below with exactly these fields and no other fields',
+            'lookup_arguments': [{'node_id': payload['intake_id'], 'version': task.context.data_version},
+                                 {'kind': 'ProductUnit', 'version': task.context.data_version},
+                                 {'kind': 'UnitProductionRecord', 'version': task.context.data_version}],
+            'answer_format': 'one JSON object only, no prose: data_version, intake_id, matched_unit_ids, '
+                             'open_serials, production_line_id (omit unless every matched board traces to one line), '
+                             'evidence_ids',
+            # 7-1 live run: the model cited every evidence id it saw (stored/replacement batches too).
+            'evidence_rule': 'evidence_ids = the union of the evidence lists of exactly three things: the ClaimIntake, '
+                             'the matched ProductUnit nodes, and the UnitProductionRecord rows whose unit_id is a '
+                             'matched unit. Do not cite evidence of any other unit or record, even if it was read.'},
+            ensure_ascii=False)}]
 
     def validate_result(self, value, task, tool_results):
         expected = expected_trace(task.data()['intake_id'], task.context.data_version, tool_results)

@@ -94,3 +94,31 @@ C 노드(`ClaimIntake` 등) 조회 테스트는 가정 데이터를 만드는 3�
 
 - 1차 C 타입 6개는 `feature/c-graph-schema` → main PR #6으로 검토 중이다. C 브랜치는 이 PR 브랜치를 merge해서 사용한다.
 - 2차 타입 4개(시험·판정·재생산)는 `backup/c-phase2-schema`에 보관하고, 공통 담당자와 논의한 뒤 진행한다.
+
+## 8. 실제 모델 실행 (7-1)
+
+클레임 추적 작업(`SPEC`, `ClaimTraceAgent`)을 공통 고정 모델(`gpt-5.4-mini-2026-03-17`)로 한 번 실행한다. 공통 `openai_provider.py`·`host.py`는 가져다 쓰기만 한다.
+
+```bash
+python -m examples.claim_response.run_demo --live-agent
+```
+
+| 항목 | 내용 |
+|---|---|
+| 설정 | `.env.local`의 `OPENAI_API_KEY`, `OPENAI_MODEL`, `ONTOLOGICS_REQUEST_MAX_COST_USD`, `ONTOLOGICS_MODEL_PRICES_JSON`. 비용 정책이 없으면 호출 전에 `COST_POLICY_REQUIRED`, 키가 없으면 `OPENAI_KEY_MISSING`으로 멈춘다 |
+| 모델에게 주는 것 | 클레임 ID, 고정 데이터 버전, 읽을 순서와 `lookup` 인자 3개, 답 형식. 도구는 SPEC의 9개(승인·반영 없음) |
+| 결과 인정 | 모델이 실제로 읽은 결과로 4단계 추적 함수를 다시 돌린 값과 답이 같을 때만. 다르면 `AGENT_RESULT_REJECTED` |
+| 제한 | `max_steps=8`, `max_tool_calls=6`, 역할 한도 `BudgetLimits` 그대로, 요청별 USD 상한 |
+| 보고 | `run_demo.json`의 `live_agent_trace`: 실행 상태, 토큰 수(provider_calls), 도구 이름·인자, 답, 자동 검사 4개. 키·HTTP 원문은 기록하지 않음 |
+| 범위 | 모델은 추적 결과를 읽고 정리만 한다. 수량 계산·판정 집계·요청서는 함수가 하고, 승인·송부는 사람이 한다 |
+
+`--live-agent` 없이 실행하면 지금처럼 scripted provider만 쓰고 비용이 없다. 테스트(`test_run_demo.py`의 `LiveAgentWiringTests`)는 네트워크 없이 가짜 모델로 연결만 확인한다.
+
+첫 실제 실행 (2026-10-29, 윰 Windows): 4번째 실행에서 자동 검사 4개 통과 (도구 3회, 4 step, 보드 5대, C-01, 근거 2개). 앞의 거부 3번과 대응:
+
+| 실행 | 결과 | 원인 | 대응 |
+|---|---|---|---|
+| 1 | `AGENT_RESULT_REJECTED` | 클레임 조회에 `kind=ClaimIntake`를 덧붙임 → 같은 읽기로 인정 안 됨 | `node_id` 조회에 `kind=ClaimIntake`만 허용 (목록 조회는 그대로 정확히 일치) |
+| 2 | `AGENT_RESULT_REJECTED`, 답 비어 있음 | 공통 런타임은 거부된 답을 남기지 않음 | `RecordingProvider`로 마지막 답(`final_text`)과 `expected_from_reads`를 보고서에 남김 |
+| 3 | `AGENT_RESULT_REJECTED` | 근거에 읽은 근거 전부(보관·대체 재고·기존 데모)를 넣음 | 메시지에 근거 규칙 명시: 클레임, 연결된 보드, 그 보드의 생산 기록만 |
+| 4 | 통과 | | 검사 기준은 완화하지 않음 |

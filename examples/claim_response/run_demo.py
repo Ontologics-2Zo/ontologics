@@ -8,6 +8,9 @@ reviewing and sending them is a person's job.
 The claim trace also runs once through the common host as the registered C Agent
 (AgentSpec -> AgentRegistration.from_spec -> request.run_task) with a scripted
 provider, so the typed result and its host-resolved evidence references are shown.
+With --live-agent (7-1) the same task runs once on the project's fixed OpenAI model with
+the request cost policy from .env.local; the answer is accepted only when it equals the
+trace recomputed from the model's own reads. Nothing else in the demo uses a model.
 
 C 2nd phase (with --results): after the scripted review of the request drafts, the test
 request is drafted and approved (scripted "sent to the test team"), the test team's CSV
@@ -26,6 +29,10 @@ from ontologics.harness import PinnedContext
 from ontologics.host import CommonHost
 from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider, UserIdentity
 from ontologics.runtime import ModelConfig
+from ontologics.database import environment_values
+from ontologics.openai_provider import OpenAIProvider, OpenAISettings
+from ontologics.paid_budget import cost_policy_from_environment
+from ontologics.service import DomainError
 from ontologics.claim_response.fixtures import claim_response_nodes, load_operations
 from ontologics.claim_response.intake import convert_claim
 from ontologics.claim_response.reproduction import (
@@ -96,16 +103,90 @@ class ScriptedClaimTrace:
                 'tool_calls': []}
 
 
-def run_agent_trace(database, schema, intake_id, version):
-    """The registered C Agent runs the claim trace through CommonHost.request -> run_task."""
+LIVE_CONFIG = {'max_steps': 8, 'max_tool_calls': 6}
+
+
+class RecordingProvider:
+    """Keeps the model's last text: the common runtime drops a final answer that the role validator rejects."""
+    def __init__(self, inner):
+        self.inner, self.last_text = inner, None
+
+    @property
+    def calls(self):
+        return getattr(self.inner, 'calls', [])
+
+    def public_config(self):
+        return self.inner.public_config()
+
+    def __call__(self, *, model, messages):
+        response = self.inner(model=model, messages=messages)
+        self.last_text = response.get('text')
+        return response
+
+
+def live_agent_settings(env_file=None):
+    """7-1: model settings and the request cost policy, read as data from .env.local / .env.
+
+    Fails before any network call when the key or the cost policy is missing (no default cap).
+    """
+    values = environment_values(env_file)
+    settings = OpenAISettings.from_environment(environ=values)
+    policy = cost_policy_from_environment(values)
+    if policy is None:
+        raise DomainError('COST_POLICY_REQUIRED', 'Set ONTOLOGICS_REQUEST_MAX_COST_USD and ONTOLOGICS_MODEL_PRICES_JSON')
+    return {'settings': settings, 'cost_policy': policy, 'provider_factory': OpenAIProvider}
+
+
+def run_agent_trace(database, schema, intake_id, version, live=None):
+    """The registered C Agent runs the claim trace through CommonHost.request -> run_task.
+
+    live=None uses the scripted provider (no cost). live={'settings', 'cost_policy', 'provider_factory'}
+    uses the fixed model; the provider sees only the tools the spec requests.
+    """
     user = UserIdentity('dev-claim-agent', frozenset({'read', 'draft'}))
     host = CommonHost(DevelopmentIdentityProvider([user], enabled=True), database, schema=schema,
-                      agent_registrations=(CLAIM_RESPONSE,))
+                      agent_registrations=(CLAIM_RESPONSE,), cost_policy=live and live['cost_policy'])
     task = AgentTask({'intake_id': intake_id, 'question': 'Trace the confirmed claim to boards and a production line.'},
                      PinnedContext('Claim trace; no defect, cause or approval conclusion', version))
+    if live is None:
+        provider, config = ScriptedClaimTrace(task), ModelConfig(model='scripted-claim-trace')
+    else:
+        provider = RecordingProvider(live['provider_factory'](live['settings'], sorted(SPEC.requested_tools)))
+        config = ModelConfig(model=live['settings'].model, **LIVE_CONFIG)
     with host.request(DevelopmentContext(user.subject)) as request:
-        return request.run_task(SPEC.name, ClaimTraceAgent(), task, ScriptedClaimTrace(task),
-                                config=ModelConfig(model='scripted-claim-trace'), capture_tool_trace=True)
+        result = request.run_task(SPEC.name, ClaimTraceAgent(), task, provider, config=config, capture_tool_trace=True)
+    if live is not None:
+        result['task_intake_id'], result['task_version'] = intake_id, version
+        result['provider_calls'] = list(getattr(provider, 'calls', []))
+        result['provider_config'] = provider.public_config()
+        result['last_model_text'] = provider.last_text
+    return result
+
+
+def live_report(agent, expected):
+    """Safe report: status, tokens, tool names/arguments, answer and checks. No key, no HTTP body."""
+    runtime = agent['runtime']
+    trace = runtime.get('tool_trace') or []
+    return {
+        'execution_mode': 'live_api', 'provider_config': agent.get('provider_config'),
+        'provider_calls': agent.get('provider_calls', []),
+        'runtime': {k: runtime.get(k) for k in ('ok', 'status', 'steps', 'error', 'model', 'run_id')},
+        'tool_calls': [{'name': t['name'], 'arguments': t['arguments'], 'ok': t['result'].get('ok')} for t in trace],
+        'answer': agent['payload'], 'evidence_refs': len(agent['evidence_refs']),
+        # For a rejected run: the model's final text (fictional data only) and the trace its reads give.
+        'final_text': agent.get('last_model_text') if agent['payload'] is None else None,
+        'expected_from_reads': expected_trace(agent['task_intake_id'], agent['task_version'], [
+            {'name': t['name'], 'arguments': t['arguments'], 'result': t['result']} for t in trace])
+        if agent['payload'] is None else None,
+        'automatic_checks': {
+            'runtime_completed': bool(runtime.get('ok')),
+            'model_selected_tools_executed': bool(trace),
+            'answer_equals_recomputed_trace': agent['payload'] is not None,
+            'same_boards_and_line_as_scripted_trace': agent['payload'] is not None and all(
+                agent['payload'].get(k) == expected.get(k) for k in ('matched_unit_ids', 'production_line_id')),
+        },
+        'note': 'One narrow task on fictional data; automatic checks are not a general quality benchmark.',
+    }
 
 
 def run_phase2(svc, case, line_id, hold, candidate, containment_draft, *, external_claim_id, results_path,
@@ -160,7 +241,8 @@ def existing_nodes():
     return catalog + fictional
 
 
-def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_dir=REQUEST_DIR, results_path=None):
+def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_dir=REQUEST_DIR, results_path=None,
+             live=None):
     svc = Service(database, schema=schema or ('claim_demo_' + uuid.uuid4().hex if database is None else None),
                   principals=PRINCIPALS)
     try:
@@ -191,6 +273,11 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
         line_id = trace['lines']['single_line']
         # 5A-4: the same trace through the registered C Agent (typed contract, scripted provider).
         agent = run_agent_trace(database, svc.schema, intake['id'], version)
+        live_trace = None
+        if live is not None:
+            # 7-1: the same task once on the real model; the scripted result above is the reference.
+            live_trace = live_report(run_agent_trace(database, svc.schema, intake['id'], version, live=live),
+                                     agent['payload'] or {})
 
         # 4-3 / 4-4 with the temporary C operations basis (until the shared B stock/shipment types).
         records = must(svc.lookup('claim-agent', kind='UnitProductionRecord', version=version))['data']
@@ -245,6 +332,7 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
                               'sending': '미송부', 'on_site': '미확인'},
             'documents': documents,
             'phase2': phase2,
+            'live_agent_trace': live_trace,
         }
     finally:
         svc.close()
@@ -256,12 +344,23 @@ def main():
     parser.add_argument('--claim', default=str(DEFAULT_CLAIM), help='Claim file (.csv, .xlsx or .eml)')
     parser.add_argument('--results', default=None,
                         help='Test-team result CSV for the 2nd phase, e.g. scenario_1 or a path; omitted = 1st phase only')
+    parser.add_argument('--live-agent', action='store_true',
+                        help='7-1: also run the claim trace once on the fixed OpenAI model (paid; needs key and cost policy)')
+    parser.add_argument('--env-file', default=None, help='Default .env then .env.local; process environment wins')
     parser.add_argument('--output', default='artifacts/local/claim_response/run_demo.json')
     args = parser.parse_args()
     results = args.results
     if results and not results.endswith('.csv'):
         results = TEST_RESULTS / (results + '.csv')
-    summary = run_demo(schema=args.schema, claim_path=Path(args.claim), results_path=results)
+    live = None
+    if args.live_agent:
+        try:
+            live = live_agent_settings(args.env_file)
+        except DomainError as exc:  # ProviderError is a DomainError: safe code/message only, no secret.
+            print(json.dumps({'status': 'configuration_blocked', 'error': {'code': exc.code, 'message': exc.message}},
+                             ensure_ascii=False, indent=2))
+            return 1
+    summary = run_demo(schema=args.schema, claim_path=Path(args.claim), results_path=results, live=live)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
@@ -272,9 +371,12 @@ def main():
                       'hold': summary['hold_scope'], 'candidate': summary['candidate_scope'],
                       'request_draft': summary['request_draft'], 'documents': summary['documents'],
                       'phase2': summary['phase2'] and {k: summary['phase2'][k] for k in (
-                          'versions', 'test_results', 'reproduction', 'reproduction_draft', 'documents')}},
+                          'versions', 'test_results', 'reproduction', 'reproduction_draft', 'documents')},
+                      'live_agent_trace': summary['live_agent_trace'] and {k: summary['live_agent_trace'][k] for k in (
+                          'runtime', 'tool_calls', 'answer', 'final_text', 'expected_from_reads', 'automatic_checks')}},
                      ensure_ascii=False, indent=2))
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

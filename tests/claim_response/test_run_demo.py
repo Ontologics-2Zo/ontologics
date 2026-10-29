@@ -3,7 +3,13 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from examples.claim_response.run_demo import CLAIMS, TEST_RESULTS, run_demo
+import json
+
+from examples.claim_response.run_demo import CLAIMS, TEST_RESULTS, live_agent_settings, run_demo
+from ontologics.claim_response.registration import expected_trace
+from ontologics.openai_provider import OpenAISettings
+from ontologics.paid_budget import cost_policy_from_environment
+from ontologics.service import DomainError
 from tests.db import database_for_test
 
 
@@ -78,6 +84,74 @@ class RunDemoPhase2Tests(unittest.TestCase):
                                                   summary['phase2']['reproduction']['required_good_quantity']))
         self.assertEqual('awaiting_review', summary['phase2']['reproduction_draft']['status'])
         self.assertFalse(list(folder.glob('reproduction_*.md')))
+
+
+class FakeModel:
+    """Stands in for OpenAIProvider in tests: no network, no cost. Reads like a model would."""
+    def __init__(self, settings, tools, wrong=False):
+        self.tools, self.wrong, self.calls = tools, wrong, []
+
+    def public_config(self):
+        return {'provider': 'fake-model-test'}
+
+    def __call__(self, *, model, messages):
+        self.calls.append({'status': 'completed', 'model': model})
+        task = json.loads(next(m['content'] for m in messages if m['role'] == 'user' and 'lookup_arguments' in m['content']))
+        # Like the real 7-1 run: the model also names kind on the node_id read.
+        arguments = [dict(task['lookup_arguments'][0], kind='ClaimIntake')] + task['lookup_arguments'][1:]
+        results = [json.loads(m['content']) for m in messages if m['role'] == 'tool']
+        if len(results) < len(arguments):
+            return {'text': '', 'tool_calls': [{'name': 'lookup', 'arguments': arguments[len(results)]}]}
+        calls = [{'name': 'lookup', 'arguments': a, 'result': r} for a, r in zip(arguments, results)]
+        answer = expected_trace(task['intake_id'], task['data_version'], calls)
+        if self.wrong:
+            answer = dict(answer, matched_unit_ids=answer['matched_unit_ids'][:-1])
+        return {'text': json.dumps(answer), 'tool_calls': []}
+
+
+def live(wrong=False):
+    values = {'ONTOLOGICS_REQUEST_MAX_COST_USD': '1', 'ONTOLOGICS_MODEL_PRICES_JSON': json.dumps(
+        {'gpt-5.4-mini-2026-03-17': {'input_usd_per_million': '0.75', 'output_usd_per_million': '4.50',
+                                     'max_input_tokens': 400000}})}
+    return {'settings': OpenAISettings(api_key='test-key-not-real'), 'cost_policy': cost_policy_from_environment(values),
+            'provider_factory': lambda settings, tools: FakeModel(settings, tools, wrong)}
+
+
+class LiveAgentWiringTests(unittest.TestCase):
+    """7-1 wiring without network: the model path uses the cost policy and the same result check."""
+    run_once = RunDemoTests.run_once
+
+    def run_live(self, wrong=False):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        return run_demo(database_for_test(self), claim_path=CLAIMS / 'claim_table.csv', request_dir=folder.name,
+                        live=live(wrong))['live_agent_trace']
+
+    def test_missing_cost_policy_blocks_before_any_call(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        env = Path(folder.name) / '.env.test'
+        env.write_text('OPENAI_API_KEY=test-key-not-real\n', encoding='utf-8')
+        with self.assertRaises(DomainError) as failure:
+            live_agent_settings(env)
+        self.assertEqual('COST_POLICY_REQUIRED', failure.exception.code)
+
+    def test_model_answer_matching_its_reads_is_accepted(self):
+        report = self.run_live()
+        self.assertTrue(all(report['automatic_checks'].values()), report['automatic_checks'])
+        self.assertEqual(['lookup'] * 3, [c['name'] for c in report['tool_calls']])
+        self.assertEqual('production-line:demo:C-01', report['answer']['production_line_id'])
+        self.assertGreater(report['evidence_refs'], 0)
+        self.assertNotIn('test-key-not-real', json.dumps(report))
+
+    def test_model_answer_that_differs_is_rejected(self):
+        report = self.run_live(wrong=True)
+        self.assertEqual('AGENT_RESULT_REJECTED', report['runtime']['error']['code'])
+        self.assertIsNone(report['answer'])
+        self.assertFalse(report['automatic_checks']['answer_equals_recomputed_trace'])
+        # The rejected text and the trace from the same reads are kept so a person can see the difference.
+        self.assertEqual(4, len(json.loads(report['final_text'])['matched_unit_ids']))
+        self.assertEqual(5, len(report['expected_from_reads']['matched_unit_ids']))
 
 
 if __name__ == '__main__':

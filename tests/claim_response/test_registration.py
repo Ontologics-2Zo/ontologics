@@ -199,5 +199,18 @@ class ClaimTraceTaskTests(unittest.TestCase):
                 self.assertEqual(code, result['error']['code'])
 
 
+
+class ReadMatchingTests(unittest.TestCase):
+    """7-1: the real model added kind=ClaimIntake to the node_id read. That only narrows one node."""
+    def test_node_read_may_name_its_kind_but_list_reads_stay_exact(self):
+        from ontologics.claim_response.registration import _same_read
+        node = {'node_id': 'claim:x', 'version': 3}
+        self.assertTrue(_same_read(dict(node), node))
+        self.assertTrue(_same_read(dict(node, kind='ClaimIntake'), node))
+        self.assertFalse(_same_read(dict(node, kind='ProductUnit'), node))
+        units = {'kind': 'ProductUnit', 'version': 3}
+        self.assertFalse(_same_read(dict(units, limit=10), units))
+        self.assertFalse(_same_read(dict(units, query='C-D'), units))
+
 if __name__ == '__main__':
     unittest.main()

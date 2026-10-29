@@ -81,3 +81,16 @@ Prepare drafts for human review; never approve, apply or claim that a draft is a
 | `test_unlisted_and_approval_tools_are_rejected` | `review`, `apply`, `export_graph`, `compare_configurations` → `TOOL_NOT_ALLOWED`, 데이터 버전 그대로 |
 
 C 노드(`ClaimIntake` 등) 조회 테스트는 가정 데이터를 만드는 3단계에서 추가한다.
+
+## AgentSpec 연결 (5A-4, 2026-10-29)
+
+- 등록: `registration.py`의 `SPEC = AgentSpec('claim_response', '1.0.0', ...)` → `CLAIM_RESPONSE = AgentRegistration.from_spec(SPEC)`. 이름·지침·허용 도구 9개는 이전 등록과 같다.
+- 작업: 클레임 추적(4-1, 4-2). 입력 `intake_id`, `question` / 출력 `data_version`, `intake_id`, `matched_unit_ids`, `open_serials`, `production_line_id`(단일 라인일 때만), `evidence_ids`.
+- 실행: `CommonHost(..., agent_registrations=(CLAIM_RESPONSE,))` → `request.run_task(SPEC.name, ClaimTraceAgent(), task, provider, config=...)`. 예시는 `examples/claim_response/run_demo.py`의 `run_agent_trace()`이며 모델 대역을 쓴다(유료 호출 없음).
+- 검증: `ClaimTraceAgent.validate_result`가 실제 lookup 결과에 `link_serials`·`trace_lines`를 다시 돌린 값과 모델 답을 비교한다. 다르면 `AGENT_RESULT_REJECTED`, 확인되지 않은 클레임도 거부한다.
+- 범위 밖: 보관·출하 범위(4-3, 4-4)와 요청서(5단계)는 Python 함수가 처리한다. 재고·출하 자료가 그래프 밖 임시 자료라서다.
+
+## 공통 그래프 변경 (PR #6)
+
+- 1차 C 타입 6개는 `feature/c-graph-schema` → main PR #6으로 검토 중이다. C 브랜치는 이 PR 브랜치를 merge해서 사용한다.
+- 2차 타입 4개(시험·판정·재생산)는 `backup/c-phase2-schema`에 보관하고, 공통 담당자와 논의한 뒤 진행한다.

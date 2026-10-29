@@ -3,15 +3,16 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from examples.claim_response.run_demo import CLAIMS, run_demo
+from examples.claim_response.run_demo import CLAIMS, TEST_RESULTS, run_demo
 from tests.db import database_for_test
 
 
 class RunDemoTests(unittest.TestCase):
-    def run_once(self, claim):
+    def run_once(self, claim, results=None):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        return run_demo(database_for_test(self), claim_path=claim, request_dir=folder.name), Path(folder.name)
+        return run_demo(database_for_test(self), claim_path=claim, request_dir=folder.name,
+                        results_path=results), Path(folder.name)
 
     def test_csv_claim_runs_from_file_to_unsent_request_drafts(self):
         summary, folder = self.run_once(CLAIMS / 'claim_table.csv')
@@ -48,6 +49,34 @@ class RunDemoTests(unittest.TestCase):
                 other, _ = self.run_once(CLAIMS / name)
                 for key in ('links', 'production_line_id', 'quality_case_id', 'hold_scope', 'candidate_scope'):
                     self.assertEqual(csv[key], other[key], key)
+
+
+class RunDemoPhase2Tests(unittest.TestCase):
+    """2nd phase: test request -> test-team results -> reproduction quantity -> unsent request for A."""
+    run_once = RunDemoTests.run_once
+
+    def test_confirmed_scenario_ends_with_an_unsent_request_for_a(self):
+        summary, folder = self.run_once(CLAIMS / 'claim_table.csv', TEST_RESULTS / 'scenario_1.csv')
+        phase2 = summary['phase2']
+        self.assertEqual({'after_request_review': 4, 'test_request_sent': 5, 'after_reproduction_draft': 5},
+                         phase2['versions'])
+        self.assertEqual(125, phase2['test_request']['count'])
+        self.assertEqual(('confirmed', 10, 0), tuple(phase2['reproduction'][k] for k in (
+            'state', 'required_good_quantity', 'unresolved_quantity')))
+        self.assertEqual(('awaiting_review', '미송부'),
+                         (phase2['reproduction_draft']['status'], phase2['reproduction_draft']['sending']))
+        names = sorted(f.name for f in folder.glob('*.md'))
+        self.assertEqual(4, len(names))
+        text = (folder / next(n for n in names if n.startswith('reproduction_'))).read_text(encoding='utf-8')
+        for phrase in ('**10대**', '| 검토 상태 | 미검토 |', '| 송부 상태 | 미송부 |'):
+            self.assertIn(phrase, text)
+
+    def test_undetermined_scenario_drafts_results_without_a_request(self):
+        summary, folder = self.run_once(CLAIMS / 'claim_table.csv', TEST_RESULTS / 'scenario_3.csv')
+        self.assertEqual(('undetermined', None), (summary['phase2']['reproduction']['state'],
+                                                  summary['phase2']['reproduction']['required_good_quantity']))
+        self.assertEqual('awaiting_review', summary['phase2']['reproduction_draft']['status'])
+        self.assertFalse(list(folder.glob('reproduction_*.md')))
 
 
 if __name__ == '__main__':

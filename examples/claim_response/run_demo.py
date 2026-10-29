@@ -4,6 +4,10 @@ Same pattern as ontologics.demo: a fresh PostgreSQL schema, scripted development
 identities (not real operational approval) and a JSON summary in artifacts/local.
 No model or paid API call is made. Request drafts stop at awaiting_review because
 reviewing and sending them is a person's job.
+
+The claim trace also runs once through the common host as the registered C Agent
+(AgentSpec -> AgentRegistration.from_spec -> request.run_task) with a scripted
+provider, so the typed result and its host-resolved evidence references are shown.
 """
 import argparse
 import json
@@ -11,6 +15,12 @@ from pathlib import Path
 import uuid
 
 from ontologics import __version__
+from ontologics.claim_response.registration import CLAIM_RESPONSE, SPEC, ClaimTraceAgent, expected_trace
+from ontologics.contracts import AgentTask
+from ontologics.harness import PinnedContext
+from ontologics.host import CommonHost
+from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider, UserIdentity
+from ontologics.runtime import ModelConfig
 from ontologics.claim_response.fixtures import claim_response_nodes, load_operations
 from ontologics.claim_response.intake import convert_claim
 from ontologics.claim_response.requests import (
@@ -48,6 +58,44 @@ def approve_and_apply(svc, operations, key, note):
     return must(svc.apply('workflow', draft['draft_id'], draft['draft_version'], request_key=key + '-apply'))
 
 
+class ScriptedClaimTrace:
+    """Deterministic provider for this example, not an LLM quality claim.
+
+    Step 1 asks for the three lookups; step 2 answers from the returned tool results
+    with the same trace functions the role validator uses.
+    """
+    def __init__(self, task):
+        self.intake_id, self.version = task.data()['intake_id'], task.context.data_version
+
+    def public_config(self):
+        return {'provider': 'scripted-claim-trace-1'}
+
+    def __call__(self, *, model, messages):
+        results = [json.loads(m['content']) for m in messages if m['role'] == 'tool']
+        if not results:
+            return {'text': '', 'tool_calls': [
+                {'name': 'lookup', 'arguments': {'node_id': self.intake_id, 'version': self.version}},
+                {'name': 'lookup', 'arguments': {'kind': 'ProductUnit', 'version': self.version}},
+                {'name': 'lookup', 'arguments': {'kind': 'UnitProductionRecord', 'version': self.version}}]}
+        calls = [{'name': 'lookup', 'arguments': args, 'result': result} for args, result in zip(
+            ({'node_id': self.intake_id, 'version': self.version}, {'kind': 'ProductUnit', 'version': self.version},
+             {'kind': 'UnitProductionRecord', 'version': self.version}), results[-3:])]
+        return {'text': json.dumps(expected_trace(self.intake_id, self.version, calls), ensure_ascii=False),
+                'tool_calls': []}
+
+
+def run_agent_trace(database, schema, intake_id, version):
+    """The registered C Agent runs the claim trace through CommonHost.request -> run_task."""
+    user = UserIdentity('dev-claim-agent', frozenset({'read', 'draft'}))
+    host = CommonHost(DevelopmentIdentityProvider([user], enabled=True), database, schema=schema,
+                      agent_registrations=(CLAIM_RESPONSE,))
+    task = AgentTask({'intake_id': intake_id, 'question': 'Trace the confirmed claim to boards and a production line.'},
+                     PinnedContext('Claim trace; no defect, cause or approval conclusion', version))
+    with host.request(DevelopmentContext(user.subject)) as request:
+        return request.run_task(SPEC.name, ClaimTraceAgent(), task, ScriptedClaimTrace(task),
+                                config=ModelConfig(model='scripted-claim-trace'), capture_tool_trace=True)
+
+
 def existing_nodes():
     catalog = json.loads((ROOT / 'data/catalog.json').read_text(encoding='utf-8'))['nodes']
     fictional, _ = fixture_nodes()
@@ -83,6 +131,8 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
         if case is None or trace['lines']['single_line'] is None:
             raise RuntimeError('Trace needs a person: ' + json.dumps(trace['quality_case'], ensure_ascii=False))
         line_id = trace['lines']['single_line']
+        # 5A-4: the same trace through the registered C Agent (typed contract, scripted provider).
+        agent = run_agent_trace(database, svc.schema, intake['id'], version)
 
         # 4-3 / 4-4 with the temporary C operations basis (until the shared B stock/shipment types).
         records = must(svc.lookup('claim-agent', kind='UnitProductionRecord', version=version))['data']
@@ -114,6 +164,10 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
             'links': {'matched': [l['unit_id'] for l in trace['links'] if l['match_state'] == MATCHED],
                       'open': [l for l in trace['links'] if l['match_state'] != MATCHED]},
             'production_line_id': line_id,
+            'agent_trace': {'ok': agent['runtime']['ok'], 'agent_name': agent['agent_name'],
+                            'agent_version': agent['agent_version'], 'schema_version': agent['schema_version'],
+                            'payload': agent['payload'], 'evidence_refs': len(agent['evidence_refs']),
+                            'error': agent['error']},
             'quality_case_id': case['id'],
             'hold_scope': {'state': hold['state'], 'basis': hold.get('basis'),
                            'units': serial_ranges(hold['node']['unit_ids']) if hold['node'] else None,
@@ -146,6 +200,7 @@ def main():
     print(json.dumps({'schema': summary['database_schema'], 'output': str(output), 'versions': summary['versions'],
                       'claim': summary['claim']['external_claim_id'], 'matched_boards': len(summary['links']['matched']),
                       'production_line': summary['production_line_id'],
+                      'agent_trace': {k: summary['agent_trace'][k] for k in ('ok', 'agent_name', 'agent_version', 'evidence_refs')},
                       'hold': summary['hold_scope'], 'candidate': summary['candidate_scope'],
                       'request_draft': summary['request_draft'], 'documents': summary['documents']},
                      ensure_ascii=False, indent=2))

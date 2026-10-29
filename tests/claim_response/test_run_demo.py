@@ -20,6 +20,13 @@ class RunDemoTests(unittest.TestCase):
         self.assertEqual(['unit:C-D00%d' % n for n in range(1, 6)], summary['links']['matched'])
         self.assertEqual([], summary['links']['open'])
         self.assertEqual('production-line:demo:C-01', summary['production_line_id'])
+        agent = summary['agent_trace']
+        self.assertEqual((True, 'claim_response', '1.0.0', 'agent-result-1', None),
+                         (agent['ok'], agent['agent_name'], agent['agent_version'], agent['schema_version'], agent['error']))
+        self.assertEqual(summary['links']['matched'], agent['payload']['matched_unit_ids'])
+        self.assertEqual(summary['production_line_id'], agent['payload']['production_line_id'])
+        self.assertEqual(3, agent['payload']['data_version'])
+        self.assertGreater(agent['evidence_refs'], 0)
         self.assertEqual(('ready', 120, 'C-S001 ~ C-S120'),
                          (summary['hold_scope']['state'], summary['hold_scope']['count'], summary['hold_scope']['units']))
         self.assertEqual(['c_operations_record'], summary['hold_scope']['basis'])

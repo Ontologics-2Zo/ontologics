@@ -30,12 +30,18 @@ SCHEMA = {
     'QualityCase': (['intake_id', 'customer_name', 'reported_at', 'reported_symptom', 'unit_ids'], {'intake_id': 'ClaimIntake'}),
     'QualityScope': (['case_id', 'production_line_id', 'as_of', 'unit_ids', 'scope_state'], {'case_id': 'QualityCase', 'production_line_id': 'ProductionLine'}),
     'ContainmentRequest': (['case_id', 'scope_id', 'request_kind', 'prepared_at', 'document_ref'], {'case_id': 'QualityCase', 'scope_id': 'QualityScope'}),
+        # C 2nd phase: test request to the test team, its returned per-board results, reproduction quantity for A.
+    'TestRequest': (['case_id', 'unit_ids', 'prepared_at', 'document_ref'], {'case_id': 'QualityCase'}),
+    'QualityTestResult': (['case_id', 'test_request_id', 'unit_id', 'outcome', 'disposition', 'observed_at'], {'case_id': 'QualityCase', 'test_request_id': 'TestRequest', 'unit_id': 'ProductUnit'}),
+    'ReproductionRequirement': (['case_id', 'configuration_id', 'customer_replacement_quantity', 'stock_replacement_quantity', 'available_replacement_quantity', 'required_good_quantity', 'unresolved_quantity', 'unit', 'assessment_state', 'test_result_ids'], {'case_id': 'QualityCase', 'configuration_id': 'Configuration'}),
 }
 
 REAL = {'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}
 SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'}
 # C 1st phase records are synthetic demonstration operations only.
 SYNTHETIC |= {'ProductionLine', 'UnitProductionRecord', 'ClaimIntake', 'QualityCase', 'QualityScope', 'ContainmentRequest'}
+# C 2nd phase: test results and dispositions are synthetic records returned by the test team, not real inspections.
+SYNTHETIC |= {'TestRequest', 'QualityTestResult', 'ReproductionRequirement'}
 
 COMMON_FIELDS = {'id', 'type', 'origin', 'evidence'}
 OPTIONAL_FIELDS = {
@@ -49,6 +55,9 @@ OPTIONAL_FIELDS = {
     'ClaimIntake': {'reported_conditions', 'requested_action', 'delivery_reference'},
     'QualityScope': {'start', 'end'},
     'ContainmentRequest': {'production_line_id', 'draft_id', 'draft_version'},
+    'TestRequest': {'draft_id', 'draft_version'},
+    'QualityTestResult': {'note'},
+    'ReproductionRequirement': {'replacement_unit_ids', 'document_ref'},
 }
 # Only explicit contract fields are accepted: operational examples cannot grow
 # fault causes, inspection results or operating-time claims through free fields.
@@ -58,6 +67,8 @@ SPECIFICATION_FIELDS = {'scope', 'ethernet_interface', 'pcb_dimensions_mm', 'fea
 # C 1st-phase contract details that the generic single-reference/text checks cannot express.
 # reported_symptom is the customer's reported wording only; it never asserts a confirmed fault.
 # Tests, dispositions and reproduction quantities (C 2nd phase) are intentionally not accepted.
+# (C 2nd phase) Test requests, test-team results with dispositions and reproduction quantities are added below
+# as C2_TYPES; the 1st-phase lists stay unchanged. C itself neither runs tests nor decides dispositions.
 C_TYPES = ('ProductionLine', 'UnitProductionRecord', 'ClaimIntake', 'QualityCase', 'QualityScope', 'ContainmentRequest')
 C_LIST_REFS = {'QualityCase': {'unit_ids': 'ProductUnit'}, 'QualityScope': {'unit_ids': 'ProductUnit'}}
 # ProductionWork is a B proposal and not yet a defined type, so production_work_id cannot resolve yet.
@@ -71,6 +82,24 @@ C_TIMES = {'UnitProductionRecord': ('produced_at',), 'ClaimIntake': ('reported_a
 # One production record per board in this MVP; reproduction/rework records are not modelled yet.
 C_IDENTITIES = {'ProductionLine': ('company', 'line_code'), 'ClaimIntake': ('customer_name', 'external_claim_id'),
                 'UnitProductionRecord': ('unit_id',)}
+# C 2nd phase additions. A result row is what the test team returned for one requested board; boards not
+# tested get no row. An undetermined reproduction quantity is never stored as 0 (no node is created).
+C2_TYPES = ('TestRequest', 'QualityTestResult', 'ReproductionRequirement')
+C_TYPES = C_TYPES + C2_TYPES
+C_LIST_REFS.update({'TestRequest': {'unit_ids': 'ProductUnit'},
+                    'ReproductionRequirement': {'test_result_ids': 'QualityTestResult'}})
+# Optional list references: checked and linked only when present.
+C_OPTIONAL_LIST_REFS = {'ReproductionRequirement': {'replacement_unit_ids': 'ProductUnit'}}
+C_ENUMS.update({'QualityTestResult': {'outcome': ('fail', 'pass', 'not_reproduced'),
+                                      'disposition': ('customer_replacement', 'stock_replacement', 'release',
+                                                      'hold', 'unresolved')},
+                'ReproductionRequirement': {'assessment_state': ('confirmed', 'lower_bound'), 'unit': ('piece',)}})
+C_TIMES.update({'TestRequest': ('prepared_at',), 'QualityTestResult': ('observed_at',)})
+# One result per requested board, so a board is counted once.
+C_IDENTITIES.update({'QualityTestResult': ('test_request_id', 'unit_id'),
+                     'ReproductionRequirement': ('case_id', 'configuration_id')})
+C2_QUANTITIES = ('customer_replacement_quantity', 'stock_replacement_quantity', 'available_replacement_quantity',
+                 'required_good_quantity', 'unresolved_quantity')
 
 
 def _text(value):
@@ -163,6 +192,78 @@ def _validate_c_nodes(index, error, warnings):
             if identity in identities: error(nid, 'DUPLICATE_IDENTITY', identities[identity])
             identities[identity] = nid
 
+def _nonnegative_int(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _validate_c2_nodes(index, error, warnings):
+    """C 2nd-phase checks: requested boards only, same case across links and the reproduction formula."""
+    def get(nid, kind):
+        node = index.get(nid) if isinstance(nid, str) else None
+        return node if node and node.get('type') == kind else None
+
+    for nid, n in index.items():
+        kind = n.get('type')
+        if kind == 'TestRequest':
+            if 'draft_version' in n and not _positive_int(n['draft_version']):
+                error(nid, 'INVALID_FIELD_TYPE', 'draft_version must be a positive integer')
+        if kind == 'QualityTestResult':
+            request = get(n.get('test_request_id'), 'TestRequest')
+            unit = n.get('unit_id') if isinstance(n.get('unit_id'), str) else None
+            if request and request.get('case_id') != n.get('case_id'):
+                error(nid, 'CASE_MISMATCH', 'case_id must match the case of test_request_id')
+            if request and _string_list(request.get('unit_ids')) and unit not in request['unit_ids']:
+                error(nid, 'UNIT_NOT_REQUESTED', 'Results are accepted only for boards in the test request')
+            case = get(n.get('case_id'), 'QualityCase')
+            claimed = set(case['unit_ids']) if case and _string_list(case.get('unit_ids')) else set()
+            # Customer replacements are the claimed boards; stock replacements are never the claimed boards.
+            if case and n.get('disposition') == 'customer_replacement' and unit not in claimed:
+                error(nid, 'DISPOSITION_TARGET_MISMATCH', 'customer_replacement is only for boards in the case')
+            if n.get('disposition') == 'stock_replacement' and unit in claimed:
+                error(nid, 'DISPOSITION_TARGET_MISMATCH', 'stock_replacement is not for the claimed boards')
+        if kind == 'ReproductionRequirement':
+            values = {key: n.get(key) for key in C2_QUANTITIES}
+            bad = [key for key, value in values.items() if not _nonnegative_int(value)]
+            for key in bad:
+                error(nid, 'INVALID_QUANTITY', key + ' must be a nonnegative integer piece count')
+            if not bad:
+                expected = max(0, values['customer_replacement_quantity'] + values['stock_replacement_quantity']
+                               - values['available_replacement_quantity'])
+                if values['required_good_quantity'] != expected:
+                    error(nid, 'QUANTITY_MISMATCH', f'required_good_quantity must be {expected}')
+                if (n.get('assessment_state') == 'confirmed') != (values['unresolved_quantity'] == 0):
+                    error(nid, 'ASSESSMENT_STATE_MISMATCH', 'confirmed needs 0 unresolved; lower_bound needs some')
+            ids = n['test_result_ids'] if _string_list(n.get('test_result_ids')) else []
+            counts = {'customer_replacement': 0, 'stock_replacement': 0}
+            for rid in ids:
+                result = get(rid, 'QualityTestResult')
+                if result is None:
+                    continue
+                if result.get('case_id') != n.get('case_id'):
+                    error(nid, 'CASE_MISMATCH', rid + ' belongs to another case')
+                if isinstance(result.get('disposition'), str) and result['disposition'] in counts:
+                    counts[result['disposition']] += 1
+                unit = get(result.get('unit_id'), 'ProductUnit')
+                if unit and unit.get('configuration_id') != n.get('configuration_id'):
+                    error(nid, 'CONFIGURATION_MISMATCH', rid + ' is for another configuration')
+            if not bad and ids and (counts['customer_replacement'] != values['customer_replacement_quantity']
+                                    or counts['stock_replacement'] != values['stock_replacement_quantity']):
+                error(nid, 'QUANTITY_MISMATCH', 'replacement quantities must equal the listed test results')
+            for key, target_type in C_OPTIONAL_LIST_REFS.get(kind, {}).items():
+                if key not in n:
+                    continue
+                refs = n[key]
+                if not _string_list(refs):
+                    error(nid, 'INVALID_REFERENCE', key + ' must be a nonempty list of unique IDs'); continue
+                for ref in refs:
+                    unit = get(ref, target_type)
+                    if unit is None:
+                        error(nid, 'INVALID_REFERENCE', f'{key} -> {target_type}: {ref}')
+                    elif unit.get('configuration_id') != n.get('configuration_id'):
+                        error(nid, 'CONFIGURATION_MISMATCH', ref + ' is for another configuration')
+                if not bad and len(refs) != values['available_replacement_quantity']:
+                    error(nid, 'QUANTITY_MISMATCH', key + ' must list available_replacement_quantity boards')
+
 def validate_graph(nodes):
     errors, warnings = [], []
     def error(node, code, detail):
@@ -201,6 +302,8 @@ def validate_graph(nodes):
         structured = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications'}
         # C 1st phase numeric/list fields; their shapes are checked in _validate_c_nodes().
         structured |= {'claimed_quantity', 'reported_serials', 'unit_ids', 'draft_version'}
+        # C 2nd phase numeric/list fields; checked in _validate_c2_nodes().
+        structured |= {*C2_QUANTITIES, 'test_result_ids', 'replacement_unit_ids'}
         for key in ALLOWED_FIELDS[kind] - structured:
             if key in n and not (key in ('removed_at', 'confirmed_until') and n[key] is None) and not _text(n[key]):
                 error(nid, 'INVALID_FIELD_TYPE', key + ' must be nonempty text')
@@ -318,6 +421,7 @@ def validate_graph(nodes):
                 if n.get('movement') not in ('receipt', 'issue'):
                     error(nid, 'INVALID_MOVEMENT', 'receipt or issue; issue never implies installation')
     _validate_c_nodes(index, error, warnings)
+    _validate_c2_nodes(index, error, warnings)
     # Two populated BOM lines cannot assign different parts to one physical position.
     positions = {}
     for n in index.values():
@@ -336,6 +440,8 @@ def graph_jsonld(nodes):
         for key in refs: context[key] = {'@type': '@id'}
     for refs in (*C_LIST_REFS.values(), *C_OPTIONAL_REFS.values()):
         for key in refs: context[key] = {'@type': '@id'}
+    for refs in C_OPTIONAL_LIST_REFS.values():
+        for key in refs: context[key] = {'@type': '@id'}
     # IDs use stable URNs rather than accidental JSON-LD prefixes.
     graph = []
     for n in nodes:
@@ -344,6 +450,8 @@ def graph_jsonld(nodes):
         for key in C_LIST_REFS.get(n['type'], {}): row[key] = ['urn:ontologics:entity:' + ref for ref in n[key]]
         for key in C_OPTIONAL_REFS.get(n['type'], {}):
             if key in n: row[key] = 'urn:ontologics:entity:' + n[key]
+        for key in C_OPTIONAL_LIST_REFS.get(n['type'], {}):
+            if key in n: row[key] = ['urn:ontologics:entity:' + ref for ref in n[key]]
         row['evidence'] = ['urn:ontologics:entity:' + e for e in n.get('evidence', [])]
         graph.append(row)
     return {'@context': context, '@graph': graph}
@@ -358,6 +466,9 @@ def tbox_turtle():
         for prop, target in relations.items(): refs.setdefault(prop, set()).add(target)
     # C list/optional references; targets that are not defined classes yet (B proposals) are skipped.
     for relations in (*C_LIST_REFS.values(), *C_OPTIONAL_REFS.values()):
+        for prop, target in relations.items():
+            if target in SCHEMA: refs.setdefault(prop, set()).add(target)
+    for relations in C_OPTIONAL_LIST_REFS.values():
         for prop, target in relations.items():
             if target in SCHEMA: refs.setdefault(prop, set()).add(target)
     for prop, targets in refs.items():

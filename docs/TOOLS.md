@@ -37,10 +37,15 @@ C 클레임 대응 Agent가 고객 클레임 → 품질 사건 → 생산라인 
 | QualityCase | intake_id → ClaimIntake(confirmed만), customer_name, reported_at, reported_symptom, unit_ids → ProductUnit 목록 |
 | QualityScope | case_id → QualityCase, production_line_id → ProductionLine, as_of, unit_ids → ProductUnit 목록, scope_state=hold/candidate, 선택 start/end |
 | ContainmentRequest | case_id → QualityCase, scope_id → QualityScope(같은 사건), request_kind=production_stop/shipment_hold, prepared_at, document_ref. production_stop은 production_line_id 필수. 선택 draft_id/draft_version |
+| TestRequest | case_id → QualityCase, unit_ids → ProductUnit 목록(시험 대상), prepared_at, document_ref. 테스트팀에 보내는 의뢰. 선택 draft_id/draft_version |
+| QualityTestResult | case_id → QualityCase, test_request_id → TestRequest, unit_id → ProductUnit(의뢰한 보드만), outcome=fail/pass/not_reproduced, disposition=customer_replacement/stock_replacement/release/hold/unresolved, observed_at. 테스트팀이 돌려준 보드별 결과와 판정이며 의뢰·보드당 1개. 시험하지 않은 보드는 행이 없다. 선택 note |
+| ReproductionRequirement | case_id → QualityCase, configuration_id → Configuration, 고객 교체·보관 대체·가용 대체 재고·필요 정상·미결 수량, unit=piece, assessment_state=confirmed/lower_bound, test_result_ids → QualityTestResult 목록. required_good_quantity = max(0, 고객 교체 + 보관 대체 − 대체 재고). 최종 미정이면 노드를 만들지 않는다. 선택 replacement_unit_ids, document_ref |
 
 `reported_symptom`은 고객이 신고한 표현일 뿐 확인된 불량이나 원인이 아니다. 목록 참조(`unit_ids`)와 선택 참조는 JSON-LD에서 ID 관계로 직렬화한다. 요청서는 그래프에 문서 참조만 남기며 생성·검토가 송부나 현장 반영을 뜻하지 않는다.
 
 C 추적 경로: `ClaimIntake.reported_serials → ProductUnit.serial`(사람 확인 후 `QualityCase.unit_ids`), `UnitProductionRecord.unit_id → ProductUnit`, `UnitProductionRecord.production_line_id → ProductionLine`, `QualityScope.case_id → QualityCase`, `ContainmentRequest.scope_id → QualityScope`.
+
+C 2차 경로: `TestRequest.case_id → QualityCase`, `QualityTestResult.test_request_id → TestRequest`, `QualityTestResult.unit_id → ProductUnit`, `ReproductionRequirement.test_result_ids → QualityTestResult`. 시험 방법·판정은 테스트팀이 정하며 C는 결과를 받아 재생산 수량만 계산한다. 시험 결과는 가상 관측이고 고장 원인·불량률이 아니다.
 
 시간은 `2026-09-20T10:00:00+09:00`처럼 명시적 시각·UTC offset이 필요하다. 날짜만 있는 원본은 이 필드에 임의로 넣지 않고 보완 대상으로 둔다. 구간은 `[start,end)`다. `confirmed_until`은 그 시각 이전까지 장착을 확인했다는 유한한 근거이며 제거 시각이 아니다. 조회의 이력 완전성은 사건 목록만 있는 상태를 뜻하지 않는다.
 

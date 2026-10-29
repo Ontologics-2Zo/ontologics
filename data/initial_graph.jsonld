@@ -39,10 +39,19 @@
     "scope_id": {
       "@type": "@id"
     },
+    "test_request_id": {
+      "@type": "@id"
+    },
     "unit_ids": {
       "@type": "@id"
     },
+    "test_result_ids": {
+      "@type": "@id"
+    },
     "production_work_id": {
+      "@type": "@id"
+    },
+    "replacement_unit_ids": {
       "@type": "@id"
     }
   },

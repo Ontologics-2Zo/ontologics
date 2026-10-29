@@ -12,6 +12,7 @@ import json
 import time
 import hashlib
 import marshal
+import uuid
 from types import MappingProxyType
 
 from .database import DatabaseSettings
@@ -88,12 +89,13 @@ def _identity(value, subject=None):
 class CommonHost:
     """One connection per request; existing DB transactions remain authoritative."""
 
-    def __init__(self, identity_provider: IdentityProvider, database=None, *, schema=None, agent_registrations=(), embedding_provider=None, sandbox_client=None, cost_policy=None):
+    def __init__(self, identity_provider: IdentityProvider, database=None, *, schema=None, agent_registrations=(), embedding_provider=None, sandbox_client=None, cost_policy=None, graph_settings=None):
         self._agent_registrations = _registrations(agent_registrations)
         self._identities = identity_provider
         self._embedding_provider = embedding_provider
         self._sandbox_client = sandbox_client
         self._cost_policy = cost_policy
+        self._graph_settings = graph_settings
         self._database = (database if isinstance(database, DatabaseSettings) else
                           DatabaseSettings(database, schema or 'ontologics') if database is not None else
                           DatabaseSettings.from_environment(schema=schema))
@@ -107,7 +109,7 @@ class CommonHost:
             raise
         except Exception:
             raise IdentityError('IDENTITY_PROVIDER_UNAVAILABLE', 'Cannot resolve request identity') from None
-        service = Service(self._database, principals={user.actor: user.principal()})
+        service = Service(self._database, principals={user.actor: user.principal()}, graph_settings=self._graph_settings)
         service.embedding_provider = self._embedding_provider
         service.sandbox_client = self._sandbox_client
         try:
@@ -134,7 +136,7 @@ class CommonHost:
             # Service's exact-key replay / ALREADY_APPLIED behavior available
             # even when the identity provider is temporarily unavailable.
             if draft['data']['status'] == 'applied':
-                return service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key)
+                return self._publish_applied(service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key))
             reviewer = draft['data']['reviewer']
             if isinstance(reviewer, str) and reviewer.startswith('user:'):
                 subject = reviewer[len('user:'):]
@@ -152,9 +154,44 @@ class CommonHost:
                     # retry can still replay its success under the store lock.
                     return service._run(WORKFLOW_ACTOR, 'apply',
                         {'draft_id': draft_id, 'version': version}, unavailable, permission='apply', request_key=request_key)
-            return service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key)
+            return self._publish_applied(service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key))
         finally:
             service.close()
+
+    def _publish_applied(self, application):
+        """Post-commit projection; failure must not erase the committed approval.
+
+        Each attempt rechecks the immutable remote version. Replaying an approval
+        never reapplies a write, but may repair a missing projection. This is not
+        a distributed transaction, background worker, or Agent capability.
+        """
+        if (not application['ok'] or self._graph_settings is None
+                or self._graph_settings.backend != 'neo4j'):
+            return application
+        version = application['data']['applied_version']
+        projector = None
+        try:
+            actor = 'system:graph-projector'
+            projector = Service(self._database, principals={actor: {
+                'kind': 'system', 'roles': ['read', 'index']}}, graph_settings=self._graph_settings)
+            synced = projector.graph_views.synchronize(actor, version,
+                request_key='host-graph:' + str(version) + ':' + uuid.uuid4().hex)
+            state = {'backend': 'neo4j', 'data_version': version,
+                'status': 'ready' if synced['ok'] else 'pending',
+                'run_id': synced['run_id'], 'errors': synced['errors']}
+        except Exception as exc:
+            # No raw connection/provider error or credentials in a user response.
+            state = {'backend': 'neo4j', 'data_version': version, 'status': 'pending',
+                'run_id': None, 'errors': [{'code': exc.code if isinstance(exc, DomainError)
+                    else 'GRAPH_UNAVAILABLE', 'message': 'Approved data committed; graph publication is pending'}]}
+        finally:
+            if projector is not None:
+                projector.close()
+        application = {**application, 'data': {**application['data'], 'graph_projection': state},
+                       'warnings': list(application['warnings'])}
+        if state['status'] != 'ready':
+            application['warnings'].append({'code': 'GRAPH_PUBLICATION_PENDING', 'data_version': version})
+        return application
 
 
 def _definition_fingerprint(spec, messages, provider, implementation=None):
@@ -295,6 +332,18 @@ class RequestSession:
         """User query/draft path; no identity, review, apply or seed in arguments."""
         self._budget.consume("tool")
         result = AgentGateway(self._service, self._identity.actor).call(tool, arguments)
+        self._budget.check()
+        return result
+
+    def context_status(self):
+        """Host metadata stays reachable while the derived graph is unavailable.
+
+        This returns no business facts and is not a query-backend fallback.
+        It lets an authorized user inspect/retry already committed approvals.
+        """
+        self._budget.consume('tool')
+        result = self._service._run(self._identity.actor, 'host_context', {},
+            lambda: self._service._envelope(ok=True, data=None))
         self._budget.check()
         return result
 

@@ -1,6 +1,6 @@
 # 공통 도구 계약 0.3.0
 
-Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 기준이며 별도 서비스 배포가 필요 없다. `Service`는 신뢰된 호스트 애플리케이션, `AgentGateway`는 서비스 Agent에 공개하는 도구 경계다. `examples/agent_tools.py`와 `ontologics/demo.py`는 실행 가능한 예제다.
+Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 기준이며 별도 Agent 서버·MCP 배포가 필요 없다. 기본 저장소는 PostgreSQL이고 Neo4j 조회를 선택할 때만 별도 Neo4j 서버가 필요하다. `Service`는 신뢰된 호스트 애플리케이션, `AgentGateway`는 서비스 Agent에 공개하는 도구 경계다. `examples/agent_tools.py`와 `ontologics/demo.py`는 실행 가능한 예제다.
 
 ## 그래프·저장·시간
 
@@ -53,9 +53,9 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 
 ### PostgreSQL 저장과 pgvector 검색
 
-사용자 요청으로 v0.2.0의 현재 구현과 1차 서비스는 PostgreSQL + pgvector만 사용한다. 후속 RDF/Neo4j 통합은 아래 별도 설계이며 현재 저장 경로나 API를 바꾸지 않는다. 그래프 `graph-0.1`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
+현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.1`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
 
-`database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
+`database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors와 Neo4j 공개 버전 메타데이터 graph_projections다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
 
 도구 호출은 같은 DB/schema의 transaction advisory lock으로 직렬화한다. 조회 본문·반환 버전, 동시 반영의 기준 버전, 요청 키 재생을 한 경계에서 유지한다. 외부에서 연 트랜잭션 안의 Service 호출은 `TRANSACTION_BOUNDARY`로 거부하고 호출자 트랜잭션을 건드리지 않는다. SQL/잠금 제한은 30초/10초, 접속 제한은 10초다. DB 장애로 실패 기록도 저장하지 못하면 `AUDIT_NOT_RECORDED`와 `data_version=null`을 반환한다. DB 전체 장애·프로세스 강제 종료 시 감사 로그의 완전성을 보장하지 않는다.
 
@@ -79,18 +79,30 @@ document = report['data']['documents'][0]
 # candidates = index.search(question_embedding, version=3, origin='real')
 ```
 
-실제 실행되는 수치 벡터 예제는 `examples/cq_check.py`에 있다. 반환 예: `data.candidates[0].evidence=["evidence:olimex-L-wroom:row-55"]`, `origin="real"`, `data.candidate_only=true`. 정확 cosine 검색이며 `embeddings.py`의 고정 text-embedding-3-small/1536과 `Service.semantic_search`가 자연어 질문을 연결한다. 검색 결과는 장착·동일 부품·승인 사실을 확정하지 않는다. index/search 객체·DB·색인 권한은 LLM에 공개하지 않는다. 실제 모델 사례 평가는 PROJECT_STATUS의 범위만 완료이며 범용 RAG 품질 평가와 구별한다.
+실제 실행되는 수치 벡터 예제는 `examples/cq_check.py`에 있다. 반환 예: `data.candidates[0].evidence=["evidence:olimex-L-wroom:row-55"]`, `origin="real"`, `data.candidate_only=true`. 정확 cosine 검색이며 `embeddings.py`의 고정 text-embedding-3-small/1536과 `Service.semantic_search`가 자연어 질문을 연결한다. RDF/Neo4j 조회를 선택해도 의미 검색·벡터 색인은 PostgreSQL에 유지한다. 검색 결과는 장착·동일 부품·승인 사실을 확정하지 않는다. index/search 객체·DB·색인 권한은 LLM에 공개하지 않는다. 실제 모델 사례 평가는 PROJECT_STATUS의 범위만 완료이며 범용 RAG 품질 평가와 구별한다.
 
 ### 후속 통합·배포 설계 (미구현)
 
-아래는 [PRD의 별도 목표](SERVICE_SPEC.md#별도-통합-목표-a--rdfowlshaclsparql--neo4j)를 위한 설계 요구다. 현재 공통 API·DB 스키마·Agent 권한을 변경하거나 이미 제공되는 기능으로 설명하지 않는다. 통합 목표 A와 배포 목표 B는 서로 독립적으로 진행·검증하며 현재 1차 서비스의 선행 조건이 아니다.
+기존 링크를 유지하기 위해 절 제목을 보존했다. **통합 목표 A의 아래 조회·동기화 경로는 구현됐으며 AWS 배포는 아직 설계 단계**다. [PRD의 별도 목표](SERVICE_SPEC.md#별도-통합-목표-a--rdfowlshaclsparql--neo4j)와 실제 검증 완료 범위는 [PROJECT_STATUS](../PROJECT_STATUS.md)로 구분한다. 통합 목표 A와 배포 목표 B는 서로 독립적이며 기본 PostgreSQL 서비스의 선행 조건이 아니다.
 
-**통합 목표 A의 데이터 흐름:** 기존 승인·반영 경로의 PostgreSQL 데이터 버전 → RDF/OWL 표현과 SHACL 검증 → SPARQL 조회·Neo4j 조회용 그래프 적재 → 동일 버전의 검증·동기화가 완료된 조회 대상만 공개한다. 스키마 매핑과 저장소별 완료 상태를 관리하는 구현은 후속 작업이다.
+**구현한 데이터 흐름:** PostgreSQL의 정확한 확정 버전 → 기존 Python 도메인 검증 → RDF/OWL 표현·pySHACL 구조/관계/근거 검증 → 고정 SPARQL 조회 또는 Neo4j 동기화·관계 조회. 노드 ID·원본·locator/hash/origin·배열 순서·미확인값·데이터/스키마/규칙 버전을 보존한다. OWL 정의는 임의 사실 추론에 사용하지 않으며 시간·동일성·승인 규칙은 기존 공통 구현을 사용한다.
 
-- 현재 `model.py`의 SCHEMA 기준과 각 표현의 매핑을 맞추고 공통 노드 ID, SourceDocument/Evidence, locator·hash·origin, 데이터·스키마·규칙 버전과 승인 이력을 보존한다. 설계 개정·초안 버전·데이터 버전을 혼동하지 않는다. SHACL은 구조·관계 검증을 추가하며 기존 시간·동일성·승인 규칙을 임의로 대체하지 않는다.
-- Agent는 기존 공통 경로로 초안을 제출한다. 승인·반영된 버전만 동기화 대상으로 삼고, 각 조회에 필요한 저장소의 적재·검증 완료 버전을 확인한다. 미완료 적재·혼합 버전은 정상 결과로 공개하지 않고 해당 대상의 동기화 대기/실패를 알린다. 이전 완료 버전을 제공할 경우에도 실제 버전을 표시하고 요청 버전을 조용히 바꾸지 않는다.
-- 동기화 기록에 대상 버전·원본 식별·내용 hash·완료/실패·재시도를 연결하고, 동일 버전 재시도의 중복·부분 적재·중단 후 재개를 검증한다. 현재 PostgreSQL 트랜잭션과 advisory lock은 RDF/Neo4j까지 원자 반영을 보장하지 않는다. 승인 성공과 각 조회 저장소의 공개 가능 상태는 구분한다.
-- 동일한 CQ 입력·대상 집합·원본·승인된 데이터 버전·시간 규칙으로 PostgreSQL/SPARQL/Neo4j 결과를 대조한다. 관계·근거·실제/가상 구분과 A/B 경계·포함/제외/미확인·충돌 의미를 검증하며, CQ09 제안 및 CQ10 원본 범위 부분 지원을 임의로 확장하지 않는다.
+| 구현 위치 | 실제 책임·경계 |
+| --- | --- |
+| [graph_rdf.py](../ontologics/graph_rdf.py) | SCHEMA에서 생성한 SHACL로 필드·참조·근거 출처를 검증하고 RDFLib 고정 SPARQL + 바인딩으로 조회. 사용자 SPARQL·외부 RDF URL·SERVICE 질의 미지원 |
+| [graph_neo4j.py](../ontologics/graph_neo4j.py) | namespace/데이터 버전별 노드·관계를 한 Neo4j 트랜잭션에서 적재·검증한 뒤 ready로 공개. 동일 버전·내용 재시도는 멱등, 내용/규칙이 달라지면 거부. 매 조회 시 내용 hash·관계·개수·버전을 확인하고 바인딩한 Cypher로 관계를 탐색 |
+| [graph_views.py](../ontologics/graph_views.py) | PostgreSQL 정본과 graph_projections 공개 기록, Neo4j의 같은 버전·hash·스키마·규칙을 대조. DB/schema별 namespace 격리. 미완료·손상·다른 버전이면 실패하며 PostgreSQL이나 과거 버전으로 조용히 우회하지 않음 |
+| [graph_projection.py](../ontologics/graph_projection.py), [host.py](../ontologics/host.py) | read/index 권한의 호스트 전용 sync/status 및 승인 반영 후 동기화. Agent에 동기화·승인·DB 자격 증명을 공개하지 않음 |
+
+`lookup`, `configuration`, `component_usage`, 확정 구성 비교, A/B 조사·전후 비교, 문자열 근거 검색·JSON-LD export가 선택한 조회 backend를 사용한다. 초안 검증/미리보기·쓰기·승인·pgvector 의미 검색은 PostgreSQL 경로를 유지한다. A/B는 조회한 이력에 `temporal.py`를 적용하므로 `[start,end)`, 미확인·충돌·근거 규칙을 복제하지 않는다. CQ09 제안과 CQ10 원본 범위 부분 지원 상태는 그대로다. `examples/graph_cq_check.py`는 같은 데이터 버전·조건의 PostgreSQL/SPARQL/Neo4j 반환을 대조하며 실행 방법은 [README](../README.md#rdfneo4j-조회를-선택해-실행)에 있다.
+
+**공개·실패·재시도:**
+
+- 동기화는 PostgreSQL에 승인 반영된 버전만 허용하며, 개발 시드는 별도 `source_status=development_seed`로 허용한다. 최초 시드와 기존 과거 버전은 필요한 버전마다 수동 동기화한다. SourceDocument/Evidence와 승인 원장은 정본에 유지하고 동기화가 승인을 대신하지 않는다.
+- Neo4j 적재 트랜잭션과 PostgreSQL 공개 기록은 분리돼 있다. 적재/검증 완료 후 공개 기록을 저장하며, 중간 실패는 요청 버전 조회를 차단한다. `GRAPH_NOT_READY`, `GRAPH_UNAVAILABLE`, `GRAPH_VERSION_CONFLICT`, `GRAPH_INTEGRITY`, `GRAPH_VALIDATION_FAILED`를 원인별로 반환한다. 실패했다고 다른 버전의 정상 결과를 반환하지 않는다.
+- Neo4j 모드의 `CommonHost.apply_approved()`는 PostgreSQL 반영 커밋 뒤 동기화한다. 반영 응답의 `data.graph_projection`은 backend/data_version/status/run_id/errors를 제공한다. `status=pending`과 `GRAPH_PUBLICATION_PENDING`은 승인·정본 반영 성공, 그래프 공개 미완료를 뜻한다. 같은 승인 요청 재시도는 기존 정본 결과를 재사용하고 동기화를 다시 확인한다. 서비스 저수준 직접 반영이나 PostgreSQL 모드 반영은 자동 Neo4j 동기화를 하지 않는다.
+- CLI `sync`의 동일 성공 요청 키는 기존 결과를 재생한다. 이후 장애 복구 확인은 실제 조회를 수행하는 `status`로 하며, 새 동기화 시도에는 새 요청 키를 사용한다. 동일 버전에 다른 내용을 덮어쓰거나 외부에서 손상된 부분을 임의 삭제·수리하지 않는다. 백그라운드 Outbox/자동 복구·분산 트랜잭션·프로세스 사망 복구는 구현하지 않았다.
+- SHACL·SPARQL·Neo4j의 무거운 단계 전후에 기존 요청의 공유 deadline을 검사하고 Neo4j 호출 timeout에 잔여 시간을 반영한다. 만료 후 새 질의·재시도·공개 기록 단계로 진행하지 않는다. 실행 중인 동기 SHACL/SPARQL의 강제 취소나 프로세스 강제 종료 복구를 보장하지 않는다.
 
 **배포 목표 B의 구성별 책임:**
 
@@ -104,7 +116,7 @@ document = report['data']['documents'][0]
 
 현재 SourceDocument 검증은 `model.py`에서 로컬 `data/` 파일을 읽어 SHA-256을 대조한다. S3 도입 시 원본 접근 어댑터와 검증 경로를 보완해 실제 객체 바이트의 hash와 원본 ID·버전·근거 위치를 확인해야 한다. 객체 누락·접근 실패·hash 불일치는 검증 실패로 처리하고, S3 URL이나 ETag만으로 기존 SHA-256 검증을 대신하지 않는다. 이 설계는 현재 `path` 계약을 즉시 바꾸는 것이 아니다.
 
-AWS 완료 검증은 실제 환경의 S1/S2 전체 업무, 인증·권한, 영속성, 외부 API, 로그·장애 복구와 백업 복원을 포함한다. RDF/Neo4j를 병용하면 복구 이후에도 동일 승인 버전의 조회 공개 조건을 다시 검증한다. 엔진·배포 크기, 매핑·동기화 구현, 인증 수단과 백업 주기·복구 목표 등 세부 설정은 해당 구현에서 구체화한다.
+AWS 완료 검증은 실제 환경의 S1/S2 전체 업무, 인증·권한, 영속성, 외부 API, 로그·장애 복구와 백업 복원을 포함한다. RDF/Neo4j를 병용하면 복구 이후에도 동일 승인 버전의 조회 공개 조건을 다시 검증한다. 엔진·배포 크기, 동기화 운영 주체, 인증 수단과 백업 주기·복구 목표 등 운영 설정은 배포 단계에서 구체화한다.
 
 ## 공통 반환·오류
 

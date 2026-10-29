@@ -16,8 +16,22 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U ontologics -d ontologics"
           --health-interval 5s --health-timeout 5s --health-retries 20
+      neo4j:
+        image: neo4j:5.26-community@sha256:414adfe41c6ff32abb752be37f265c77607c166cab298f65a917fc4f05776218
+        env:
+          NEO4J_AUTH: neo4j/ci-ephemeral-only
+          NEO4J_server_memory_heap_initial__size: 256m
+          NEO4J_server_memory_heap_max__size: 512m
+          NEO4J_server_memory_pagecache_size: 256m
+        ports: [7687:7687]
+        options: >-
+          --health-cmd "wget -q --spider http://localhost:7474 || exit 1"
+          --health-interval 5s --health-timeout 5s --health-retries 30
     env:
       DATABASE_URL: postgresql://ontologics:ci-ephemeral-only@127.0.0.1:5432/ontologics
+      TEST_NEO4J_URL: bolt://127.0.0.1:7687
+      TEST_NEO4J_USER: neo4j
+      TEST_NEO4J_PASSWORD: ci-ephemeral-only
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

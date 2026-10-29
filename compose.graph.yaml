@@ -1,0 +1,17 @@
+# Optional overlay: docker compose -f compose.yaml -f compose.graph.yaml ...
+# Keeping graph settings separate lets the PostgreSQL service run independently.
+services:
+  neo4j:
+    image: neo4j:5.26-community@sha256:414adfe41c6ff32abb752be37f265c77607c166cab298f65a917fc4f05776218
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD in local environment}
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+    ports:
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-17687}:7687"
+      - "127.0.0.1:${NEO4J_HTTP_PORT:-17474}:7474"
+    volumes:
+      - neo4j_data:/data
+volumes:
+  neo4j_data:

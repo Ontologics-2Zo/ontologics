@@ -25,6 +25,11 @@ const errorGuides = {
   NO_CHANGES: '같은 내용이 이미 반영되어 있습니다. 승인된 버전을 조회해 재사용하세요.',
   IDEMPOTENCY_CONFLICT: '이 요청 키는 다른 내용에 사용되었습니다. 저장된 요청을 확인하세요.',
   STORAGE_ERROR: '저장소 작업을 완료하지 못했습니다. 상태를 확인한 뒤 같은 요청으로 재시도하세요.',
+  GRAPH_NOT_READY: '선택한 승인 버전의 그래프 동기화가 아직 완료되지 않았습니다. 이전 버전으로 대체하지 않았습니다. 검토 요청 재시도 또는 담당자의 동기화 후 다시 조회하세요.',
+  GRAPH_UNAVAILABLE: '그래프 조회 저장소에 연결하지 못했습니다. 승인된 PostgreSQL 데이터는 유지됩니다. 연결 복구 후 동일 조건으로 다시 조회하세요.',
+  GRAPH_VERSION_CONFLICT: '승인 버전과 그래프 버전이 일치하지 않아 조회를 중단했습니다. 담당자가 동기화 상태를 확인해야 합니다.',
+  GRAPH_INTEGRITY: '그래프의 내용·관계·근거가 승인된 버전과 달라 조회를 중단했습니다. 이 결과를 업무 판단에 사용하지 마세요.',
+  GRAPH_VALIDATION_FAILED: '승인 데이터의 RDF·SHACL 검증을 통과하지 못했습니다. 담당자가 검증 기록을 확인해야 합니다.',
   CSRF_REJECTED: '개발 사용자 세션 또는 요청 보호 정보가 변경되었습니다. 화면을 새로고침해 서버의 현재 신원을 확인하세요.',
   DEVELOPMENT_SESSION_CHANGED: '다른 탭에서 개발 사용자가 변경되었거나 세션이 갱신되었습니다. 화면을 새로고침한 뒤 서버가 확인한 사용자로 작업하세요.',
   DEVELOPMENT_SESSION_EXPIRED: '개발 사용자 세션을 더 이상 사용할 수 없습니다. 화면을 새로고침해 서버가 제공한 개발 신원과 권한을 다시 확인하세요.',
@@ -778,16 +783,24 @@ async function loadDraft(ref, {announce = true, preserveOutcome = false} = {}) {
   loadedValidation = draft.status === 'applied' ? null : await api('/api/tools/validate_draft', {draft_id: draft.id, version: draft.version});
   validationBlock(loadedValidation, draft);
   let changes = loadedValidation?.ok ? loadedValidation.data.changes : null;
-  if (!changes) {
-    changes = [];
-    const baseNodes = new Map();
-    for (const operation of draft.operations) {
-      const kind = operation.node.type;
-      if (!baseNodes.has(kind)) baseNodes.set(kind, (await tool('lookup', {kind, version: draft.base_version})).data);
-      changes.push({id: operation.node.id, before: baseNodes.get(kind).find((item) => item.id === operation.node.id) || null, after: operation.node});
+  try {
+    if (!changes) {
+      changes = [];
+      const baseNodes = new Map();
+      for (const operation of draft.operations) {
+        const kind = operation.node.type;
+        if (!baseNodes.has(kind)) baseNodes.set(kind, (await tool('lookup', {kind, version: draft.base_version})).data);
+        changes.push({id: operation.node.id, before: baseNodes.get(kind).find((item) => item.id === operation.node.id) || null, after: operation.node});
+      }
     }
+    renderChanges(changes, draft.status === 'applied' ? draft.applied_version : draft.base_version);
+  } catch (error) {
+    if (draft.status !== 'applied') throw error;
+    // The exact committed draft remains known even if its derived graph cannot
+    // supply the diff. Permit only the saved review request to be retried; new
+    // review controls remain disabled for an applied draft.
+    clear('draft-changes').append(node('p', '승인된 초안은 확인했지만 변경 전후 그래프 조회는 사용할 수 없습니다. ' + error.message, 'warning-line'));
   }
-  renderChanges(changes, draft.status === 'applied' ? draft.applied_version : draft.base_version);
   const params = new URLSearchParams({draft: draft.id, version: String(draft.version)});
   $('review-path').value = '/#review?' + params;
   if (location.hash.startsWith('#review')) history.replaceState(null, '', '#review?' + params);
@@ -815,7 +828,9 @@ async function review(decision, retry = false) {
     await loadDraft({id: body.draft_id, version: body.version}, {announce: false, preserveOutcome: true});
     if (result.data.application?.ok) {
       $('current-version').textContent = '확인한 반영 데이터 v' + result.data.application.data_version;
-      message('별도 검토자 승인과 데이터 v' + result.data.application.data_version + ' 반영을 확인했습니다. ' + (configurationFromDraft(loadedDraft) ? '승인된 구성 확인에서 이 버전을 재조회하세요.' : '최초 조회와 같은 조건으로 전후 결과를 비교하세요.'), 'success');
+      if (result.data.application.data.graph_projection?.status === 'pending') {
+        message('승인된 데이터는 PostgreSQL에 반영됐지만 그래프 조회 공개는 대기 중입니다. 같은 검토 요청을 재시도하면 승인 데이터를 중복 반영하지 않고 동기화를 다시 시도합니다.', 'warning');
+      } else message('별도 검토자 승인과 데이터 v' + result.data.application.data_version + ' 반영을 확인했습니다. ' + (configurationFromDraft(loadedDraft) ? '승인된 구성 확인에서 이 버전을 재조회하세요.' : '최초 조회와 같은 조건으로 전후 결과를 비교하세요.'), 'success');
     } else if (result.data.application) message('승인은 기록되었지만 반영이 완료되지 않았습니다. 아래 반영 오류를 확인하고 동일 요청으로 재시도하세요.', 'warning');
     else message('검토 결정을 기록했습니다. 확정 데이터는 변경하지 않았습니다.', 'success');
   } else if (!result.ok) throw responseError(result);
@@ -832,6 +847,10 @@ function renderReviewOutcome(result) {
   if (application?.ok) applied.append(node('span', '데이터 v' + application.data_version + ' 반영 완료', 'pill included'));
   else if (application) applied.append(node('span', responseError(application).message, 'warning-line'));
   else applied.append(node('span', '이번 결정에서 반영하지 않음'));
+  const projection = application?.data?.graph_projection;
+  if (projection) applied.append(node('p', projection.status === 'ready'
+    ? '동일 버전 그래프 동기화 완료 · 조회 가능'
+    : 'PostgreSQL 반영 완료 · 그래프 조회 공개 대기', projection.status === 'ready' ? 'hint' : 'warning-line'));
   steps.append(reviewed, applied); target.append(steps);
   const warnings = [...(reviewResult.warnings || []), ...(application?.warnings || [])];
   if (warnings.length) target.append(node('p', '응답 재사용/처리 안내: ' + warnings.map((item) => item.code).join(', '), 'hint'));

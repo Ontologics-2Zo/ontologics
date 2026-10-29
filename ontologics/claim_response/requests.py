@@ -195,7 +195,8 @@ def prepare_containment(case, line_id, records, hold_result, *, prepared_at, ext
 # ------------------------------------------------------------ 6-1 test request
 # Team meeting (2026-10-29): C does not run tests or decide dispositions. C prepares the
 # request to the test team; the test team returns per-board results and dispositions.
-# Until the storage decision (task 5A-0), this is a document only, not a graph node.
+# 5A-0 decided to store it in the common graph: the request is also a TestRequest node
+# (common type added by PR #7), submitted as a draft for human review like the other requests.
 
 TEST_REQUEST = 'test_request'
 TEST_RESULT_LABELS = ('불합격', '통과', '증상 미재현', '미검사')
@@ -281,10 +282,21 @@ def render_test_request(case, targets, *, prepared_at, external_claim_id, config
 
 def prepare_test_request(case, line_id, hold_result, *, prepared_at, external_claim_id, configuration_id,
                          candidate_result=None, review_status=None):
-    """6-1: targets and the test request document. Returns {'targets', 'documents'}; nothing is stored or sent."""
+    """6-1: targets, the TestRequest node and the document. Returns {'targets', 'node', 'documents'}.
+
+    The node is a draft candidate; nothing is stored, approved or sent here.
+    """
     instant(prepared_at)
     targets = test_targets(case, hold_result)
+    filename = test_request_filename(case)
     text = render_test_request(case, targets, prepared_at=prepared_at, external_claim_id=external_claim_id,
                                configuration_id=configuration_id, production_line_id=line_id,
                                candidate_result=candidate_result, review_status=review_status)
-    return {'targets': targets, 'documents': {test_request_filename(case): text}}
+    evidence = set(case['evidence'])
+    if hold_result.get('state') == 'ready':
+        evidence |= set(hold_result['node']['evidence'])
+    node = {'id': 'test-request:' + _suffix(case), 'type': 'TestRequest', 'origin': case['origin'],
+            'evidence': sorted(evidence), 'case_id': case['id'],
+            'unit_ids': [u for group in targets['groups'] for u in group['unit_ids']],
+            'prepared_at': prepared_at, 'document_ref': REQUEST_DIR.relative_to(ROOT).as_posix() + '/' + filename}
+    return {'targets': targets, 'node': node, 'documents': {filename: text}}

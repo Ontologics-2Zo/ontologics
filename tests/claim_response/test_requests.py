@@ -206,6 +206,15 @@ class TestRequestTests(unittest.TestCase):
         self.assertIn('보관 보류 보드는 포함하지 않음', doc)
         self.assertIn('합계 5대', doc)
 
+    def test_test_request_node_is_a_valid_graph_addition(self):
+        case, result = self.build()
+        node = result['node']
+        self.assertEqual(('TestRequest', case['id'], 125), (node['type'], node['case_id'], len(node['unit_ids'])))
+        self.assertTrue(node['document_ref'].endswith(test_request_filename(case)))
+        claim, _, _, hold = scenario()
+        outcome = validate_graph(existing_nodes() + claim_response_nodes() + claim + [case, hold['node'], node])
+        self.assertEqual([], outcome['errors'])
+
     def test_document_is_written_only_inside_the_request_folder(self):
         _, result = self.build()
         name, text = next(iter(result['documents'].items()))

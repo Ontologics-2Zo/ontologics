@@ -26,6 +26,24 @@
     },
     "lot_id": {
       "@type": "@id"
+    },
+    "production_line_id": {
+      "@type": "@id"
+    },
+    "intake_id": {
+      "@type": "@id"
+    },
+    "case_id": {
+      "@type": "@id"
+    },
+    "scope_id": {
+      "@type": "@id"
+    },
+    "unit_ids": {
+      "@type": "@id"
+    },
+    "production_work_id": {
+      "@type": "@id"
     }
   },
   "@graph": [

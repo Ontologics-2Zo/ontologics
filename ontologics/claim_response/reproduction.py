@@ -11,7 +11,9 @@ import io
 from pathlib import Path
 
 from ..model import instant
+from .fixtures import batch_serials
 from .intake import _clean, _issue, _read_bounded, _relative_path
+from .trace import C_OPERATIONS_BASIS
 
 RESULT_HEADER = ('보드', '시험 결과', '조치 판정', '관측 시각', '비고')
 OUTCOMES = {'불합격': 'fail', '통과': 'pass', '증상 미재현': 'not_reproduced'}
@@ -104,3 +106,61 @@ def read_test_results(path, test_request, case, *, collected_at):
         counts[key] = counts.get(key, 0) + 1
     return {'state': BLOCKED if issues else NEEDS_REVIEW, 'nodes': nodes, 'untested_unit_ids': untested,
             'issues': issues, 'counts': counts}
+
+
+# ------------------------------------------------------------ 6-3 reproduction quantity
+# Replacement stock (C-R001~007, line C-02) is read from the temporary C operations record.
+# MVP assumption: it is outside the claim scope, usable and not allocated to other orders.
+# When B's shared allocation data is linked (3-3), replace only this adapter.
+
+CONFIRMED, LOWER_BOUND, UNDETERMINED = 'confirmed', 'lower_bound', 'undetermined'
+
+
+def c_operations_replacement(raw):
+    """Usable replacement boards from the C operations record (temporary basis)."""
+    batch = next(b for b in raw['batches'] if b['name'] == 'replacement')
+    return {'unit_ids': ['unit:' + s for s in batch_serials(batch)], 'basis': [C_OPERATIONS_BASIS],
+            'evidence': ['evidence:claim_response:batch:replacement'], 'configuration_id': raw['configuration_id']}
+
+
+def reproduction_requirement(case, test_request, results, replacement, *, configuration_id):
+    """6-3: count the good boards A must make from the test team's dispositions.
+
+    customer = boards with customer_replacement, stock = boards with stock_replacement; each board
+    has one result, so it is counted once. unresolved = requested boards without a result plus
+    results marked unresolved. required = max(0, customer + stock - replacement).
+    - no unresolved boards          -> confirmed
+    - unresolved boards, some demand -> lower_bound (at least this many; the final number may grow)
+    - unresolved boards, no demand   -> undetermined: no node, because 0 would read as "nothing to make"
+    """
+    results = [r for r in results if r.get('type') == 'QualityTestResult'
+               and r.get('test_request_id') == test_request['id']]
+    by_unit = {r['unit_id']: r for r in results}
+    customer = [r for r in results if r['disposition'] == 'customer_replacement']
+    stock = [r for r in results if r['disposition'] == 'stock_replacement']
+    untested = [u for u in test_request['unit_ids'] if u not in by_unit]
+    unresolved = len(untested) + sum(r['disposition'] == 'unresolved' for r in results)
+    available = [u for u in replacement['unit_ids'] if u not in test_request['unit_ids']]
+    demand = len(customer) + len(stock)
+    required = max(0, demand - len(available))
+    summary = {'customer_replacement_quantity': len(customer), 'stock_replacement_quantity': len(stock),
+               'available_replacement_quantity': len(available), 'required_good_quantity': required,
+               'unresolved_quantity': unresolved, 'untested_quantity': len(untested),
+               'basis': replacement['basis']}
+    if unresolved and not demand:
+        return dict(summary, state=UNDETERMINED, node=None, required_good_quantity=None,
+                    reason='no confirmed replacement demand yet and some boards are unresolved or untested')
+    state = LOWER_BOUND if unresolved else CONFIRMED
+    evidence = set(case['evidence']) | set(replacement['evidence'])
+    for r in results:
+        evidence |= set(r['evidence'])
+    node = {'id': 'reproduction:' + case['id'].split(':', 1)[1], 'type': 'ReproductionRequirement',
+            'origin': case['origin'], 'evidence': sorted(evidence), 'case_id': case['id'],
+            'configuration_id': configuration_id, 'unit': 'piece', 'assessment_state': state,
+            'test_result_ids': sorted(r['id'] for r in results),
+            **{k: summary[k] for k in ('customer_replacement_quantity', 'stock_replacement_quantity',
+                                       'available_replacement_quantity', 'required_good_quantity',
+                                       'unresolved_quantity')}}
+    if available:
+        node['replacement_unit_ids'] = available
+    return dict(summary, state=state, node=node, reason=None)

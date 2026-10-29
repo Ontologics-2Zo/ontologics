@@ -300,3 +300,88 @@ def prepare_test_request(case, line_id, hold_result, *, prepared_at, external_cl
             'unit_ids': [u for group in targets['groups'] for u in group['unit_ids']],
             'prepared_at': prepared_at, 'document_ref': REQUEST_DIR.relative_to(ROOT).as_posix() + '/' + filename}
     return {'targets': targets, 'node': node, 'documents': {filename: text}}
+
+
+# ------------------------------------------------------------ 6-5 reproduction request for A
+# C turns the reproduction quantity (6-3) into a review document for A. A confirmed quantity
+# becomes a request; a lower bound becomes a document marked "추가 확인 필요" that must not be
+# read as the final number; an undetermined quantity gets no document and no node.
+
+REPRODUCTION_REQUEST = 'reproduction_request'
+STATE_LABELS = {'confirmed': '확정', 'lower_bound': '하한 (추가 확인 필요)'}
+
+
+def reproduction_request_filename(case):
+    """e.g. reproduction_CLM-..._reproduction_request.md"""
+    return ('reproduction:' + _suffix(case) + ':' + REPRODUCTION_REQUEST).replace(':', '_') + '.md'
+
+
+def render_reproduction_request(requirement, case, *, prepared_at, external_claim_id, review_status=None,
+                                document_version=1):
+    """Markdown review document for A. The numbers are copied from the ReproductionRequirement node."""
+    r = requirement
+    state = r['assessment_state']
+    demand = r['customer_replacement_quantity'] + r['stock_replacement_quantity']
+    title = '재생산 요청서 검토 초안' if state == 'confirmed' else '재생산 요청서 검토 초안 (하한, 추가 확인 필요)'
+    lines = [
+        '# ' + title, '',
+        '수신 대상 역할: A 담당 (재생산 계획)  ',
+        '작성 시점: ' + _kst(prepared_at) + ' (가정)', '',
+        '이 문서는 C MVP용 가정 출력이며 실제 생산 지시가 아니다. 시험 결과와 조치 판정은 테스트팀이 정했고 '
+        'C는 그 판정을 세어 수량만 계산했다. 시스템은 이 문서를 송부하지 않는다. '
+        '사람이 검토·수정한 뒤 기존 업무 채널로 직접 송부한다.', '',
+        '| 상태 | 값 |', '| --- | --- |',
+        f'| 문서 버전 | {document_version} |',
+        f'| 검토 상태 | {REVIEW_LABELS.get(review_status, review_status)} |',
+        '| 송부 상태 | 미송부 |',
+        '| A 접수 | 미확인 |',
+        f'| 고객 클레임 번호 | {external_claim_id} |',
+        f"| 사건 ID | {case['id']} |",
+        f"| 재생산 요건 ID | {r['id']} |",
+        f"| 대상 구성 | {r['configuration_id']} |",
+        f'| 수량 상태 | {STATE_LABELS[state]} |', '',
+        '## 요청 수량', '',
+        '| 항목 | 수량 |', '| --- | --- |',
+        f"| 고객 교체 (테스트팀 판정) | {r['customer_replacement_quantity']}대 |",
+        f"| 보관 대체 (테스트팀 판정) | {r['stock_replacement_quantity']}대 |",
+        f'| 교체 필요 합계 | {demand}대 |',
+        f"| 사용할 대체 재고 | {r['available_replacement_quantity']}대 |",
+        f"| **재생산 필요 정상 수량** | **{r['required_good_quantity']}대** |",
+        f"| 미결 (판정 없음·미검사) | {r['unresolved_quantity']}대 |", '',
+        f"계산: max(0, {demand} − {r['available_replacement_quantity']}) = {r['required_good_quantity']}대.", '',
+    ]
+    if r.get('replacement_unit_ids'):
+        lines += [f"- 대체 재고: {serial_ranges(r['replacement_unit_ids'])}. "
+                  'C 운영 기록 기준이며 다른 주문 배정 여부는 사람이 확인한다.', '']
+    if state == 'lower_bound':
+        lines += [
+            f"- 이 수량은 **최소 수량**이다. 미결 {r['unresolved_quantity']}대의 판정에 따라 늘어날 수 있다.",
+            '- 미결 보드의 결과를 받기 전에는 이 수량을 최종 재생산 수량으로 쓰지 않는다.',
+            '- 최종 수량이 정해지면 새 버전의 요청서를 만든다.', '',
+        ]
+    lines += [
+        '## 사람 검토와 송부 기록', '',
+        '| 항목 | 입력 |', '| --- | --- |',
+        '| 검토자 | 미지정 |', '| 검토 결과 | ' + REVIEW_LABELS.get(review_status, review_status) + ' |',
+        '| 수정 의견 | 미입력 |', '| 송부자·수신 담당 | 미입력 |', '| 송부 시각·방법 | 미송부 |',
+        '| A 응답 | 미확인 |', '',
+        '이 파일을 생성하거나 검토한 것만으로 송부나 생산 계획 반영이 완료되지 않는다.', '',
+    ]
+    return '\n'.join(lines)
+
+
+def prepare_reproduction_request(case, reproduction, *, prepared_at, external_claim_id, review_status=None):
+    """6-5: reproduction_requirement() result -> {'state', 'node', 'documents', 'skipped'}.
+
+    undetermined -> no node and no document, only the reason. Otherwise the node gets document_ref.
+    """
+    instant(prepared_at)
+    if reproduction['node'] is None:
+        return {'state': reproduction['state'], 'node': None, 'documents': {},
+                'skipped': {'request_kind': REPRODUCTION_REQUEST, 'state': reproduction['state'],
+                            'reason': reproduction['reason']}}
+    filename = reproduction_request_filename(case)
+    node = dict(reproduction['node'], document_ref=REQUEST_DIR.relative_to(ROOT).as_posix() + '/' + filename)
+    text = render_reproduction_request(node, case, prepared_at=prepared_at, external_claim_id=external_claim_id,
+                                       review_status=review_status)
+    return {'state': reproduction['state'], 'node': node, 'documents': {filename: text}, 'skipped': None}

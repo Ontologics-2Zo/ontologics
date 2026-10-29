@@ -325,7 +325,7 @@ def render_reproduction_request(requirement, case, *, prepared_at, external_clai
     title = '재생산 요청서 검토 초안' if state == 'confirmed' else '재생산 요청서 검토 초안 (하한, 추가 확인 필요)'
     lines = [
         '# ' + title, '',
-        '수신 대상 역할: A 담당 (재생산 계획)  ',
+        '수신 대상 역할: A 담당 (재생산 요청 접수)  ',
         '작성 시점: ' + _kst(prepared_at) + ' (가정)', '',
         '이 문서는 C MVP용 가정 출력이며 실제 생산 지시가 아니다. 시험 결과와 조치 판정은 테스트팀이 정했고 '
         'C는 그 판정을 세어 수량만 계산했다. 시스템은 이 문서를 송부하지 않는다. '

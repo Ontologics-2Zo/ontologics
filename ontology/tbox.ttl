@@ -14,16 +14,6 @@ o:ComponentLot a owl:Class .
 o:Installation a owl:Class .
 o:HistoryCoverage a owl:Class .
 o:InventoryMovement a owl:Class .
-o:ProductionLine a owl:Class .
-o:UnitProductionRecord a owl:Class .
-o:ClaimIntake a owl:Class .
-o:QualityCase a owl:Class .
-o:QualityScope a owl:Class .
-o:ContainmentRequest a owl:Class .
-o:QualityTestScenario a owl:Class .
-o:QualityTestResult a owl:Class .
-o:QualityDisposition a owl:Class .
-o:ReproductionRequirement a owl:Class .
 o:source_id a owl:ObjectProperty ; rdfs:range o:SourceDocument .
 o:model_id a owl:ObjectProperty ; rdfs:range o:ProductModel .
 o:revision_id a owl:ObjectProperty ; rdfs:range o:ProductRevision .
@@ -31,15 +21,6 @@ o:configuration_id a owl:ObjectProperty ; rdfs:range o:Configuration .
 o:component_id a owl:ObjectProperty ; rdfs:range o:ComponentModel .
 o:unit_id a owl:ObjectProperty ; rdfs:range o:ProductUnit .
 o:lot_id a owl:ObjectProperty ; rdfs:range o:ComponentLot .
-o:production_line_id a owl:ObjectProperty ; rdfs:range o:ProductionLine .
-o:intake_id a owl:ObjectProperty ; rdfs:range o:ClaimIntake .
-o:case_id a owl:ObjectProperty ; rdfs:range o:QualityCase .
-o:scope_id a owl:ObjectProperty ; rdfs:range o:QualityScope .
-o:scenario_id a owl:ObjectProperty ; rdfs:range o:QualityTestScenario .
-o:unit_ids a owl:ObjectProperty ; rdfs:range o:ProductUnit .
-o:test_result_ids a owl:ObjectProperty ; rdfs:range o:QualityTestResult .
-o:disposition_ids a owl:ObjectProperty ; rdfs:range o:QualityDisposition .
-o:replacement_unit_ids a owl:ObjectProperty ; rdfs:range o:ProductUnit .
 o:evidence a owl:ObjectProperty ; rdfs:range o:Evidence .
 o:ProductModel owl:disjointWith o:ProductUnit, o:ComponentModel, o:ComponentLot .
 o:ComponentModel owl:disjointWith o:ComponentLot .

@@ -211,7 +211,7 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
                                     external_claim_id=intake['external_claim_id'], configuration_id=CONFIGURATION,
                                     review_status=status)
         documents = [str(write_request(text, name, base_dir=request_dir)) for name, text in again['documents'].items()]
-        phase2 = None
+        after_drafts, phase2 = svc._version(), None
         if results_path is not None:
             phase2 = run_phase2(svc, case, line_id, hold, candidate, draft, external_claim_id=intake['external_claim_id'],
                                 results_path=Path(results_path), request_dir=request_dir)
@@ -220,7 +220,7 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
             'contract_version': __version__, 'database_schema': svc.schema,
             'mode': 'development demonstration; scripted human identities, not real operational approval; no model calls',
             'versions': {'seed': seeded['data_version'], 'claim_registered': registered['data_version'],
-                         'claim_confirmed': version, 'after_request_drafts': svc._version()},
+                         'claim_confirmed': version, 'after_request_drafts': after_drafts},
             'claim': {'file': conversion['report']['file'], 'external_claim_id': intake['external_claim_id'],
                       'claimed_quantity': intake['claimed_quantity'], 'reported_serials': intake['reported_serials']},
             'links': {'matched': [l['unit_id'] for l in trace['links'] if l['match_state'] == MATCHED],

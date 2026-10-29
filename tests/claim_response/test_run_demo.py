@@ -58,6 +58,7 @@ class RunDemoPhase2Tests(unittest.TestCase):
     def test_confirmed_scenario_ends_with_an_unsent_request_for_a(self):
         summary, folder = self.run_once(CLAIMS / 'claim_table.csv', TEST_RESULTS / 'scenario_1.csv')
         phase2 = summary['phase2']
+        self.assertEqual(3, summary['versions']['after_request_drafts'])
         self.assertEqual({'after_request_review': 4, 'test_request_sent': 5, 'after_reproduction_draft': 5},
                          phase2['versions'])
         self.assertEqual(125, phase2['test_request']['count'])

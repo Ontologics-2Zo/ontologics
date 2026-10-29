@@ -346,7 +346,7 @@ POST /api/review
 
 `runtime.py`의 `ModelRuntime`과 기존 gateway·PostgreSQL 실행 기록을 재사용한다. `openai_provider.py`는 OpenAI Responses API 고정 endpoint와 `gpt-5.4-mini-2026-03-17`만 사용한다. `parallel_tool_calls=false`로 순차 도구 실행을 요청한다. 원래 API `call_id`와 출력 항목(있는 경우 암호화된 reasoning 상태)을 보존해 후속 tool 결과를 연결한다. 도구 스키마는 `tool_specs.py`에 있으며 optional·이종 노드 필드를 위해 `strict=false`로 전달하고 공통 코드가 실제 입력을 검증한다. [공식 function calling 계약](https://developers.openai.com/api/docs/guides/function-calling)을 따른다.
 
-`OpenAISettings.from_environment(환경파일)` → `OpenAIProvider(settings, PRODUCT_TOOLS 또는 QUALITY_TOOLS)` → `ModelRuntime(service, 호스트가 정한 신원, provider, config=ModelConfig(model=settings.model, max_steps=12))` 순서다. 실행마다 새 provider를 만든다. 예제 실행·모델·DB 환경변수·설정 우선순위는 [README](../README.md#실제-llm-실행과-동료-개발-시작)에 있다. 기본 timeout 30초, 응답 한도 4096토큰이며 설정 가능 범위는 각각 1~60초, 256~8192토큰이다. 실행 전체 wall-clock 제한이나 강제 종료 복구는 없다.
+`OpenAISettings.from_environment(환경파일)` → `OpenAIProvider(settings, PRODUCT_TOOLS 또는 QUALITY_TOOLS)` → `ModelRuntime(service, 호스트가 정한 신원, provider, config=ModelConfig(model=settings.model, max_steps=12))` 순서다. 실행마다 새 provider를 만든다. 예제 실행·모델·DB 환경변수·설정 우선순위는 [README](../README.md#실제-llm-실행과-동료-개발-시작)에 있다. 기본 timeout 30초, 응답 한도 4096토큰이며 설정 가능 범위는 각각 1~60초, 256~8192토큰이다. 요청·하위 Agent·재시도는 공통 Harness의 deadline을 공유하며 호출 경계에서 만료를 검사한다. provider timeout은 설정값과 요청의 남은 시간 중 작은 값으로 제한한다. 실행 중인 동기 작업의 강제 종료나 프로세스 사망 복구는 지원하지 않는다. 누적 한도와 읽기 재시작 범위는 [공통 Harness 계약](#공통-harness와-버전-agent-계약)을 따른다.
 
 역할별 기본 도구는 `tool_specs.py`의 PRODUCT_TOOLS/QUALITY_TOOLS/KNOWLEDGE_TOOLS/SUPERVISOR_TOOLS가 기준이다. Product는 기존 초안 도구와 접수 후보 읽기/저장, Knowledge는 문자열·의미 검색을 포함한다. 웹은 매 요청의 정확한 도구·인자를 추가 제한한다. 승인·반영·bootstrap·신원 선택·색인은 모든 목록에 없다. 문서 안 지시문을 데이터로 처리하라는 역할 지침과 별개로, 실제 권한은 공통 코드가 강제한다.
 

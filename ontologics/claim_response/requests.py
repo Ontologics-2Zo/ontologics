@@ -190,3 +190,101 @@ def prepare_containment(case, line_id, records, hold_result, *, prepared_at, ext
         skipped.append({'request_kind': SHIPMENT_HOLD, 'state': hold_result.get('state'),
                         'reason': hold_result.get('reason', 'no ready hold scope')})
     return {'nodes': nodes, 'documents': documents, 'skipped': skipped}
+
+
+# ------------------------------------------------------------ 6-1 test request
+# Team meeting (2026-10-29): C does not run tests or decide dispositions. C prepares the
+# request to the test team; the test team returns per-board results and dispositions.
+# Until the storage decision (task 5A-0), this is a document only, not a graph node.
+
+TEST_REQUEST = 'test_request'
+TEST_RESULT_LABELS = ('불합격', '통과', '증상 미재현', '미검사')
+TEST_DISPOSITION_LABELS = ('고객 교체', '보관 대체', '출고 허용', '보류', '미결')
+
+
+def test_request_filename(case):
+    """Same naming as the containment documents, e.g. test-request_CLM-..._test_request.md"""
+    return ('test-request:' + _suffix(case) + ':' + TEST_REQUEST).replace(':', '_') + '.md'
+
+
+def test_targets(case, hold_result):
+    """Boards to test: the claimed boards always, the held boards only when the hold scope is ready."""
+    groups = [{'group': '고객 신고 (회수)', 'unit_ids': sorted(case['unit_ids']), 'basis': '고객 클레임과 사람 확인'}]
+    skipped = None
+    if hold_result.get('state') == 'ready':
+        scope = hold_result['node']
+        basis = '; '.join(BASIS_LABELS.get(b, b) for b in hold_result.get('basis') or []) or '그래프 근거'
+        groups.append({'group': '보관 보류', 'unit_ids': sorted(scope['unit_ids']), 'basis': basis,
+                       'as_of': scope['as_of']})
+    else:
+        skipped = {'group': '보관 보류', 'state': hold_result.get('state'),
+                   'reason': hold_result.get('reason', 'no ready hold scope')}
+    return {'groups': groups, 'skipped': skipped}
+
+
+def render_test_request(case, targets, *, prepared_at, external_claim_id, configuration_id, production_line_id,
+                        candidate_result=None, review_status=None, document_version=1):
+    """Markdown review document for the test team; C asks for results and dispositions, it decides neither."""
+    total = sum(len(g['unit_ids']) for g in targets['groups'])
+    lines = [
+        '# 테스트 의뢰서 검토 초안', '',
+        '수신 대상 역할: 테스트팀  ',
+        '작성 시점: ' + _kst(prepared_at) + ' (가정)', '',
+        '이 문서는 C MVP용 가정 출력이며 실제 클레임 처리·시험 지시가 아니다. '
+        'C는 시험을 수행하거나 조치를 판정하지 않는다. 시스템은 이 문서를 송부하지 않는다. '
+        '사람이 검토·수정한 뒤 기존 업무 채널로 직접 송부한다.', '',
+        '| 상태 | 값 |', '| --- | --- |',
+        f'| 문서 버전 | {document_version} |',
+        f'| 검토 상태 | {REVIEW_LABELS.get(review_status, review_status)} |',
+        '| 송부 상태 | 미송부 |',
+        '| 테스트팀 접수 | 미확인 |',
+        f'| 고객 클레임 번호 | {external_claim_id} |',
+        f"| 사건 ID | {case['id']} |",
+        f'| 대상 구성 | {configuration_id} |',
+        f'| 생산라인 | {production_line_id} |', '',
+        '## 의뢰 배경', '',
+        f"- 고객 신고: {serial_ranges(case['unit_ids'])} {len(case['unit_ids'])}대에서 '{case['reported_symptom']}'이라고 신고.",
+        '- 신고 증상은 고객 표현이며 확인된 불량이나 원인이 아님.',
+        f'- 생산 출처: 신고 보드 모두 보드별 생산 기록에서 {production_line_id} 생산으로 확인.', '',
+        '## 시험 대상', '',
+        '| 묶음 | 보드 | 수량 | 대상 근거 |', '| --- | --- | --- | --- |',
+    ]
+    for group in targets['groups']:
+        lines.append(f"| {group['group']} | {serial_ranges(group['unit_ids'])} | {len(group['unit_ids'])}대 | {group['basis']} |")
+    lines += ['', f'합계 {total}대. 같은 보드는 한 번만 적는다.', '']
+    if targets.get('skipped'):
+        skipped = targets['skipped']
+        lines += [f"- 보관 보류 보드는 포함하지 않음: 보류 범위 미확정({skipped['state']}).", '']
+    if candidate_result and candidate_result.get('state') == 'ready':
+        units = candidate_result['node']['unit_ids']
+        lines += [f'- 범위 밖: 이미 납품된 같은 라인 보드 {serial_ranges(units)} ({len(units)}대)는 영향 확인 후보이며 '
+                  '이번 의뢰에 포함하지 않는다.', '']
+    lines += [
+        '## 돌려받을 내용', '',
+        '보드마다 아래 한 줄을 채워 돌려준다. 시험 방법·판정 기준·조치 판정은 테스트팀이 정한다.', '',
+        '| 보드 | 시험 결과 | 조치 판정 | 관측 시각 (UTC offset 포함) | 비고 |',
+        '| --- | --- | --- | --- | --- |',
+        '| 예: C-S001 | 불합격 | 보관 대체 | 2026-10-27T14:00:00+09:00 | |', '',
+        '- 시험 결과: ' + ' / '.join(TEST_RESULT_LABELS) + '. 시험하지 않은 보드는 반드시 미검사로 적는다.',
+        '- 조치 판정: ' + ' / '.join(TEST_DISPOSITION_LABELS) + '.',
+        '- 표본만 시험한 경우 표본 결과를 나머지 보드에 적용하지 않는다.',
+        '- 이 결과로 C가 재생산 필요 수량을 계산해 A 전달용 요청서를 만든다.', '',
+        '## 사람 검토와 송부 기록', '',
+        '| 항목 | 입력 |', '| --- | --- |',
+        '| 검토자 | 미지정 |', '| 검토 결과 | ' + REVIEW_LABELS.get(review_status, review_status) + ' |',
+        '| 수정 의견 | 미입력 |', '| 송부자·수신 담당 | 미입력 |', '| 송부 시각·방법 | 미송부 |',
+        '| 테스트팀 응답 | 미확인 |', '',
+        '이 파일을 생성하거나 검토한 것만으로 송부나 시험이 완료되지 않는다.', '',
+    ]
+    return '\n'.join(lines)
+
+
+def prepare_test_request(case, line_id, hold_result, *, prepared_at, external_claim_id, configuration_id,
+                         candidate_result=None, review_status=None):
+    """6-1: targets and the test request document. Returns {'targets', 'documents'}; nothing is stored or sent."""
+    instant(prepared_at)
+    targets = test_targets(case, hold_result)
+    text = render_test_request(case, targets, prepared_at=prepared_at, external_claim_id=external_claim_id,
+                               configuration_id=configuration_id, production_line_id=line_id,
+                               candidate_result=candidate_result, review_status=review_status)
+    return {'targets': targets, 'documents': {test_request_filename(case): text}}

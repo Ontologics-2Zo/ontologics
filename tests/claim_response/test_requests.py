@@ -9,8 +9,10 @@ from ontologics.claim_response.intake import convert_claim
 from ontologics.claim_response.requests import (
     PRODUCTION_STOP, REVIEW_LABELS, SHIPMENT_HOLD, line_scope, prepare_containment, prepare_request,
     render_request, serial_ranges, write_request)
+from ontologics.claim_response.requests import prepare_test_request, test_request_filename
 from ontologics.claim_response.trace import (
-    by_type, c_operations_shipments, c_operations_stock, link_serials, prepare_quality_case, stored_scope)
+    by_type, c_operations_shipments, c_operations_stock, candidate_scope, link_serials, prepare_quality_case,
+    stored_scope)
 from ontologics.demo import fixture_nodes
 from ontologics.model import ROOT, validate_graph
 from ontologics.service import Service
@@ -165,6 +167,54 @@ class ReviewStateTests(unittest.TestCase):
         self.assertIn('| 문서 버전 | 2 |', approved)
         self.assertIn('| 송부 상태 | 미송부 |', approved)
         self.assertIn('| 현장 반영 상태 | 미확인 |', approved)
+
+
+class TestRequestTests(unittest.TestCase):
+    """6-1: C asks the test team for per-board results and dispositions; it decides neither."""
+    def build(self, hold=None):
+        _, case, records, ready_hold = scenario()
+        candidate = candidate_scope(case, LINE_C01, records, c_operations_shipments(load_operations()))
+        result = prepare_test_request(case, LINE_C01, ready_hold if hold is None else hold, prepared_at=PREPARED,
+                                      external_claim_id=CLAIM_ID, configuration_id=CONFIG,
+                                      candidate_result=candidate)
+        return case, result
+
+    def test_targets_are_the_claimed_and_held_boards_once_each(self):
+        case, result = self.build()
+        groups = result['targets']['groups']
+        self.assertEqual([5, 120], [len(g['unit_ids']) for g in groups])
+        all_units = [u for g in groups for u in g['unit_ids']]
+        self.assertEqual(len(all_units), len(set(all_units)))
+        self.assertIsNone(result['targets']['skipped'])
+        self.assertEqual([test_request_filename(case)], list(result['documents']))
+
+    def test_document_asks_for_results_and_dispositions_without_deciding(self):
+        _, result = self.build()
+        doc = next(iter(result['documents'].values()))
+        for phrase in ('# 테스트 의뢰서 검토 초안', '수신 대상 역할: 테스트팀', 'C-D001 ~ C-D005 | 5대',
+                       'C-S001 ~ C-S120 | 120대', '합계 125대', 'C는 시험을 수행하거나 조치를 판정하지 않는다',
+                       '| 송부 상태 | 미송부 |', '| 테스트팀 접수 | 미확인 |', '미검사', '고객 교체 / 보관 대체 / 출고 허용 / 보류 / 미결',
+                       '표본 결과를 나머지 보드에 적용하지 않는다', 'C-D006 ~ C-D080 (75대)', '이번 의뢰에 포함하지 않는다',
+                       '확인된 불량이나 원인이 아님', CLAIM_ID, CONFIG):
+            self.assertIn(phrase, doc)
+
+    def test_held_boards_are_left_out_when_the_hold_scope_is_not_ready(self):
+        _, result = self.build(hold={'state': 'stock_list_incomplete', 'node': None, 'reason': 'list incomplete'})
+        self.assertEqual([5], [len(g['unit_ids']) for g in result['targets']['groups']])
+        self.assertEqual('stock_list_incomplete', result['targets']['skipped']['state'])
+        doc = next(iter(result['documents'].values()))
+        self.assertIn('보관 보류 보드는 포함하지 않음', doc)
+        self.assertIn('합계 5대', doc)
+
+    def test_document_is_written_only_inside_the_request_folder(self):
+        _, result = self.build()
+        name, text = next(iter(result['documents'].items()))
+        with tempfile.TemporaryDirectory() as folder:
+            path = write_request(text, name, base_dir=folder)
+            self.assertEqual(text, path.read_text(encoding='utf-8'))
+        with self.assertRaises(ValueError):
+            prepare_test_request(scenario()[1], LINE_C01, {'state': 'empty', 'node': None}, prepared_at='2026-10-26',
+                                 external_claim_id=CLAIM_ID, configuration_id=CONFIG)
 
 
 class ReviewDatabaseTests(unittest.TestCase):

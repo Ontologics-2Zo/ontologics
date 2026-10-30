@@ -1,7 +1,8 @@
 """Pinned historical models for tests, never an application validator.
 
-Read local Git objects only. Every source and relative validator dependency is
-hash checked before execution in private modules; no sys.modules registration,
+Read bundled test fixtures, independent of Git history or checkout depth.
+Every source and relative validator dependency is hash checked before execution
+in private modules; no sys.modules registration,
 live common globals, source files, network or database connections are changed.
 ROOT still identifies the current immutable fixture files, not historical data.
 """
@@ -9,11 +10,11 @@ import builtins
 import hashlib
 from importlib.util import resolve_name
 from pathlib import Path
-import subprocess
 from types import ModuleType
 
 
 ROOT = Path(__file__).resolve().parents[2]
+HISTORY_ROOT = Path(__file__).resolve().parent / 'fixtures' / 'model_history'
 LEGACY_REVISION = '4539c904ca05f4529f8da099eff5e6be8c160c50'
 MAIN_REVISION = 'ca7c391a9e813b6ab9e6fddfb48ab639c09a764b'
 LEGACY_HASHES = {
@@ -22,14 +23,17 @@ LEGACY_HASHES = {
     'order_fulfillment.production_validation': '4e21bbdcd8e31a0e87ccfeb779baba53d1df03bed25fbbeb17c42ce29b2ef2ce',
     'order_fulfillment.delivery_validation': '347118aafa1350b9a63dc5dbfc5be5b33b678b2ecc67f782eb21c8d8c8e0b06c',
 }
-MAIN_HASHES = {'model': '1dfc814b61433e048ea484dc361cc78d1fa2b0db57865393a895e9d24a2f69de'}
+MAIN_HASHES = {
+    'model': '1dfc814b61433e048ea484dc361cc78d1fa2b0db57865393a895e9d24a2f69de',
+    'service': 'f02c21f809e4d0e9c2d35e0bc6028c47db5964e26007525b7fa847d8dbd771f4',
+    'host': '7443fd2e2bf0b3352d00e0c9c9e1eb2cdac41de0da174297adc68ba607d26340',
+}
 
 
 def _source(revision, module, hashes):
     expected = hashes[module]
-    path = 'ontologics/' + module.replace('.', '/') + '.py'
-    raw = subprocess.check_output(['git', 'show', revision + ':' + path], cwd=ROOT,
-                                  stderr=subprocess.PIPE)
+    path = module.replace('.', '/') + '.py.txt'
+    raw = (HISTORY_ROOT / revision / path).read_bytes()
     if hashlib.sha256(raw).hexdigest() != expected:
         raise ValueError('Historical test source hash mismatch: ' + path)
     return raw.decode('utf-8')
@@ -38,6 +42,11 @@ def _source(revision, module, hashes):
 def legacy_source():
     """Unmodified model text for AST extraction-parity checks."""
     return _source(LEGACY_REVISION, 'model', LEGACY_HASHES)
+
+
+def main_source(module='model'):
+    """Pinned common model/service/host text for boundary comparisons."""
+    return _source(MAIN_REVISION, module, MAIN_HASHES)
 
 
 def _load(revision, hashes):

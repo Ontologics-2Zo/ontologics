@@ -29,7 +29,7 @@ class HistoricalModelTests(unittest.TestCase):
         self.assertIn('Contract', legacy.SCHEMA)
 
     def test_tampered_source_is_rejected_before_execution(self):
-        with patch.object(model_oracle.subprocess, 'check_output',
+        with patch.object(model_oracle.Path, 'read_bytes',
                           return_value=b'raise AssertionError("untrusted source executed")'):
             with self.assertRaisesRegex(ValueError, 'hash mismatch'):
                 model_oracle.legacy_model()
@@ -45,18 +45,41 @@ class HistoricalModelTests(unittest.TestCase):
             self.assertTrue(legacy.validate_graph(self.nodes)['valid'])
 
     def test_relative_validator_source_is_also_hash_checked(self):
-        original = model_oracle.subprocess.check_output
+        original = model_oracle.Path.read_bytes
 
-        def read(command, **kwargs):
-            raw = original(command, **kwargs)
-            if command[-1].endswith('/fulfillment_validation.py'):
+        def read(path):
+            raw = original(path)
+            if path.name == 'fulfillment_validation.py.txt':
                 return raw + b'\nraise AssertionError("untrusted dependency executed")\n'
             return raw
 
         legacy = model_oracle.legacy_model()
-        with patch.object(model_oracle.subprocess, 'check_output', side_effect=read):
+        with patch.object(model_oracle.Path, 'read_bytes', new=read):
             with self.assertRaisesRegex(ValueError, 'hash mismatch'):
                 legacy.validate_graph(self.nodes)
+
+    def test_historical_models_work_without_git_history_or_git_commands(self):
+        from tests.order_fulfillment.test_storage_boundary import isolated_main
+
+        with patch('subprocess.check_output',
+                   side_effect=AssertionError('Historical tests must not invoke Git')):
+            main = model_oracle.main_model()
+            legacy = model_oracle.legacy_model()
+            self.assertTrue(main.validate_graph(self.catalog)['valid'])
+            self.assertTrue(legacy.validate_graph(self.nodes)['valid'])
+            self.assertEqual(model_oracle.LEGACY_HASHES['model'],
+                             hashlib.sha256(model_oracle.legacy_source().encode()).hexdigest())
+            boundary_model, boundary_service = isolated_main()
+            self.assertEqual('graph-0.1', boundary_model['SCHEMA_VERSION'])
+            self.assertTrue(callable(boundary_service['Service']))
+
+    def test_tampered_common_service_and_missing_fixtures_are_rejected(self):
+        with patch.object(model_oracle.Path, 'read_bytes', return_value=b'changed service'):
+            with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                model_oracle.main_source('service')
+        with patch.object(model_oracle.Path, 'read_bytes', side_effect=FileNotFoundError):
+            with self.assertRaises(FileNotFoundError):
+                model_oracle.main_model()
 
     def test_loading_and_mutation_do_not_change_live_modules_or_other_instances(self):
         before = copy.deepcopy((model.SCHEMA, model.SCHEMA_VERSION))

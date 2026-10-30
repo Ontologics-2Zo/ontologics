@@ -1,5 +1,20 @@
 # Order Fulfillment — B 개발 안내
 
+## GitHub CI의 Git 이력·로컬 설치 의존성 제거
+
+B 회귀 검사는 과거 main/B 모델과 저장 경계를 비교할 때
+`tests/order_fulfillment/fixtures/model_history/`의 고정 원본을 사용한다.
+원래 커밋·SHA-256을 보존하고 모델·검증기·Service·Host 원본을 읽기 전에
+해시를 검사하므로, GitHub의 최신 커밋만 받는 checkout이나 `.git` 없는 소스에서도
+같은 비교를 수행한다. 실행 중 Git fetch나 현재 코드로의 대체는 하지 않는다.
+자료 누락·변조는 실패로 처리하며, 이 원본은 테스트 전용이고 실제 공통 코드나
+B 실행용 검증기로 등록되지 않는다. 출처와 갱신 기준은 해당 폴더의 README를 따른다.
+
+일반 CLI의 실행 지시·중복 실행 거절 단위 검사는 실행기와 함께 PostgreSQL 경로
+확인도 모의 처리한다. 실제 DB 통합 검사는 기존 별도 테스트용 PostgreSQL schema를
+사용한다. 이 수정은 공통 코드·TBox·GitHub 워크플로·실제 실행기의 PostgreSQL 경로
+설정이나 격리 정책을 변경하지 않는다. 최종 검증 결과는 B 작업 기록을 따른다.
+
 ## B TBox 확장
 
 [TBox](../../ontology/tbox.ttl)의 기존 공통 선언 뒤 `# B order fulfillment extension` 구역에 B 클래스10개와 관계 속성8개를 추가했다. B가 사용하는 관계 속성은9개이며 `configuration_id`는 공통의 기존 선언을 재사용한다. 전체 B 선언은 `ontologics.order_fulfillment.schema_export.tbox_terms()`와 일치하고 중복 없이 한 번씩 존재해야 한다. 별도 B TBox 파일은 만들지 않는다.

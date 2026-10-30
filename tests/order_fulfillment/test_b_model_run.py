@@ -176,6 +176,7 @@ class ModelRunPlanTests(unittest.TestCase):
             if transport:
                 args += ['--transport', transport]
             with patch.object(cli, 'prepare', side_effect=prepare), \
+                    patch.object(cli, 'postgres_bin', return_value=self.root / 'test-pg-bin') as pg, \
                     patch.object(cli, '_launch_model', return_value=0) as launch, \
                     patch.object(runner, 'confirm', side_effect=AssertionError('No demo prompt')), \
                     patch('builtins.input', side_effect=AssertionError('No review wait')), \
@@ -189,6 +190,7 @@ class ModelRunPlanTests(unittest.TestCase):
                 self.assertIsNone(runner.validate_authorization(settings['model_run'], approval))
                 self.assertEqual(1, cli.main(args))
                 self.assertEqual(1, launch.call_count)
+                pg.assert_called_once_with(None)
 
     def test_normal_cli_does_not_accept_demo_options_or_implicit_all_cases(self):
         for options in ([], ['--case', 'cq02_normal', '--after', str(self.preflight)],

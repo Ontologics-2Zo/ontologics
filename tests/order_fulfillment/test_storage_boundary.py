@@ -8,9 +8,7 @@ branch reachability, not PostgreSQL persistence or atomicity.
 import ast
 from contextlib import ExitStack
 import copy
-from pathlib import Path
 import socket
-import subprocess
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, call, patch
@@ -25,19 +23,13 @@ from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import load_demo_delivery
 from ontologics.order_fulfillment.fulfillment import load_demo_fulfillment
 from ontologics.order_fulfillment.production import load_demo_production
-
-MAIN_REVISION = 'ca7c391a9e813b6ab9e6fddfb48ab639c09a764b'
-ROOT = Path(__file__).resolve().parents[2]
-
-
-def main_source(path):
-    return subprocess.check_output(['git', 'show', MAIN_REVISION + ':' + path], cwd=ROOT).decode()
+from tests.order_fulfillment.model_oracle import ROOT, main_source
 
 
 def isolated_main():
     model = {'__name__': 'isolated_b_boundary_model', '__file__': str(ROOT / 'ontologics/model.py')}
-    exec(compile(main_source('ontologics/model.py'), '<main-model>', 'exec'), model)
-    tree = ast.parse(main_source('ontologics/service.py'))
+    exec(compile(main_source(), '<main-model>', 'exec'), model)
+    tree = ast.parse(main_source('service'))
     namespace = {'__name__': 'ontologics._b_boundary_service', '__package__': 'ontologics'}
     imports = [n for n in tree.body if isinstance(n, ast.ImportFrom) and n.level == 1 and n.module == 'model']
     if len(imports) != 1:
@@ -452,7 +444,7 @@ class StorageBoundaryTests(unittest.TestCase):
         service.apply.assert_not_called()
 
     def test_host_uses_common_service_and_refreshes_reviewer_before_b_rejection(self):
-        source = ast.parse(main_source('ontologics/host.py'))
+        source = ast.parse(main_source('host'))
         host = next(n for n in source.body if isinstance(n, ast.ClassDef) and n.name == 'CommonHost')
         method = next(n for n in host.body if isinstance(n, ast.FunctionDef) and n.name == 'apply_approved')
         for permissions, expected in ((frozenset({'read', 'review'}), 'VALIDATION_FAILED'), (frozenset({'read'}), 'FORBIDDEN')):

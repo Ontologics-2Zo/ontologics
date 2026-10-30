@@ -29,7 +29,7 @@ class ReusableEntryTests(unittest.TestCase):
     def test_free_refuses_paid_authorization_before_opening_it(self):
         with tempfile.TemporaryDirectory() as raw, patch.object(b_run, 'read_json') as read:
             with contextlib.redirect_stderr(io.StringIO()):
-                self.assertEqual(b_run.main(['free', '--output', str(Path(raw) / 'new'),
+                self.assertEqual(b_run.main(['tasks', '--output', str(Path(raw) / 'new'),
                                              '--authorization', '/never/read.json']), 1)
             read.assert_not_called()
 
@@ -37,7 +37,7 @@ class ReusableEntryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw, patch.object(b_run, 'prepare') as prepare:
             for cases in [('cq02_normal', 'cq01_intake'), ('cq02_normal', 'cq02_normal')]:
                 with self.subTest(cases=cases), contextlib.redirect_stderr(io.StringIO()):
-                    args = ['free', '--output', str(Path(raw) / 'new')]
+                    args = ['tasks', '--output', str(Path(raw) / 'new')]
                     for case in cases:
                         args += ['--case', case]
                     self.assertEqual(b_run.main(args), 1)
@@ -82,7 +82,7 @@ class ReusableEntryTests(unittest.TestCase):
             for path in (directory, directory / 'pgdata_old' / 'new',
                          directory / 'task10_historical' / 'new'):
                 with self.subTest(path=path), self.assertRaises(ValueError):
-                    isolation.prepare(path, mode='free', cases=['cq02_normal'], pg_bin=directory)
+                    isolation.prepare(path, mode='free', workflow='input_tasks', cases=['cq02_normal'], pg_bin=directory)
 
     def test_free_policy_has_no_key_or_external_endpoint_exception(self):
         config = dict(output='/private/tmp/owned', socket='/private/tmp/owned-socket',

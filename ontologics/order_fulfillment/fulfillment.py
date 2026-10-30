@@ -1,13 +1,14 @@
 """One source-backed fulfillment snapshot, without production/arrival forecasting.
 
-The caller supplies a confirmed graph and an exact observation instant. Empty
+The caller supplies source-backed inputs and an exact observation instant. Empty
 searches never establish zero inventory; source-backed coverage is required.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-from ..model import ROOT, instant, validate_graph
+from ..model import ROOT, instant
+from .schema_validation import validate_input_graph
 
 SNAPSHOT = 'snapshot:demo:CQ02:10'
 ROUND = 'delivery-round:demo:B-01:1'
@@ -34,13 +35,13 @@ def fulfillment_status(nodes, delivery_round_id, as_of, *, queried_at):
     """Compute one exact snapshot. Malformed facts fail; incomplete facts stay unknown.
 
     `complete` means complete evidence for this snapshot's supported format, not
-    completed delivery or feasible future fulfillment. Read-only; no current time
-    or latest version is silently substituted.
+    completed delivery, approval or feasible future fulfillment. Read-only; no
+    current time or latest version is silently substituted.
     """
     from .fulfillment_validation import CONFIRMATION_KEYS
     requested = instant(as_of)
     instant(queried_at)
-    report = validate_graph(nodes)
+    report = validate_input_graph(nodes)
     if not report['valid']:
         raise ValueError(report)
     index = {n['id']: n for n in nodes}
@@ -84,8 +85,6 @@ def fulfillment_status(nodes, delivery_round_id, as_of, *, queried_at):
     # cross-node validator enforces caps against all rounds in this snapshot.
     for n in scoped:
         evidence.update(n['evidence'])
-        if n['type'] == 'ProductionWork' and n['completed_quantity'] != 0:
-            unknown(n['id'], 'completed_quantity', 'PARTIAL_PRODUCTION_UNSUPPORTED')
     shipments = {n['allocation_id']: n for n in scoped if n['type'] == 'Shipment'}
     all_allocations = {n['id']: n for n in scoped if n['type'] == 'Allocation'}
     departed_by_stock = {}
@@ -107,8 +106,32 @@ def fulfillment_status(nodes, delivery_round_id, as_of, *, queried_at):
             continue
         shipment = shipments.get(allocation['id'])
         source = index[allocation.get('stock_id', allocation.get('production_work_id'))]
+        state_quantities = None
         if source['type'] == 'ProductionWork':
-            state = source['production_state'] if source['completed_quantity'] == 0 else None
+            state = source['production_state']
+            completed = source['completed_quantity']
+            if completed:
+                work_allocations = [a for a in all_allocations.values()
+                                    if a.get('production_work_id') == source['id']]
+                if (len(work_allocations) != 1
+                        or allocation['quantity'] != source['target_quantity']):
+                    unknown(source['id'], 'completed_quantity',
+                            'PRODUCTION_COMPLETION_ALLOCATION_AMBIGUOUS')
+                    state = None
+                elif state != 'in_progress':
+                    unknown(source['id'], 'production_state',
+                            'PRODUCTION_COMPLETION_STATE_NOT_CONFIRMED')
+                    state = None
+                else:
+                    # A whole work assigned to this round has an exact split.
+                    # Completion alone proves neither stock receipt nor delivery.
+                    state_quantities = {'production_completed': completed}
+                    unfinished = allocation['quantity'] - completed
+                    if unfinished:
+                        state_quantities[state] = unfinished
+                        state = 'mixed_production'
+                    else:
+                        state = 'production_completed'
         elif shipment and 'arrived_at' in shipment:
             state = 'delivered'
         elif shipment and 'departed_at' in shipment:
@@ -123,7 +146,11 @@ def fulfillment_status(nodes, delivery_round_id, as_of, *, queried_at):
             state=state, classification_confirmed=not result['unknowns'], quantity=allocation['quantity'],
             unit=allocation['unit'], observed_at=source['observed_at'],
             evidence=sorted(set(allocation['evidence'] + source['evidence'] + (shipment['evidence'] if shipment else [])))))
-        if state is not None:
+        if state_quantities is not None:
+            result['items'][-1]['state_quantities'] = state_quantities
+            for key, quantity in state_quantities.items():
+                states[key] = states.get(key, 0) + quantity
+        elif state is not None:
             states[state] += allocation['quantity']
     if not result['unknowns']:
         allocated = sum(states.values())

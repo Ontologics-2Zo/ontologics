@@ -10,7 +10,8 @@ from unittest.mock import patch
 
 from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import AS_OF, ROUND, load_demo_delivery
-from ontologics.model import ROOT, instant, validate_graph
+from ontologics.model import ROOT, instant
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
 from ontologics.order_fulfillment.response_comparison import ComparisonError, compare_response_plan
 from ontologics.order_fulfillment.response_plan import response_plan
 
@@ -252,13 +253,13 @@ class ResponseComparisonTests(unittest.TestCase):
 
     def test_D15_identity_changes_rejected_even_when_each_graph_valid(self):
         self.node(self.after, 'Contract')['customer_name'] = 'Another synthetic customer'
-        self.assertTrue(validate_graph(self.after)['valid'])
+        self.assertTrue(validate_input_graph(self.after)['valid'])
         self.error_is('INCOMPARABLE_INPUTS')
         self.after = copy.deepcopy(self.before)
         for n in self.after:
             if n.get('company') == 'DEMO-B':
                 n['company'] = 'DEMO-OTHER'
-        self.assertTrue(validate_graph(self.after)['valid'])
+        self.assertTrue(validate_input_graph(self.after)['valid'])
         self.error_is('INCOMPARABLE_INPUTS')
 
     def test_D16_changed_promise_is_not_a_transport_effect(self):
@@ -267,7 +268,7 @@ class ResponseComparisonTests(unittest.TestCase):
             with self.subTest(field=key):
                 self.after = copy.deepcopy(self.before)
                 self.node(self.after, 'DeliveryRound')[key] = value
-                self.assertTrue(validate_graph(self.after)['valid'])
+                self.assertTrue(validate_input_graph(self.after)['valid'])
                 self.error_is('INCOMPARABLE_INPUTS')
 
     def test_D17_other_work_or_allocation_plan_rejected(self):
@@ -276,18 +277,18 @@ class ResponseComparisonTests(unittest.TestCase):
         for n in self.after:
             if n.get('production_work_id') == old_id:
                 n['production_work_id'] = work['id']
-        self.assertTrue(validate_graph(self.after)['valid'])
+        self.assertTrue(validate_input_graph(self.after)['valid'])
         self.error_is('INCOMPARABLE_INPUTS')
         self.after = copy.deepcopy(self.before)
         self.node(self.after, 'Allocation')['quantity'] = 900
-        self.assertTrue(validate_graph(self.after)['valid'])
+        self.assertTrue(validate_input_graph(self.after)['valid'])
         self.error_is('INCOMPARABLE_INPUTS')
 
     def test_D17_mixed_actual_shipments_cannot_change_under_condition_comparison(self):
         self.before = self.load(mixed=True); self.after = copy.deepcopy(self.before)
         shipment = next(n for n in self.after if n['type'] == 'Shipment' and 'expected_arrival_at' in n)
         shipment['expected_arrival_at'] = '2026-10-27T13:00:00+09:00'
-        self.assertTrue(validate_graph(self.after)['valid'])
+        self.assertTrue(validate_input_graph(self.after)['valid'])
         self.error_is('INCOMPARABLE_INPUTS')
 
     def test_D19_whole_target_observed_is_not_a_new_actual_completion(self):
@@ -487,7 +488,7 @@ class ResponseComparisonTests(unittest.TestCase):
                     contract['id'] = 'contract:test:CQ06:replacement'
                     self.after.append(contract)
                     self.node(self.after, 'ContractItem')['contract_id'] = contract['id']
-                report = validate_graph(self.after)
+                report = validate_input_graph(self.after)
                 self.assertTrue(report['valid'], report)
                 self.error_is('INCOMPARABLE_INPUTS')
 
@@ -498,24 +499,27 @@ class ResponseComparisonTests(unittest.TestCase):
             if node.get('unit') == 'piece' and node['type'] in {
                     'ContractItem', 'DeliveryRound', 'ProductionWork', 'ProductionObservation', 'Allocation'}:
                 node['unit'] = 'box'
-        report = validate_graph(self.after)
+        report = validate_input_graph(self.after)
         self.assertFalse(report['valid'])
         self.assertIn('UNSUPPORTED_UNIT', {error['code'] for error in report['errors']})
         with self.assertRaises(ValueError) as found:
             self.query()
         self.assertNotIsInstance(found.exception, ComparisonError)
 
-    def test_T09_mixed_comparison_is_partial_while_dispatch_quantities_stay_known(self):
+    def test_T09_mixed_comparison_forecasts_its_fully_allocated_work_without_counting_stock_as_production(self):
         self.before = self.load(mixed=True)
         self.after = copy.deepcopy(self.before)
         result = self.query()
-        self.assertEqual('partially_unknown', result['comparison_status'])
+        self.assertEqual('compared', result['comparison_status'])
         for label in ('before', 'after'):
-            self.assertEqual('needs_confirmation', result[label]['production']['status'])
-            self.assertIn('SINGLE_WORK_FULL_ALLOCATION_REQUIRED', {
-                unknown['code'] for unknown in result[label]['production']['unknowns']})
+            production = result[label]['production']
+            self.assertEqual('forecast', production['status'])
+            self.assertEqual([], production['unknowns'])
+            self.assertEqual((500, 200, 300, '2026-10-27T13:20:00+09:00'), tuple(
+                production[key] for key in ('target_quantity', 'latest_good_quantity',
+                                           'remaining_quantity', 'estimated_completion_at')))
             request = result[label]['response_plan']['dispatch_request']
             self.assertEqual((100, 150, 750), tuple(request[key] for key in (
                 'delivered_quantity', 'in_transit_quantity', 'new_dispatch_quantity')))
         self.assertEqual(0, result['quantity_deltas']['new_dispatch_quantity'])
-        self.assertTrue(all(value is None for value in result['production_deltas'].values()))
+        self.assertTrue(all(value == 0 for value in result['production_deltas'].values()))

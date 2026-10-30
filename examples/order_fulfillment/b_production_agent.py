@@ -1,7 +1,7 @@
-"""Bounded, read-only CQ03 explanation through the existing common runtime.
+"""Historical B provider and answer helpers; stored-graph execution is retired.
 
-Common Python owns arithmetic. Model output is a candidate until exact factual
-and provenance checks pass; raw text is never repaired into an accepted answer.
+Pure compatibility checks retain these helpers. Supported agents run
+through b_run tasks without storing B types in the common graph.
 """
 from __future__ import annotations
 
@@ -9,16 +9,11 @@ from copy import deepcopy
 from dataclasses import replace
 import hashlib
 import json
-import uuid
 
-from ontologics.order_fulfillment.contracts import load_demo_contract
-from ontologics.demo import PRINCIPALS, must
-from ontologics.ingest import build_catalog
+from ontologics.demo import must
 from ontologics.model import ROOT, canonical
 from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, ProviderError
-from ontologics.order_fulfillment.production import AS_OF, ROUND, WORK, load_demo_production
 from ontologics.order_fulfillment.runtime import ModelConfig
-from ontologics.order_fulfillment.service import Service
 from ontologics.order_fulfillment.tool_specs import B_PRODUCTION_TOOLS, function_tools
 
 ACTOR = 'production-agent'
@@ -61,41 +56,9 @@ summary/next_action은 짧은 한국어 문자열이다. forecast면 최근 생�
 
 
 def setup(database=None, *, case='normal'):
-    """Trusted synthetic fixture setup ends before the request-bound Agent starts."""
-    if case not in {'normal', 'missing_latest', 'zero_rate', 'target_observed'}:
-        raise ValueError('Unsupported production development case')
-    service = Service(database, principals={**PRINCIPALS, ACTOR: {'kind': 'agent', 'roles': ['read']}},
-                      schema='b_cq03_agent_' + uuid.uuid4().hex if database is None else None)
-    try:
-        nodes = load_demo_production()
-        latest = next(n for n in nodes if n['type'] == 'ProductionObservation' and n['observed_at'] == AS_OF)
-        work = next(n for n in nodes if n['id'] == WORK)
-        # Exception fixtures are explicitly hypothetical test variants, never source edits.
-        if case == 'missing_latest':
-            nodes.remove(latest)
-        elif case == 'zero_rate':
-            latest.update(produced_quantity=550, good_quantity=510, defective_quantity=40)
-            work['completed_quantity'] = 510
-        elif case == 'target_observed':
-            latest.update(produced_quantity=1050, good_quantity=1000, defective_quantity=50)
-            work['completed_quantity'] = 1000
-        version = must(service.bootstrap('seed-admin', build_catalog()['nodes'] + load_demo_contract(),
-                                        request_key='cq03-agent-seed'))['data_version']
-        draft = must(service.prepare_draft('product-agent', [{'op': 'put', 'node': n} for n in nodes],
-                                           request_key='cq03-agent-draft'))['data']
-        did, dv = draft['draft_id'], draft['draft_version']
-        validation = must(service.validate_draft('product-agent', did, dv))['data']['validation']
-        if not validation['valid']:
-            raise ValueError('Invalid synthetic production fixture')
-        must(service.review('reviewer', did, dv, decision='approve',
-            note='Trusted scripted synthetic development fixture, not an Agent-produced draft or operational approval.',
-            request_key='cq03-agent-review'))
-        version = must(service.apply('workflow', did, dv, request_key='cq03-agent-apply'))['data_version']
-        return service, dict(mode='production', question='이 작업은 언제 생산 완료할 것으로 예상되나요? 근거와 조건도 설명해줘.',
-            production_work_id=WORK, delivery_round_id=ROUND, as_of=AS_OF, data_version=version)
-    except Exception:
-        service.close()
-        raise
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def query(service, task, *, actor=ACTOR):

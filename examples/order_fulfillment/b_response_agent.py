@@ -1,8 +1,7 @@
-"""Read-only CQ05 explanations with bounded provenance phases and compact context.
+"""Historical B provider and answer helpers; stored-graph execution is retired.
 
-The deterministic common planner owns all facts and calculations. Raw runtime
-traces and model submissions remain intact; a smaller provider view removes only
-unneeded nested design context. No answer repair or business execution occurs.
+Pure compatibility checks retain these helpers. Supported agents run
+through b_run tasks without storing B types in the common graph.
 """
 from __future__ import annotations
 
@@ -10,17 +9,11 @@ from copy import deepcopy
 from dataclasses import replace
 import json
 import re
-import uuid
 
 from examples.order_fulfillment import b_delivery_agent as delivery
-from ontologics.order_fulfillment.contracts import load_demo_contract
-from ontologics.order_fulfillment.delivery_demo import AS_OF, ROUND, load_demo_delivery
-from ontologics.demo import PRINCIPALS, must
-from ontologics.ingest import build_catalog
 from ontologics.model import ROOT, canonical
 from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, ProviderError
 from ontologics.order_fulfillment.runtime import ModelConfig
-from ontologics.order_fulfillment.service import Service
 from ontologics.order_fulfillment.tool_specs import B_RESPONSE_TOOLS, function_tools
 
 ACTOR = 'response-agent'
@@ -90,40 +83,9 @@ historical_review는 과거 이행 검토이며 당시 부족을 현재 재출�
 
 
 def setup(database=None, *, case='normal'):
-    """Trusted synthetic fixtures, fully prepared before the request-bound model.
-
-    Existing CQ04 cases reuse their setup. Two extra deadline variants are only
-    development hypotheses, never corrections to the immutable source files.
-    """
-    if case not in CASES:
-        raise ValueError('Unsupported response development case')
-    if case in delivery.CASES:
-        service, task = delivery.setup(database, case=case)
-        service.principals[ACTOR] = {'kind': 'agent', 'roles': ['read']}
-    else:
-        service = Service(database, principals={**PRINCIPALS, ACTOR: {'kind': 'agent', 'roles': ['read']}},
-                          schema='b_cq05_agent_' + uuid.uuid4().hex if database is None else None)
-        try:
-            base = build_catalog()['nodes'] + load_demo_contract()
-            next(n for n in base if n['id'] == ROUND)['due_at'] = (
-                '2026-10-27T16:00:00+09:00' if case == 'met_due16' else '2026-10-27T09:00:00+09:00')
-            must(service.bootstrap('seed-admin', base, request_key='cq05-hypothesis-seed'))
-            draft = must(service.prepare_draft('product-agent', [
-                {'op': 'put', 'node': n} for n in load_demo_delivery()], request_key='cq05-hypothesis-draft'))['data']
-            did, dv = draft['draft_id'], draft['draft_version']
-            if not must(service.validate_draft('product-agent', did, dv))['data']['validation']['valid']:
-                raise ValueError('Invalid synthetic response hypothesis')
-            must(service.review('reviewer', did, dv, decision='approve',
-                note='Scripted development hypothesis, not source correction or operational approval.',
-                request_key='cq05-hypothesis-review'))
-            version = must(service.apply('workflow', did, dv, request_key='cq05-hypothesis-apply'))['data_version']
-            task = dict(delivery_round_id=ROUND, as_of=AS_OF, data_version=version, case=case)
-        except Exception:
-            service.close()
-            raise
-    task.update(mode='response', case=case,
-        question='이 회차의 고객 회신과 새 출고·운송 검토 초안, 확인 사항을 근거와 함께 알려줘.')
-    return service, task
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def query(service, task, *, actor=ACTOR):

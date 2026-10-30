@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from copy import deepcopy
 
 from ..model import ROOT, instant
 
@@ -25,6 +26,32 @@ _REQUIRED = (
     '납품 기한', '기한 기준', '납품 장소',
 )
 _OPTIONAL = {'계약 유효기간'}
+
+
+def delivery_promise(nodes, delivery_round_id):
+    """Project a promise from validated, unregistered B inputs, without storage.
+
+    This assesses neither fulfillment nor an approved change to the promise.
+    Product/configuration identity and source integrity use common validation.
+    """
+    from .schema_validation import validate_input_graph
+
+    if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
+        raise ValueError('An explicit nonempty delivery round ID is required')
+    report = validate_input_graph(nodes)
+    if not report['valid']:
+        raise ValueError(report)
+    index = {node['id']: node for node in nodes}
+    delivery = index.get(delivery_round_id)
+    if delivery is None or delivery['type'] != 'DeliveryRound':
+        raise KeyError('Unknown delivery round')
+    item = index[delivery['contract_item_id']]
+    config = index[item['configuration_id']]
+    revision = index[config['revision_id']]
+    return deepcopy(dict(contract=index[item['contract_id']], contract_item=item,
+        delivery_round=delivery, configuration=config, revision=revision,
+        product=index[revision['model_id']], fulfillment_assessed=False,
+        input_state='unregistered'))
 
 
 def extract_contract(text, configurations, *, evidence_ids):

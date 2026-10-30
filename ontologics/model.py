@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 'graph-0.5'
+SCHEMA_VERSION = 'graph-0.1'
 ROOT = Path(__file__).resolve().parents[1]
 # Required fields and typed relationships. T-box is generated from these definitions.
 SCHEMA = {
@@ -22,32 +22,9 @@ SCHEMA = {
     'Installation': (['unit_id', 'lot_id', 'position', 'installed_at'], {'unit_id': 'ProductUnit', 'lot_id': 'ComponentLot'}),
     'HistoryCoverage': (['unit_id', 'start', 'end', 'complete'], {'unit_id': 'ProductUnit'}),
     'InventoryMovement': (['lot_id', 'quantity', 'occurred_at', 'movement'], {'lot_id': 'ComponentLot'}),
-    'Contract': (['company', 'customer_name'], {}),
-    'ContractItem': (['contract_id', 'configuration_id', 'quantity', 'unit'],
-                     {'contract_id': 'Contract', 'configuration_id': 'Configuration'}),
-    'DeliveryRound': (['contract_item_id', 'quantity', 'unit', 'due_at', 'due_basis', 'destination'],
-                      {'contract_item_id': 'ContractItem'}),
-    'FulfillmentSnapshot': (['company', 'as_of', 'round_ids', 'confirmations'], {}),
-    'FinishedGoodsStock': (['snapshot_id', 'company', 'configuration_id', 'observed_at', 'location', 'quantity', 'unit'],
-                           {'snapshot_id': 'FulfillmentSnapshot', 'configuration_id': 'Configuration'}),
-    'ProductionWork': (['snapshot_id', 'company', 'configuration_id', 'observed_at', 'target_quantity', 'completed_quantity', 'unit', 'production_state'],
-                       {'snapshot_id': 'FulfillmentSnapshot', 'configuration_id': 'Configuration'}),
-    'ProductionObservation': (['production_work_id', 'observed_at', 'produced_quantity', 'good_quantity', 'defective_quantity', 'unit'],
-                              {'production_work_id': 'ProductionWork'}),
-    'Allocation': (['snapshot_id', 'delivery_round_id', 'quantity', 'unit'],
-                   {'snapshot_id': 'FulfillmentSnapshot', 'delivery_round_id': 'DeliveryRound',
-                    'stock_id': 'FinishedGoodsStock', 'production_work_id': 'ProductionWork'}),
-    'Shipment': (['snapshot_id', 'allocation_id', 'quantity', 'unit', 'destination'],
-                 {'snapshot_id': 'FulfillmentSnapshot', 'allocation_id': 'Allocation'}),
-    'DeliveryCondition': (['snapshot_id', 'delivery_round_id', 'preparation_seconds', 'transport_seconds', 'dispatch_mode'],
-                          {'snapshot_id': 'FulfillmentSnapshot', 'delivery_round_id': 'DeliveryRound'}),
 }
 REAL = {'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}
-SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement',
-             'Contract', 'ContractItem', 'DeliveryRound', 'FulfillmentSnapshot',
-             'FinishedGoodsStock', 'ProductionWork', 'Allocation', 'Shipment', 'ProductionObservation', 'DeliveryCondition'}
-OPTIONAL_REFERENCES = {'Allocation': {'stock_id', 'production_work_id'}}
-LIST_REFERENCES = {'FulfillmentSnapshot': {'round_ids': 'DeliveryRound'}}
+SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'}
 COMMON_FIELDS = {'id', 'type', 'origin', 'evidence'}
 OPTIONAL_FIELDS = {
     'SourceDocument': {'kind', 'product', 'revision', 'variant', 'sheet_name', 'verification',
@@ -56,9 +33,6 @@ OPTIONAL_FIELDS = {
     'Configuration': {'identity_notes', 'population_notes'},
     'ComponentModel': {'package', 'identity_scope'},
     'Installation': {'removed_at', 'confirmed_until', 'conflict'},
-    'ProductionWork': {'started_at', 'planned_start_at'},
-    'Allocation': {'stock_id', 'production_work_id'},
-    'Shipment': {'planned_departure_at', 'departed_at', 'expected_arrival_at', 'arrived_at'},
 }
 # Only explicit contract fields are accepted: operational examples cannot grow
 # fault causes, inspection results or operating-time claims through free fields.
@@ -75,10 +49,6 @@ def _positive_number(value):
     # Avoid converting arbitrarily large JSON integers to floats.
     return (isinstance(value, int) and not isinstance(value, bool) and value > 0) or (
         isinstance(value, float) and math.isfinite(value) and value > 0)
-
-
-def _positive_integer(value):
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _string_list(value, *, allow_empty=False):
@@ -134,27 +104,14 @@ def validate_graph(nodes):
         # Required and optional scalar fields are strings unless explicitly typed
         # below. Checking shape before lookup/set operations makes validation total
         # for malformed JSON values instead of raising TypeError midway through it.
-        structured = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications',
-                      'round_ids', 'confirmations', 'target_quantity', 'completed_quantity',
-                      'produced_quantity', 'good_quantity', 'defective_quantity',
-                      'preparation_seconds', 'transport_seconds'}
+        structured = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications'}
         for key in ALLOWED_FIELDS[kind] - structured:
             if key in n and not (key in ('removed_at', 'confirmed_until') and n[key] is None) and not _text(n[key]):
                 error(nid, 'INVALID_FIELD_TYPE', key + ' must be nonempty text')
         for key, target_type in refs.items():
-            if key in OPTIONAL_REFERENCES.get(kind, set()) and key not in n:
-                continue
             target = index.get(n.get(key)) if isinstance(n.get(key), str) else None
             if target is None or target.get('type') != target_type:
                 error(nid, 'INVALID_REFERENCE', key + ' -> ' + target_type)
-        for key, target_type in LIST_REFERENCES.get(kind, {}).items():
-            values = n.get(key)
-            if not _string_list(values):
-                error(nid, 'INVALID_REFERENCE', key + ' must be a unique nonempty reference list')
-            else:
-                for value in values:
-                    if index.get(value, {}).get('type') != target_type:
-                        error(nid, 'INVALID_REFERENCE', key + ' -> ' + target_type)
         evidence = n.get('evidence', [])
         if not _string_list(evidence, allow_empty=True):
             error(nid, 'INVALID_EVIDENCE', 'evidence must be a list of unique nonempty IDs'); evidence = []
@@ -230,21 +187,6 @@ def validate_graph(nodes):
                 error(nid, 'QUANTITY_POSITION_MISMATCH', 'Quantity must match source designators')
             if n.get('population') == 'unknown':
                 warnings.append({'node_id': nid, 'code': 'POPULATION_UNCONFIRMED'})
-        if kind in ('ContractItem', 'DeliveryRound'):
-            if not _positive_integer(n.get('quantity')):
-                error(nid, 'INVALID_QUANTITY', 'Contract and round quantities must be positive integers, not booleans or floats')
-            if n.get('unit') != 'piece':
-                error(nid, 'UNSUPPORTED_UNIT', 'Only finished-board piece counts are supported')
-        if kind == 'DeliveryRound':
-            try:
-                instant(n.get('due_at'))
-            except (ValueError, TypeError) as exc:
-                error(nid, 'INVALID_TIME', f'due_at: {exc}')
-            if n.get('due_basis') != 'arrival':
-                error(nid, 'UNSUPPORTED_DUE_BASIS', 'Only an explicit customer-arrival deadline is supported')
-            item = index.get(n.get('contract_item_id'), {}) if isinstance(n.get('contract_item_id'), str) else {}
-            if item.get('type') == 'ContractItem' and n.get('unit') != item.get('unit'):
-                error(nid, 'UNIT_MISMATCH', 'Round and contract item units must agree')
         if kind in ('Installation', 'HistoryCoverage', 'InventoryMovement'):
             fields = {'Installation': ['installed_at', 'removed_at', 'confirmed_until'],
                       'HistoryCoverage': ['start', 'end'], 'InventoryMovement': ['occurred_at']}[kind]
@@ -279,17 +221,6 @@ def validate_graph(nodes):
                     error(nid, 'INVALID_QUANTITY', 'Positive movement quantity required')
                 if n.get('movement') not in ('receipt', 'issue'):
                     error(nid, 'INVALID_MOVEMENT', 'receipt or issue; issue never implies installation')
-    # An item can have several rounds, but promises cannot exceed its quantity.
-    # The first Markdown importer separately limits its input to one full round.
-    round_totals = {}
-    for n in index.values():
-        if n.get('type') == 'DeliveryRound' and isinstance(n.get('contract_item_id'), str) and _positive_integer(n.get('quantity')):
-            item_id = n['contract_item_id']
-            round_totals[item_id] = round_totals.get(item_id, 0) + n['quantity']
-    for item_id, total in round_totals.items():
-        item = index.get(item_id, {})
-        if item.get('type') == 'ContractItem' and _positive_integer(item.get('quantity')) and total > item['quantity']:
-            error(item_id, 'ROUND_QUANTITY_EXCEEDED', 'Sum of delivery rounds exceeds the contract item quantity')
     # Two populated BOM lines cannot assign different parts to one physical position.
     positions = {}
     for n in index.values():
@@ -300,28 +231,17 @@ def validate_graph(nodes):
                 key = (n.get('configuration_id'), pos)
                 if key in positions: error(n['id'], 'DUPLICATE_BOM_POSITION', positions[key])
                 positions[key] = n['id']
-    from .order_fulfillment.fulfillment_validation import validate_fulfillment
-    validate_fulfillment(index, error)
-    from .order_fulfillment.production_validation import validate_production_observations
-    validate_production_observations(index, error)
-    from .order_fulfillment.delivery_validation import validate_delivery_conditions
-    validate_delivery_conditions(index, error)
     return {'valid': not errors, 'errors': errors, 'warnings': warnings}
 
 def graph_jsonld(nodes):
     context = {'@vocab': 'urn:ontologics:', 'id': '@id', 'type': '@type', 'evidence': {'@type': '@id'}}
     for _, refs in SCHEMA.values():
         for key in refs: context[key] = {'@type': '@id'}
-    for refs in LIST_REFERENCES.values():
-        for key in refs: context[key] = {'@type': '@id'}
     # IDs use stable URNs rather than accidental JSON-LD prefixes.
     graph = []
     for n in nodes:
         row = dict(n, id='urn:ontologics:entity:' + n['id'])
-        for key in SCHEMA[n['type']][1]:
-            if key in n: row[key] = 'urn:ontologics:entity:' + n[key]
-        for key in LIST_REFERENCES.get(n['type'], {}):
-            row[key] = ['urn:ontologics:entity:' + value for value in n[key]]
+        for key in SCHEMA[n['type']][1]: row[key] = 'urn:ontologics:entity:' + n[key]
         row['evidence'] = ['urn:ontologics:entity:' + e for e in n.get('evidence', [])]
         graph.append(row)
     return {'@context': context, '@graph': graph}
@@ -333,8 +253,6 @@ def tbox_turtle():
     for kind in SCHEMA: lines.append(f'o:{kind} a owl:Class .')
     refs = {}
     for kind, (_, relations) in SCHEMA.items():
-        for prop, target in relations.items(): refs.setdefault(prop, set()).add(target)
-    for relations in LIST_REFERENCES.values():
         for prop, target in relations.items(): refs.setdefault(prop, set()).add(target)
     for prop, targets in refs.items():
         if len(targets) == 1:

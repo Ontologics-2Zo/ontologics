@@ -6,7 +6,8 @@ import unittest
 from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import load_demo_delivery
 from ontologics.order_fulfillment.delivery_forecast import delivery_forecast
-from ontologics.model import ROOT, instant, validate_graph
+from ontologics.model import ROOT, instant
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
 
 AS_OF = '2026-10-27T10:00:00+09:00'
 ROUND = 'delivery-round:demo:B-01:1'
@@ -136,7 +137,7 @@ class DeliveryForecastTests(unittest.TestCase):
                 ids = [self.previous['id']] if which == 'previous' else [self.latest['id']]
                 if which == 'all': ids = [self.previous['id'], self.latest['id']]
                 self.remove(*ids)
-                self.assertTrue(validate_graph(self.nodes)['valid'])
+                self.assertTrue(validate_input_graph(self.nodes)['valid'])
                 self.unknown(self.query())
 
     def test_D15_old_conflicting_row_cannot_be_hidden_by_latest_selection(self):
@@ -148,7 +149,7 @@ class DeliveryForecastTests(unittest.TestCase):
 
     def test_D16_missing_entire_condition_is_unknown_not_zero_transport(self):
         self.remove(self.condition['id'])
-        self.assertTrue(validate_graph(self.nodes)['valid'])
+        self.assertTrue(validate_input_graph(self.nodes)['valid'])
         self.unknown(self.query())
 
     def test_D19_equivalent_utc_and_storage_order_do_not_change_forecast(self):
@@ -164,7 +165,7 @@ class DeliveryForecastTests(unittest.TestCase):
     def test_D20_stale_work_state_does_not_become_current(self):
         self.remove(self.latest['id'])
         self.work.update(observed_at='2026-10-27T09:00:00+09:00', completed_quantity=510)
-        self.assertTrue(validate_graph(self.nodes)['valid'])
+        self.assertTrue(validate_input_graph(self.nodes)['valid'])
         self.unknown(self.query())
 
     def test_D23_round_and_all_source_allocation_caps_checked_before_calculating(self):
@@ -307,7 +308,7 @@ class DeliveryForecastTests(unittest.TestCase):
     def test_partial_work_target_and_multiple_works_remain_explicit_unsupported_scope(self):
         allocation=next(n for n in self.nodes if n['type']=='Allocation')
         allocation['quantity']=900
-        self.assertTrue(validate_graph(self.nodes)['valid'])
+        self.assertTrue(validate_input_graph(self.nodes)['valid'])
         self.unknown(self.query())
         allocation['quantity']=500
         other=dict(self.work,id='work:test:CQ04:other',target_quantity=500,completed_quantity=0,

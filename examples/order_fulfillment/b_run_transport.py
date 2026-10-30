@@ -22,6 +22,27 @@ CASES = ['cq01_intake', 'cq01_promise', 'cq02_normal', 'cq03_normal',
 MAX_RESPONSE_BYTES = 2_000_000
 
 
+def live_readiness():
+    """Host-reviewed integration gaps, never a model/user supplied override.
+
+    Free HTTP doubles can exercise the legacy B workflow. They cannot approve
+    B-only tools for the common AgentSpec or migrate the old cost authorization.
+    Remove these blockers only with the reviewed contracts and regression proof.
+    """
+    return dict(ready=False,
+        codes=['AGENT_SPEC_DOMAIN_REVIEW_REQUIRED', 'COST_AUTHORIZATION_REVIEW_REQUIRED'],
+        issues=[
+            'B 전용 도구의 공통 AgentSpec 등록·run_task·근거 계약 검토가 필요합니다.',
+            '기존 무금액상한 승인 형식을 공통 비용 정책·이번 실행 승인에 연결하는 검토가 필요합니다.',
+        ])
+
+
+def require_live_ready():
+    readiness = live_readiness()
+    if not readiness['ready']:
+        raise Blocked('COMMON_CONNECTION_REVIEW_REQUIRED: ' + '; '.join(readiness['issues']))
+
+
 class Blocked(RuntimeError):
     """The run cannot advance across this boundary."""
 
@@ -241,7 +262,7 @@ class Transport:
         try:
             if self.offline:
                 return self._call(req, timeout=timeout)
-            with _hard_deadline():
+            with _hard_deadline(timeout):
                 return self._call(req, timeout=timeout)
         except BaseException as exc:
             self.ledger.stop(self.case, type(exc).__name__)
@@ -252,7 +273,8 @@ class Transport:
         authorization = req.get_header('Authorization', '')
         bearer_key = authorization[7:] if authorization.startswith('Bearer ') else ''
         try:
-            if req.full_url != ENDPOINT or req.get_method() != 'POST' or timeout != 30:
+            if (req.full_url != ENDPOINT or req.get_method() != 'POST'
+                    or type(timeout) not in (int, float) or not 0 < timeout <= 30):
                 raise Blocked('endpoint/method/timeout mismatch')
             payload = json.loads(req.data)
             if (not isinstance(payload, dict) or payload.get('model') != MODEL
@@ -262,11 +284,11 @@ class Transport:
             number = self.ledger.reserve(self.case, hashlib.sha256(req.data).hexdigest())
             prefix = self.out / (self.case + '_http' + str(number))
             _write(str(prefix) + '_request.json', req.data)
-            _json_write(str(prefix) + '_wire.json', dict(endpoint=ENDPOINT, method='POST', timeout_seconds=30,
+            _json_write(str(prefix) + '_wire.json', dict(endpoint=ENDPOINT, method='POST', timeout_seconds=timeout,
                         max_output_tokens=1024, automatic_http_retries=0, offline_http_double=self.offline))
             def receive():
                 self.sent += 1
-                with self.backend(req, timeout=30) as response:
+                with self.backend(req, timeout=timeout) as response:
                     return response.read(MAX_RESPONSE_BYTES + 1), response.status, dict(response.headers)
             raw, status, headers = receive()
             _, echoed = _preserve_response(str(prefix) + '_response.raw.json', raw, bearer_key)
@@ -342,6 +364,7 @@ def validate_authorization(auth, *, run_id, cases, free_gate_sha256, source_sha2
 def load_authorized_settings(root, auth, *, run_id, cases, free_gate_sha256, source_sha256, loader=None):
     validate_authorization(auth, run_id=run_id, cases=cases, free_gate_sha256=free_gate_sha256,
                            source_sha256=source_sha256)
+    require_live_ready()  # before credentials; old no-money-cap approvals are not service policy
     if loader is None:
         from ontologics.database import environment_values
         loader = environment_values
@@ -362,6 +385,7 @@ class AuthorizedBackend:
     def __init__(self, settings, auth, *, run_id, cases, free_gate_sha256, source_sha256, opener=None):
         validate_authorization(auth, run_id=run_id, cases=cases, free_gate_sha256=free_gate_sha256,
                                source_sha256=source_sha256)
+        require_live_ready()  # even direct construction must not open the legacy paid path
         if (settings.model != MODEL or settings.timeout_seconds != 30 or settings.max_output_tokens != 1024
                 or not settings.api_key):
             raise Blocked('authorized settings mismatch')
@@ -370,10 +394,12 @@ class AuthorizedBackend:
             request.ProxyHandler({}), NoRedirect()).open
 
     def __call__(self, req, *, timeout=30):
-        if (req.full_url != ENDPOINT or req.get_method() != 'POST' or timeout != 30
+        require_live_ready()
+        if (req.full_url != ENDPOINT or req.get_method() != 'POST'
+                or type(timeout) not in (int, float) or not 0 < timeout <= 30
                 or req.get_header('Authorization') != 'Bearer ' + self.settings.api_key):
             raise Blocked('unapproved endpoint/credentials/timeout')
-        return self.open(req, timeout=30)
+        return self.open(req, timeout=timeout)
 
 
 def _valid_review(review, case):

@@ -3,8 +3,8 @@
 Only B reads and their public tool allowlist live here. Database transactions,
 identity checks, immutable drafts, review/apply and auditing remain inherited.
 """
-from ..model import SCHEMA
 from ..service import AgentGateway as CommonAgentGateway, DomainError, Service as CommonService
+from .schema import LOOKUP_SCHEMA
 
 B_TOOLS = frozenset({'lookup_many', 'delivery_round', 'fulfillment_status',
                      'production_completion', 'delivery_forecast', 'response_plan',
@@ -21,7 +21,7 @@ class Service(CommonService):
                 raise DomainError('INVALID_VERSION', 'Batch reads require an explicit nonnegative data version')
             if (not isinstance(node_ids, list) or not 1 <= len(node_ids) <= 16
                     or any(not isinstance(nid, str) or not nid.strip() for nid in node_ids)
-                    or len(set(node_ids)) != len(node_ids) or not isinstance(kind, str) or kind not in SCHEMA):
+                    or len(set(node_ids)) != len(node_ids) or not isinstance(kind, str) or kind not in LOOKUP_SCHEMA):
                 raise DomainError('INVALID_INPUT', 'Provide 1..16 unique nonempty node IDs and one known kind')
             index = {n['id']: n for n in self._nodes(version)}
             if any(nid not in index or index[nid]['type'] != kind for nid in node_ids):

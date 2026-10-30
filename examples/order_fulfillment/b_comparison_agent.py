@@ -1,27 +1,20 @@
-"""CQ06 bounded four-response explanation of approved input changes.
+"""Historical B provider and answer helpers; stored-graph execution is retired.
 
-The common comparison owns facts/calculation. The model reads exact Evidence
-metadata separately at each version; the host verifies full source/hash chains.
-No model-produced write, approval or operational execution is available.
+Pure compatibility checks retain these helpers. Supported agents run
+through b_run tasks without storing B types in the common graph.
 """
 from __future__ import annotations
 from copy import deepcopy
 from dataclasses import replace
 import json
 import re
-import uuid
 
 from examples.order_fulfillment.b_delivery_agent import _same_facts, resolve_provenance as _resolve_provenance
 from examples.order_fulfillment.b_comparison_narrative import CUSTOMER_PREFIX, TEXT_LIMITS, build_explanation
-from ontologics.order_fulfillment.contracts import load_demo_contract
-from ontologics.order_fulfillment.delivery_demo import AS_OF, ROUND, load_demo_delivery
-from ontologics.demo import PRINCIPALS, must
-from ontologics.ingest import build_catalog
 from ontologics.model import ROOT, canonical
 from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, ProviderError
-from ontologics.order_fulfillment.recalculation_demo import AFTER_AS_OF, CASES, load_demo_recalculation
+from ontologics.order_fulfillment.recalculation_demo import CASES
 from ontologics.order_fulfillment.runtime import ModelConfig
-from ontologics.order_fulfillment.service import Service
 from ontologics.order_fulfillment.tool_specs import B_COMPARISON_TOOLS, function_tools
 
 ACTOR = 'comparison-agent'
@@ -97,28 +90,9 @@ data.python_explanation.reasons의 수량·속도·비율·시간은 별개의 �
 
 
 def setup(database=None, *, case='defects11'):
-    if case not in CASES:
-        raise ValueError('Unsupported comparison development case')
-    service = Service(database, principals={**PRINCIPALS, ACTOR:{'kind':'agent','roles':['read']}},
-                      schema='b_cq06_agent_'+uuid.uuid4().hex if database is None else None)
-    try:
-        base = build_catalog()['nodes']+load_demo_contract()+load_demo_delivery()
-        before = must(service.bootstrap('seed-admin',base,request_key='cq06-agent-seed'))['data_version']
-        draft = must(service.prepare_draft('product-agent',
-            [{'op':'put','node':n} for n in load_demo_recalculation(case)],
-            request_key='cq06-agent-updated-inputs'))['data']
-        did,dv=draft['draft_id'],draft['draft_version']
-        if not must(service.validate_draft('product-agent',did,dv))['data']['validation']['valid']:
-            raise ValueError('CQ06 synthetic update failed validation')
-        must(service.review('reviewer',did,dv,decision='approve',
-            note='Scripted synthetic CQ06 fixture review; not operational approval.',request_key='cq06-agent-review'))
-        after=must(service.apply('workflow',did,dv,request_key='cq06-agent-apply'))['data_version']
-        return service,dict(mode='comparison',case=case,delivery_round_id=ROUND,
-            before_version=before,before_as_of=AS_OF,after_version=after,after_as_of=AFTER_AS_OF[case],
-            question='새 승인 실적·운송 조건에서 기한 내 수량·부족·예상 시각과 대응 초안이 어떻게 바뀌었는지 근거와 함께 설명해줘.')
-    except Exception:
-        service.close()
-        raise
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def query_arguments(task):

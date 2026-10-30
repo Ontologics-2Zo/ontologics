@@ -21,3 +21,6 @@ artifacts/local/
 
 # User-submitted immutable evidence; back up separately from Git.
 data/receipts/
+
+# Local OMX files
+/.omx/

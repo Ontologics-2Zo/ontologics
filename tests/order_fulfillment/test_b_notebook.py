@@ -54,15 +54,15 @@ class NotebookDemoTests(unittest.TestCase):
         launch.assert_not_called()
         self.assertFalse(demo.control.exists())
 
-    def test_free_starts_only_existing_cli_with_clean_environment(self):
+    def test_tasks_starts_only_existing_cli_with_clean_environment(self):
         demo = notebook.Demo()
         process = Mock(pid=12345, poll=Mock(return_value=None))
         with patch.object(notebook.subprocess, 'Popen', return_value=process) as launch, \
                 patch.object(notebook.atexit, 'register'), \
                 patch.dict('os.environ', {'OPENAI_API_KEY': 'never-forward', 'DATABASE_URL': 'never-forward'}):
-            demo.start_free()
+            demo.start_tasks()
         args, kwargs = launch.call_args
-        self.assertIn('free', args[0])
+        self.assertIn('tasks', args[0])
         self.assertNotIn('live', args[0])
         self.assertIn('examples.order_fulfillment.b_run', args[0])
         self.assertNotIn('OPENAI_API_KEY', kwargs['env'])
@@ -70,7 +70,7 @@ class NotebookDemoTests(unittest.TestCase):
         self.assertNotIn('shell', kwargs)
         self.assertTrue(kwargs['start_new_session'])
         with self.assertRaises(RuntimeError):
-            demo.start_free()
+            demo.start_tasks()
 
     def test_approval_draft_is_unapproved_and_stale_source_is_rejected(self):
         demo = notebook.Demo(); self.gate(demo)
@@ -84,22 +84,15 @@ class NotebookDemoTests(unittest.TestCase):
         with patch.object(notebook, 'source_digest', return_value='b' * 64), self.assertRaises(ValueError):
             demo.approval_draft()
 
-    def test_matching_confirmation_prepares_exact_live_cli_once_using_fake_process(self):
+    @patch.object(notebook, "require_live_ready", lambda: None)  # legacy plumbing only; production block tested separately
+    def test_matching_confirmation_cannot_publish_authorization_or_launch_legacy(self):
         demo = notebook.Demo(); self.gate(demo)
-        process = Mock(pid=12345, poll=Mock(return_value=None))
         with patch.object(notebook, 'source_digest', return_value='a' * 64), \
-                patch.object(notebook.subprocess, 'Popen', return_value=process) as launch, \
-                patch.object(notebook.atexit, 'register'):
-            demo.start_live(demo.approval_phrase())
-        args = launch.call_args.args[0]
-        self.assertIn('live', args)
-        self.assertIn('--authorization', args)
-        self.assertIn('--free-gate', args)
-        auth = notebook._read(demo.control / 'authorization.json')
-        self.assertIs(auth['approved'], True)
-        self.assertEqual(auth['run_id'], str(demo.outputs['live']))
-        with self.assertRaises(RuntimeError):
-            demo.start_live(demo.approval_phrase())
+                patch.object(notebook.subprocess, 'Popen') as launch:
+            with self.assertRaisesRegex(RuntimeError, 'B_LEGACY_EXECUTION_RETIRED'):
+                demo.start_live(demo.approval_phrase())
+        launch.assert_not_called()
+        self.assertFalse(demo.control.exists())
 
     def test_modified_summary_and_changed_case_gate_are_rejected(self):
         demo = notebook.Demo(); self.gate(demo)
@@ -152,7 +145,7 @@ class NotebookDemoTests(unittest.TestCase):
                 patch.object(notebook.atexit, 'register'), \
                 patch.object(notebook, '_write_new', side_effect=OSError('fake disk failure')):
             with self.assertRaises(OSError):
-                demo.start_free()
+                demo.start_tasks()
         process.terminate.assert_called_once()
         process.wait.assert_called_once_with(timeout=45)
 
@@ -250,19 +243,15 @@ class NotebookDemoTests(unittest.TestCase):
         with patch.object(notebook, 'source_digest', return_value='a' * 64), self.assertRaises(ValueError):
             demo.approval_draft()
 
-    def test_full_cli_receives_exact_cases_once_and_fresh_full_authorization(self):
+    @patch.object(notebook, "require_live_ready", lambda: None)  # legacy plumbing only; production block tested separately
+    def test_full_old_gate_cannot_start_live_or_publish_authorization(self):
         demo = notebook.Demo(cases=notebook.CASES); self.gate(demo)
-        process = Mock(pid=12345, poll=Mock(return_value=None))
         with patch.object(notebook, 'source_digest', return_value='a' * 64), \
-                patch.object(notebook.subprocess, 'Popen', return_value=process) as launch, \
-                patch.object(notebook.atexit, 'register'):
-            demo.start_live(demo.approval_phrase())
-        args = launch.call_args.args[0]
-        self.assertEqual([args[i + 1] for i, part in enumerate(args) if part == '--case'], notebook.CASES)
-        auth = notebook._read(demo.control / 'authorization.json')
-        self.assertEqual(auth['total_request_cap'], 40)
-        self.assertEqual(auth['cq01_request_cap'], 8)
-        self.assertTrue(auth['approved'])
+                patch.object(notebook.subprocess, 'Popen') as launch:
+            with self.assertRaisesRegex(RuntimeError, 'B_LEGACY_EXECUTION_RETIRED'):
+                demo.start_live(demo.approval_phrase())
+        launch.assert_not_called()
+        self.assertFalse(demo.control.exists())
 
     def test_pending_review_advances_only_after_explicit_case_submission(self):
         demo = notebook.Demo(cases=['cq02_normal', 'cq03_normal'])

@@ -1,7 +1,7 @@
 @prefix o: <urn:ontologics:> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.5" .
+o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.1" .
 o:SourceDocument a owl:Class .
 o:Evidence a owl:Class .
 o:ProductModel a owl:Class .
@@ -14,16 +14,6 @@ o:ComponentLot a owl:Class .
 o:Installation a owl:Class .
 o:HistoryCoverage a owl:Class .
 o:InventoryMovement a owl:Class .
-o:Contract a owl:Class .
-o:ContractItem a owl:Class .
-o:DeliveryRound a owl:Class .
-o:FulfillmentSnapshot a owl:Class .
-o:FinishedGoodsStock a owl:Class .
-o:ProductionWork a owl:Class .
-o:ProductionObservation a owl:Class .
-o:Allocation a owl:Class .
-o:Shipment a owl:Class .
-o:DeliveryCondition a owl:Class .
 o:source_id a owl:ObjectProperty ; rdfs:range o:SourceDocument .
 o:model_id a owl:ObjectProperty ; rdfs:range o:ProductModel .
 o:revision_id a owl:ObjectProperty ; rdfs:range o:ProductRevision .
@@ -31,15 +21,42 @@ o:configuration_id a owl:ObjectProperty ; rdfs:range o:Configuration .
 o:component_id a owl:ObjectProperty ; rdfs:range o:ComponentModel .
 o:unit_id a owl:ObjectProperty ; rdfs:range o:ProductUnit .
 o:lot_id a owl:ObjectProperty ; rdfs:range o:ComponentLot .
+o:evidence a owl:ObjectProperty ; rdfs:range o:Evidence .
+o:ProductModel owl:disjointWith o:ProductUnit, o:ComponentModel, o:ComponentLot .
+o:ComponentModel owl:disjointWith o:ComponentLot .
+# Required fields, identity, time and approvals are enforced by Python, not OWL inference.
+
+# B order fulfillment extension
+# Shared configuration_id and evidence relationships are declared above.
+# B declarations follow ontologics/order_fulfillment/schema.py.
+# Required fields and business rules remain enforced by Python.
+
+# Classes: contract and delivery promise
+o:Contract a owl:Class .
+o:ContractItem a owl:Class .
+o:DeliveryRound a owl:Class .
+
+# Classes: fulfillment snapshot and finished goods
+o:FulfillmentSnapshot a owl:Class .
+o:FinishedGoodsStock a owl:Class .
+
+# Classes: production work and observations
+o:ProductionWork a owl:Class .
+o:ProductionObservation a owl:Class .
+
+# Classes: allocation, shipment and delivery conditions
+o:Allocation a owl:Class .
+o:Shipment a owl:Class .
+o:DeliveryCondition a owl:Class .
+
+# Relationships: contract and contract item
 o:contract_id a owl:ObjectProperty ; rdfs:range o:Contract .
 o:contract_item_id a owl:ObjectProperty ; rdfs:range o:ContractItem .
+
+# Relationships: operational snapshot, production and fulfillment
 o:snapshot_id a owl:ObjectProperty ; rdfs:range o:FulfillmentSnapshot .
 o:production_work_id a owl:ObjectProperty ; rdfs:range o:ProductionWork .
 o:delivery_round_id a owl:ObjectProperty ; rdfs:range o:DeliveryRound .
 o:stock_id a owl:ObjectProperty ; rdfs:range o:FinishedGoodsStock .
 o:allocation_id a owl:ObjectProperty ; rdfs:range o:Allocation .
 o:round_ids a owl:ObjectProperty ; rdfs:range o:DeliveryRound .
-o:evidence a owl:ObjectProperty ; rdfs:range o:Evidence .
-o:ProductModel owl:disjointWith o:ProductUnit, o:ComponentModel, o:ComponentLot .
-o:ComponentModel owl:disjointWith o:ComponentLot .
-# Required fields, identity, time and approvals are enforced by Python, not OWL inference.

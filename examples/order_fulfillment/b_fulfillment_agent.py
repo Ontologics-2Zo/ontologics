@@ -1,28 +1,21 @@
-"""Read-only B-CQ02 connection: scripted by default, one bounded live case opt-in.
+"""Historical B provider and answer helpers; stored-graph execution is retired.
 
-Uses the existing runtime/provider and approved deterministic snapshot. No model
-drafts, approval, database writes, forecasts, or model-as-grader evaluation.
+Pure compatibility checks retain these helpers. Supported agents run
+through b_run tasks without storing B types in the common graph.
 """
 from __future__ import annotations
 
-import argparse
 from copy import deepcopy
-from dataclasses import asdict, replace
 import json
 from pathlib import Path
 import sys
-import uuid
 
-from ontologics import __version__
-from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.database import DatabaseSettings, environment_values
-from ontologics.demo import PRINCIPALS, must
-from ontologics.order_fulfillment.fulfillment import AS_OF, ROUND, STATE_KEYS, load_demo_fulfillment
-from ontologics.ingest import build_catalog
+from ontologics.demo import must
+from ontologics.order_fulfillment.fulfillment import STATE_KEYS
 from ontologics.model import ROOT, canonical, instant
 from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, OpenAISettings, ProviderError
-from ontologics.order_fulfillment.runtime import ModelConfig, ModelRuntime
-from ontologics.order_fulfillment.service import Service
+from ontologics.order_fulfillment.runtime import ModelConfig
 from ontologics.order_fulfillment.tool_specs import B_FULFILLMENT_TOOLS, function_tools
 
 ACTOR = 'fulfillment-agent'
@@ -58,37 +51,9 @@ needs_confirmation이면 0으로 단정하지 말고 필요한 근거 확인을 
 
 
 def setup(database=None, *, case='normal'):
-    if case not in {'normal', 'missing', 'unknown_time', 'coverage_missing'}:
-        raise ValueError('Unsupported development case')
-    principals = {**PRINCIPALS, ACTOR: {'kind': 'agent', 'roles': ['read']}}
-    service = Service(database, principals=principals,
-                      schema='b_cq02_agent_' + uuid.uuid4().hex if database is None else None)
-    try:
-        version = must(service.bootstrap('seed-admin', build_catalog()['nodes'] + load_demo_contract(),
-                                        request_key='cq02-agent-seed'))['data_version']
-        if case != 'missing':
-            candidates = load_demo_fulfillment()
-            if case == 'coverage_missing':
-                # Deliberately incomplete test assertions; never mutate source bytes.
-                snapshot = next(n for n in candidates if n['type'] == 'FulfillmentSnapshot')
-                snapshot['confirmations']['allocations_complete'] = False
-            draft = must(service.prepare_draft('product-agent',
-                [{'op': 'put', 'node': n} for n in candidates], request_key='cq02-agent-draft'))['data']
-            did, dv = draft['draft_id'], draft['draft_version']
-            validation = must(service.validate_draft('product-agent', did, dv))
-            if not validation['data']['validation']['valid']:
-                raise ValueError('Invalid development snapshot')
-            must(service.review('reviewer', did, dv, decision='approve',
-                note='Scripted development fixture review before model execution; not an operational approval.',
-                request_key='cq02-agent-reviewed'))
-            version = must(service.apply('workflow', did, dv, request_key='cq02-agent-applied'))['data_version']
-        task = dict(mode='fulfillment', question='B-01 1회차의 현황 기준 시점 물량과 잔여 약속을 근거와 함께 설명해줘.',
-                    delivery_round_id=ROUND, as_of=AS_OF if case != 'unknown_time' else '2026-10-27T11:00:00+09:00',
-                    data_version=version)
-        return service, task
-    except Exception:
-        service.close()
-        raise
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def _query(service, task, *, actor=ACTOR):
@@ -343,67 +308,14 @@ class ProvenanceProvider:
 
 
 def run_example(*, database=None, settings=None, provider_factory=None, case='normal'):
-    if settings is not None:
-        settings = replace(settings, max_output_tokens=1024)
-    live = settings is not None and provider_factory is None
-    if live and case != 'normal':
-        raise ValueError('Only one normal representative live case is supported')
-    service, task = setup(database, case=case)
-    try:
-        before = task['data_version']
-        provider = provider_factory(service, task) if provider_factory else (
-            OpenAIProvider(settings, TOOLS) if settings else ScriptedProvider(service, task))
-        guarded = ProvenanceProvider(provider, task)
-        result = ModelRuntime(service, ACTOR, guarded, config=CONFIG, capture_tool_trace=True,
-                              allowed_tools=TOOLS).run([{'role': 'system', 'content': PROMPT},
-                                                       {'role': 'user', 'content': canonical(task)}])
-        checks, answer = evaluate(service, task, result, before)
-        query = _query(service, task)
-        calls = getattr(provider, 'calls', [])
-        usage = {k: sum(c.get('usage', {}).get(k, 0) for c in calls) for k in ('input_tokens', 'output_tokens')}
-        usage_incomplete = any(not {'input_tokens', 'output_tokens'} <= c.get('usage', {}).keys() for c in calls)
-        return dict(contract_version=__version__, workflow_guard='cq02-provenance-v2',
-            answer_citation_policy='snapshot-and-item-first-exact-v1', final_submission=guarded.final_submission,
-            execution_mode='live_api' if live else 'test_double',
-            case=case, database_schema=service.schema, task=task, runtime=result, runtime_config=asdict(CONFIG),
-            answer=answer, provider_calls=calls, provider_config=settings.public_config() if settings else None,
-            usage=usage, usage_incomplete=usage_incomplete,
-            estimated_standard_usd=None if usage_incomplete else
-                (usage['input_tokens'] * .75 + usage['output_tokens'] * 4.5) / 1_000_000,
-            host_provenance=resolve_provenance(service, query) if query['ok'] else [],
-            evaluation=dict(checks=checks, passed=all(checks.values()), narrative_review='not_yet_reviewed',
-                            scope='single fixed synthetic snapshot; scripted reviewer, no forecast or production readiness'),
-            confirmed_version_after=service.lookup(ACTOR)['data_version'],
-            preflight_message_bytes=[len(canonical(m).encode()) for m in getattr(provider, 'messages', [])])
-    finally:
-        service.close()
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--provider', choices=['scripted', 'openai'], default='scripted')
-    parser.add_argument('--case', choices=['normal', 'missing', 'unknown_time', 'coverage_missing'], default='normal')
-    parser.add_argument('--output', default='artifacts/local/b_cq02_task09/scripted.json')
-    args = parser.parse_args()
-    output = Path(args.output)
-    if output.exists():
-        raise ValueError('Preserve the prior report; choose a new output path')
-    try:
-        settings = OpenAISettings.from_environment(environ=environment_values()) if args.provider == 'openai' else None
-        report = run_example(settings=settings, case=args.case,
-            database=DatabaseSettings.from_environment(schema='b_cq02_agent_' + uuid.uuid4().hex))
-    except ProviderError as exc:
-        report = dict(status='configuration_blocked', error=dict(code=exc.code, message=exc.message))
-    except Exception as exc:
-        # Never echo configuration, response bodies or database connection secrets.
-        report = dict(status='example_failed', error=dict(code='EXAMPLE_ERROR', error_type=type(exc).__name__))
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-    passed = report.get('evaluation', {}).get('passed', False)
-    print(json.dumps(dict(output=str(output), passed=passed, error=report.get('error'),
-        checks=report.get('evaluation', {}).get('checks'), api_requests=len(report.get('provider_calls', [])),
-        usage=report.get('usage'), estimated_standard_usd=report.get('estimated_standard_usd')), ensure_ascii=False))
-    return 0 if passed else 1
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise SystemExit(LEGACY_EXECUTION_MESSAGE)
 
 
 if __name__ == '__main__':

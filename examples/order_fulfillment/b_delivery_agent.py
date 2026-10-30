@@ -1,7 +1,7 @@
-"""Bounded, read-only CQ04 explanation through the existing common runtime.
+"""Historical B provider and answer helpers; stored-graph execution is retired.
 
-Common Python owns arithmetic. Model output is a candidate until exact factual
-and provenance checks pass; raw text is never repaired into an accepted answer.
+Pure compatibility checks retain these helpers. Supported agents run
+through b_run tasks without storing B types in the common graph.
 """
 from __future__ import annotations
 
@@ -9,16 +9,11 @@ from copy import deepcopy
 from dataclasses import replace
 import hashlib
 import json
-import uuid
 
-from ontologics.order_fulfillment.contracts import load_demo_contract
-from ontologics.demo import PRINCIPALS, must
-from ontologics.ingest import build_catalog
+from ontologics.demo import must
 from ontologics.model import ROOT, canonical
 from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, ProviderError
-from ontologics.order_fulfillment.delivery_demo import AS_OF, ROUND, WORK, load_demo_delivery
 from ontologics.order_fulfillment.runtime import ModelConfig
-from ontologics.order_fulfillment.service import Service
 from ontologics.order_fulfillment.tool_specs import B_DELIVERY_TOOLS, function_tools
 
 ACTOR = 'delivery-agent'
@@ -62,57 +57,9 @@ met도 실제 도착 보증이 아니다. actual_arrival_assessed=true는 과거
 
 
 def setup(database=None, *, case='normal'):
-    """Trusted synthetic setup, closed before the request-bound model starts.
-
-    Exception cases are hypothetical test variants, never source-file changes.
-    The scripted fixture reviewer is not an Agent approving its own draft.
-    """
-    if case not in CASES:
-        raise ValueError('Unsupported delivery development case')
-    service = Service(database, principals={**PRINCIPALS, ACTOR: {'kind': 'agent', 'roles': ['read']}},
-                      schema='b_cq04_agent_' + uuid.uuid4().hex if database is None else None)
-    try:
-        mixed = case in {'mixed', 'mixed_due14', 'elapsed_eta'}
-        nodes = load_demo_delivery(mixed=mixed)
-        base = build_catalog()['nodes'] + load_demo_contract()
-        if case == 'mixed_due14':
-            next(n for n in base if n['id'] == ROUND)['due_at'] = '2026-10-27T14:00:00+09:00'
-        condition = next(n for n in nodes if n['type'] == 'DeliveryCondition')
-        snapshot = next(n for n in nodes if n['type'] == 'FulfillmentSnapshot')
-        latest = next(n for n in nodes if n['type'] == 'ProductionObservation' and n['observed_at'] == AS_OF)
-        if case == 'all_at_once':
-            condition['dispatch_mode'] = 'all_at_once'
-        elif case == 'missing_condition':
-            nodes.remove(condition)
-        elif case == 'missing_latest':
-            nodes.remove(latest)
-        elif case == 'zero_rate':
-            previous = next(n for n in nodes if n['type'] == 'ProductionObservation' and n is not latest)
-            latest.update(produced_quantity=previous['produced_quantity'], good_quantity=previous['good_quantity'],
-                          defective_quantity=previous['defective_quantity'])
-            next(n for n in nodes if n['id'] == WORK)['completed_quantity'] = previous['good_quantity']
-        elif case == 'coverage_missing':
-            snapshot['confirmations']['allocations_complete'] = False
-        elif case == 'elapsed_eta':
-            next(n for n in nodes if n['type'] == 'Shipment' and 'expected_arrival_at' in n)[
-                'expected_arrival_at'] = '2026-10-27T09:30:00+09:00'
-        must(service.bootstrap('seed-admin', base, request_key='cq04-agent-seed'))
-        draft = must(service.prepare_draft('product-agent', [{'op': 'put', 'node': n} for n in nodes],
-                                           request_key='cq04-agent-draft'))['data']
-        did, dv = draft['draft_id'], draft['draft_version']
-        validation = must(service.validate_draft('product-agent', did, dv))['data']['validation']
-        if not validation['valid']:
-            raise ValueError('Invalid synthetic delivery fixture')
-        must(service.review('reviewer', did, dv, decision='approve',
-            note='Trusted scripted synthetic development fixture, not an Agent-produced draft or operational approval.',
-            request_key='cq04-agent-review'))
-        version = must(service.apply('workflow', did, dv, request_key='cq04-agent-apply'))['data_version']
-        return service, dict(mode='delivery', case=case,
-            question='이 회차는 기한까지 몇 대 도착하고 몇 대 부족한가요? 전량 도착 예상과 근거·조건도 설명해줘.',
-            delivery_round_id=ROUND, as_of=AS_OF, data_version=version)
-    except Exception:
-        service.close()
-        raise
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def query(service, task, *, actor=ACTOR):

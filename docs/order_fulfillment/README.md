@@ -1,10 +1,110 @@
 # Order Fulfillment — B 개발 안내
 
-공통 문서 [README.md](../../README.md)의 메인 기준(`7c5e2d9`)과 비교해 B 개발 중 추가·변경된 내용을 분리했다. 공통 문서는 해당 메인 원본으로 복원했다.
+## B TBox 확장
 
-아래 테스트 수·실제 모델 실행·수락 여부는 원문에 기록된 당시 결과다. 현재 폴더 분리 이후의 전체 동작을 새로 검증했다는 뜻은 아니다. 실행 예제와 B 파일 경로는 현재 하위 폴더 위치로 표시한다. 이 문서의 과거 기록 이후 공통 Provider·Service·도구 정의를 B 하위 폴더로 분리했다. 현재 검증 상태와 남은 모델 연결 문제는 [B 작업 기록](PROJECT_STATUS.md)을 따른다.
+[TBox](../../ontology/tbox.ttl)의 기존 공통 선언 뒤 `# B order fulfillment extension` 구역에 B 클래스10개와 관계 속성8개를 추가했다. B가 사용하는 관계 속성은9개이며 `configuration_id`는 공통의 기존 선언을 재사용한다. 전체 B 선언은 `ontologics.order_fulfillment.schema_export.tbox_terms()`와 일치하고 중복 없이 한 번씩 존재해야 한다. 별도 B TBox 파일은 만들지 않는다.
 
-B 문서: [작업 기록](PROJECT_STATUS.md) · [서비스 명세](SERVICE_SPEC.md) · [도구 계약](TOOLS.md) · [Agent 지침](AGENT_RUNTIME.md).
+공통 온톨로지 IRI·`graph-0.1` 버전과 기존 공통 선언은 보존하며 새 OWL 제약이나 실행 규칙을 추가하지 않는다. 필수값·수량·시각·근거·승인 검증은 기존 Python 구현이 담당한다. TTL 확장이 공통 Python 스키마·DB 등록의 변경을 뜻하지 않으며 A와의 정의 통합은 이번 범위 밖이다. 기존 `schema_export.tbox_turtle()`의 공통+B 합성 출력과 저장 파일의 선언은 같고, 저장 파일에만 확장 구역 주석이 있다. 아래 과거 기록의 공통 TBox 무변경은 당시 작업 범위다.
+
+공통 `ontologics.demo --export-graph`는 공통 선언만 재생성하므로 B 확장 구역을 덮어쓴다. B가 포함된 TBox를 갱신할 때는 B의 `schema_export.tbox_turtle()` 출력을 사용하고 확장 구역 주석을 유지한다.
+
+## 로컬 테스트 웹 — 실제 LLM / 무료 연결 검사
+
+저장소 루트에서 실행한 뒤 [B Workflow Lab](http://127.0.0.1:8010)을 연다. 별도 설치나 프런트엔드 빌드가 없다.
+
+```bash
+.venv/bin/python -B -m examples.order_fulfillment.b_web --port 8010
+# 실제 LLM 선택을 활성화하려면 기존 운영자 공개 비용 설정 파일을 지정한다.
+.venv/bin/python -B -m examples.order_fulfillment.b_web --port 8010 --cost-policy /absolute/public-cost-policy.json
+```
+
+왼쪽에서 CQ01~06의 10개 대표 중 하나를 선택하고 **실행 방식 → 실제 LLM** 또는 **무료 연결 검사**를 선택한다. **이 사례 실행**은 선택한 대표 하나, **전체 흐름 실행**은 고정 순서의 10대표를 실행한다. 화면에서 공개 비용 설정의 전체 상한과 대표당 최대 $1.00을 확인한다. 버튼을 누를 때마다 새 실행이며 과거 실행 간 비용을 합산하지 않는다. 기존 `.env.local`은 격리 실행기가 실제 호출 시에만 읽으며, 브라우저에 키를 입력하거나 노출하지 않는다. 연결 준비 표시는 설정 존재·비용 계약 확인이며 API 인증 성공 보장이 아니다.
+
+원문·구조화 입력, 한국어 답변, 공식 계산, 제품 근거와 가상 운영 근거, 도구 기록, 모델 원문, 비용·오류·격리 DB 종료 상태를 확인할 수 있다. JSON 보고서를 내려받을 수 있고 새로고침 시 이번 서버에서 시작한 마지막 실행을 복원한다. 웹 서버 재시작 후에는 메모리의 실행 목록이 사라지며 기존 결과 파일은 보존된다.
+
+웹은 기존 `b_run tasks`/`b_run run --transport openai`를 연결한다. 각 대표는 독립 가상 입력이며 CQ01 후보를 저장해 다음 단계에 전달하는 연속 운영 시나리오는 아니다. 사람 승인·등록·출고·발송은 수행하지 않는다. 기존 DB를 재사용하지 않으며 실행별 PostgreSQL·pgvector와 macOS `sandbox-exec`가 필요하다. 실행 실패는 그대로 표시하고 자동으로 유료 실행을 다시 시작하지 않는다. 기존 공통 런타임의 일시 장애 재시도 정책은 유지한다.
+
+서버 종료는 실행 터미널에서 Ctrl+C다. 진행 중인 소유 실행기에 종료를 전달하여 DB를 정리한다. 새 웹 경로는 개발용 localhost 전용이며 기존 S1/S2 웹·공통 HTTP 계약을 바꾸지 않는다.
+
+## 현재: B 최소 검증 정리와 새 CQ01 실제 확인 완료
+
+B 실행에서는 전체 JSON 정답·전체 카탈로그 조회·조회 순서를 강제하지 않는다. 실제 조회한 관련 노드의 내용, 공통 버전·근거·권한·비용, ready 후보의 필수 업무 값과 공식 계산·출처는 유지한다. CQ01 원문 모델→개정→구성 필터링 지침을 보완했다. 유효한 `needs_confirmation`/`invalid`는 실행 오류와 구분하고 `intake_status`·`candidate_ready`로 후보 준비 여부를 표시한다. 고정 사례의 정답 대조는 별도 회귀/품질 평가에 남긴다.
+
+수정 후 새 CQ01 접수는 실제4요청 모두HTTP200, `ready`·후보3개로 통과했다. L/WROOM·수량1000·도착기준 납기·납품처가 원문과 일치하고 원래 LLM 후보·설명 그대로임을 별도 AI 기술 검토로 확인했다. 추정$0.01223250, CQ01 과거 포함$0.06206400이다. 무료 전체945검사(939통과·Docker6 skip), 관련247검사 통과·main123파일 동일·서버종료를 확인했다. 다른9대표의 새 실제 호출·사람/업무 승인·확정 저장은 하지 않았다. [현재 작업 기록](PROJECT_STATUS.md)과 [설계서61절](B_MAIN_CONNECTION_DESIGN.md)을 따른다. 아래 결과는 각 이전 실행 이력이다.
+
+## 이전 추가 실제 실행 결과
+
+추가 실제 실행은 첫 CQ01 접수에서 B 업무 결과 불일치로 중단됐다. 실제4요청 모두HTTP200이었지만 모델이 원문의 L/WROOM 대신 L/L1 카탈로그 전체를 식별 불가로 해석해 후보0개를 반환했다. 뒤9대표는 호출하지 않았고 서버는 종료했다. 코드 수정·자동 유료 재실행은 하지 않았다. [최근 작업 기록](PROJECT_STATUS.md)을 따른다. 아래 이전 성공과 구분한다.
+
+## 이전 확인 결과
+
+일반 명령으로10대표 무료 모의 실행을 완료했다. 새 실제 호출은 CQ05혼합·CQ06불량11·CQ06운송2시간 각4회, 총12회이며 모두 자동 검사와 별도 AI 기술 의미 검토를 통과했다. CQ06 두 답변의 작성자는 실제 LLM이다. 이번 추정 비용은$0.15608850이고 기존 지출 포함 대표당$0.50 이내다. 전체 무료932검사(926통과·Docker6 skip) 및 마지막 기록 수정 후 관련234검사 통과, 새 서버6개 종료·main123파일/기존 결과/노트북 보존을 확인했다. 사람/업무 승인·확정 저장은 수행하지 않았다. 상세 결과와 한계는 [작업 기록](PROJECT_STATUS.md)과 [설계서58절](B_MAIN_CONNECTION_DESIGN.md)에 있다.
+
+## 일반 실행: CQ 선택 → 공통 실행 → 답변·도구 기록
+
+`run`은 선택한 CQ를 독립 실행한다. 완료된 사전검사 파일, 이전 CQ01 성공, 대표별 검토 입력은 필요하지 않다. 기본 전송은 무료 `mock_http`이며 실제 키를 읽거나 외부 API를 호출하지 않는다. 저장소 가상환경에서 새 절대 출력 경로와 공개 비용 정책 파일을 지정한다.
+
+```bash
+.venv/bin/python -B -m examples.order_fulfillment.b_run run \
+  --output /private/tmp/b-run-new \
+  --cost-policy /절대경로/public-cost-policy.json \
+  --case cq05_mixed
+```
+
+**실제 유료 호출은 위 명령에 `--transport openai`를 명시한다.** 이 명령 자체가 선택 사례·입력·모델·비용 정책에 결합된 이번 실행 지시이며, 별도 승인 문구를 입력하지 않는다. 실제 호출 후 한국어 답변·핵심 근거·기록 경로를 표시한다. API 키는 로그나 공개 비용 파일에 넣지 않는다. 로컬 `.env.local`의 공통 `OpenAISettings`는 실제 실행의 격리된 키 읽기 구간에서만 사용하며, 기존 DB 설정은 실행 대상으로 쓰지 않는다.
+
+`--case`는 아래 목록에서 하나 이상 고정 순서로 선택한다. 중간 CQ를 건너뛰어도 되며 이전 성공이 필요하지 않다. 새 격리 PostgreSQL·별도 schema를 만들고 종료한다. 같은 output은 다시 실행하지 않는다. 자동 검사 실패 시 후속 대표 호출을 중단하며 원래 응답과 실패 기록을 보존한다.
+
+```text
+cq01_intake, cq01_promise, cq02_normal, cq03_normal,
+cq04_normal, cq04_mixed, cq05_normal, cq05_mixed,
+cq06_defects11, cq06_transport2h
+```
+
+## 공통 연결과 답변의 작성 주체
+
+B 입력 → B `AgentSpec` → 공통 호스트 등록 → `request.run_task` → 공통 조회·근거·버전·권한·비용 검사 경로를 사용한다. main `ca7c391`의123개 파일은 의도된 `.gitignore`를 제외하고 원본과 같다. `model.py`·공통 T-box는 `graph-0.1`/공통12타입이며 B 확장은 `ontologics/order_fulfillment/`에 분리돼 있다. B 스키마의 `EXTRACTED_GRAPH_VERSION=graph-0.5`는 추출 이력이다.
+
+CQ01 접수의 후보는 LLM이 추출한다. CQ01 약속~CQ06의 한국어 설명은 LLM이 작성하고, 수량·시각·판정·입력 revision/hash/출처는 검증된 B 계산에서 연결한다. 모델의 계산·출처 복사값은 공식 결과로 사용하지 않는다. CQ06도 모델 응답에 한국어 설명이 있어야 하며, 누락된 문안을 Python으로 채우지 않는다. 모의 응답은 `mock_response` 또는 `scripted_provider`로 표시한다.
+
+B 실제 모델 연결은 첫 단계에서 `lookup`을 요구하고, 공통 런타임이 실제 조회 결과를 반환한 다음 추가 조회 또는 답변을 선택한다. 조회 인자·개수·순서는 고정하지 않는다. 최종 근거는 공통 호스트가 실제 읽은 근거와 대조하며, 검증 실패 시 대표·오류 코드·결과 파일 경로를 표시하고 후속 호출을 중단한다.
+
+일반 실행은 기술 실행이며 사람 의미 검토·업무 승인·B 그래프의 공통 DB 확정 저장을 수행하지 않는다. CQ01 접수의 유효한 `needs_confirmation`/`invalid`도 업무 상태로 반환하며, 후보 준비 완료와 구분한다. 자동 통과를 자유문 정확성 보증이나 사람 승인으로 표시하지 않는다. 실제 업무 저장을 구현할 때는 공통 승인·작성자/검토자 분리를 그대로 적용해야 한다.
+
+## 한국어 답변 구성
+
+공통 출력 필드는 그대로 두고 `answer_ko`의 문안 지침을 개선했다. CQ04는 기한 내 전체 도착 예상과 현재 확보/미래 생산/기납품/운송 중을 구분한다. CQ05는 업무 요약·물류 담당자에게 보내는 출고 요청 초안·고객에게 보내는 회신 초안·담당자 확인을 구분해 모델이 본문을 작성한다. Python 검토 자료를 그대로 재생한 문안을 모델이 새로 작성한 것처럼 표시하지 않는다. 기존 납품·운송 사실과 이번 Agent의 미실행을 구분하고, 후속 일정 협의는 부족 또는 변경 제안이 있을 때 설명한다.
+
+CQ06은 전후 수량/시각·가정·미확인을 비교하며 비율은 백분율, 기간은 시·분·초, 시각은 원래 날짜/시간대/정밀도를 유지해 설명한다. 숫자 계산·공식 출처·권한·비용·공통 근거 검증은 그대로다. 특정 제목·고정 문구가 없다고 실행을 차단하는 검사를 추가하지 않았다. 역할 버전은 CQ04/05 1.4.0, CQ06 1.5.0이다. 과거 실제 결과는 당시 버전의 증거이며 새 문안 지침의 실제 LLM 품질 통과로 재분류하지 않는다.
+
+## 비용과 제한
+
+모델은 `gpt-5.4-mini-2026-03-17`, 출력4096토큰, 요청30초다. main 예제에 맞춘 논리 모델12단계, 일시 장애 최초 포함2시도, 형식 수정0을 사용한다. 공통 `CostPolicy`와 실제 ledger를 재사용한다. B role 한도는24모델시도·6도구·120초이며, 일반 실행 전체는 `min(64,24×대표 수)` 모델시도·`min(128,7×대표 수)` 도구·600초다. 이 수치는 B 실행 설정이며 main의 모든 Agent에 강제되는 기본값이라는 뜻은 아니다.
+
+일반 실행과 AI 기술 시험의 대표당 기본 상한·허용 최대값은 사용자 지시로$1.00으로 올렸다(2026-10-30). 기존 대표의 지출이 있다면 남은 금액으로 `--representative-max-cost-usd`를 낮춰 새 실행을 준비한다. 실행 간 누적 차감은 이 옵션으로 반영하며 CLI가 과거 실행을 자동 합산하지는 않는다. 공통 요청 비용 상한도 동시에 적용되며 호출 전 최대 입력/출력 비용 예약이 가능해야 한다. 기존 공개 요청 상한$1.00과 공통 정책은 그대로다. 서로 다른 실행의 예산을 계정 전체 청구 상한으로 설명하지 않는다. 공개 비용 JSON은 `ONTOLOGICS_REQUEST_MAX_COST_USD`, `ONTOLOGICS_MODEL_PRICES_JSON` 두 문자열 필드만 담고 형식은 루트 `.env.example`을 따른다.
+
+## 기록과 종료 확인
+
+- `model_plan.json`, `authorization.json`, `launch_claim.json`: 이번 설정·명시 실행 지시·단회 시작.
+- `campaign/<대표>/input.json`: 입력 원문과 가상 업무 자료.
+- `campaign/<대표>/result.json`: 한국어 답변, 원래 `provider_calls[].model_text`, 도구 trace, 공통 근거, 공식 계산 결과.
+- `campaign/<대표>/review_material.json`, `review_packet.json`: 필요할 때 보는 상세 계산·검토 자료. 일반 실행에는 검토 통과 기록을 만들지 않는다.
+- `campaign/summary.json`, `model_validation.json`, `shutdown.json`: 자동 검사·실제/모의 호출 구분·소유 서버 종료. 실패는 `stopped.json` 등에 보존한다.
+
+```bash
+.venv/bin/python -B -m examples.order_fulfillment.b_run status \
+  --output /private/tmp/b-run-new
+```
+
+`status`는 기록만 읽는다. macOS `sandbox-exec`와 pgvector가 있는 PostgreSQL이 필요하다. 실행 폴더에는 새 DB 파일과 로컬 기록이 남으며 Git에 강제 추가하지 않는다.
+
+## 선택형 시연과 무료 도구
+
+사전검사·10대표 순차 검토·과거 CQ01 증거 확인이 필요한 시연은 기존 `preflight` → `plan-model` → `run-model` 명령을 명시적으로 선택한다. 이 시연은 전체40요청 상한과 이번 계획 승인·사람 의미 검토·CQ01 정확한 후보 버전 업무 검토를 유지한다. `ai_semantic`은 별도 기술 검토 모드이며 사람/업무 승인으로 표시하지 않는다. 일반 `run`에 시연 옵션을 섞을 수 없다.
+
+`tasks`는 무료 scripted 실행이고, `preflight`는 공통 실제 provider에 로컬 HTTP 대역만 연결하는 무료 도구다. 둘 다 실제 LLM 성공이 아니다. 명령 생략 시 호환성을 위해 `tasks`를 유지한다. 옛 저장형 `free`/`live`와 standalone 실행은 계속 중단한다. 기존 노트북·저장 출력·실제 성공/실패 결과는 보존하며 새 일반 실행으로 덮어쓰지 않는다.
+
+상세 변경 계획과 실행별 결과는 [B 연결 설계서57·58절](B_MAIN_CONNECTION_DESIGN.md), [B 작업 기록](PROJECT_STATUS.md)을 따른다. 아래는 과거 개발 이력이며 당시 명령·버전·시연 성공은 현재 일반 실행 결과를 뜻하지 않는다.
 
 ## 추가·변경 1
 
@@ -39,7 +139,7 @@ B 문서: [작업 기록](PROJECT_STATUS.md) · [서비스 명세](SERVICE_SPEC.
 
 > 원문 위치: Ontologics 공통 기반 v0.8.0 — PostgreSQL + pgvector (27–119행)
 
-v0.4.0에서 추가한 B-CQ02의 완성 보드 재고·생산 작업·배정·운송과 6상태 현황 계약은 유지한다. v0.5.0은 `ProductionObservation`의 총생산·정상 완료·불량 누계와 공통 Python 계산을 추가한다. 회차에 전량 배정한 단일 작업의 최근 정상 완료 속도를 기준으로 생산 완료만 예상한다. 고객 도착 예상은 별도 CQ04 조회에서 제공하며 CQ02의 부분 완료 작업 미확인 제한도 유지한다. 기존 장착 이력·승인·PostgreSQL 계약과 `temporal-0.1`은 그대로고 예측 규칙은 별도 `production-0.1`이다.
+**과거 v0.4.0~v0.5.0 기록:** v0.4.0에서 추가한 B-CQ02의 완성 보드 재고·생산 작업·배정·운송과 6상태 현황 계약은 유지한다. v0.5.0은 `ProductionObservation`의 총생산·정상 완료·불량 누계와 공통 Python 계산을 추가한다. 회차에 전량 배정한 단일 작업의 최근 정상 완료 속도를 기준으로 생산 완료만 예상한다. 당시 고객 도착 예상은 별도 CQ04 조회에서 제공했고 CQ02의 부분 완료 작업 미확인 제한도 유지했다. 현재의 B 지원 범위는 아래 「새 입력을 터미널에서 CQ01~06 하나씩 실행」을 따른다. 기존 장착 이력·승인·PostgreSQL 계약과 `temporal-0.1`은 그대로고 예측 규칙은 별도 `production-0.1`이다.
 
 CQ05는 Task07의 정의를 Task08 공통 함수와 기본 문안으로 구현했다. 실제 발송·신청 등록·운영 계획 변경은 범위 밖이다. CQ05 Task09는 초기 실패 기록을 보존하고, 추가 승인된 8회 호출로 형식 보완 후 실제 기본·혼합 대표를 재검증했다. Task10 개발 범위 수락도 완료했고 CQ06 Task07은 승인된 전후 입력의 재계산·비교 질문과 독립 정답을 정의했다. CQ06 Task08은 공통 비교 기능·독립 변경 자료·무료 검증을 완료했다. CQ06 Agent와 실제 LLM 검증은 Task09에서 진행하며 기존 CQ05 실제 응답을 새 계약의 검증으로 재사용하지 않는다.
 
@@ -88,7 +188,7 @@ python -m examples.order_fulfillment.b_delivery --mixed --output artifacts/local
 
 각각 새 PostgreSQL 스키마에서 가상 조건·자료의 초안/개발용 사람 검토 대역/반영 후 명시 승인 버전을 조회한다. API 키와 LLM 호출은 없다. 기본 분할 출고 사례는 **기한 내960대·부족40대·전량 도착 예상15:26:40**, 별도 혼합 사례는 **1,000대·부족0대·14:20**이다. 출고 준비/운송/방식과 최근 추세·처리 능력 가정에 따른 예측이며 실제 출하·고객 도착 사실을 만들지 않는다. 조건/관측/확인 범위 부족은null과 이유를 반환한다.
 
-[공통 계약](TOOLS.md#b-cq04-조건부-고객-도착-예상-조회), [기본 정답](../../data/order_fulfillment/b_delivery_expected.json), [혼합 정답](../../data/order_fulfillment/b_delivery_mixed_expected.json)을 따른다. 기존CQ03의 단일 전량 배정 범위와CQ02의 부분 완료 미지원은 유지한다. CQ04 Task09에서 Agent 연결과 실제 기본·혼합 대표 검증을 진행했다. Task10에서 전체448개·설계36개·예제20개를 확인해 위 개발 범위를 수락했다. 실제 모델 반복 신뢰도·운영 납품 보증은 별도다.
+[공통 계약](TOOLS.md#b-cq04-조건부-고객-도착-예상-조회), [기본 정답](../../data/order_fulfillment/b_delivery_expected.json), [혼합 정답](../../data/order_fulfillment/b_delivery_mixed_expected.json)을 따른다. 당시 CQ03의 단일 전량 배정 범위와 CQ02의 부분 완료 미지원은 유지했다. 현재 B의 혼합·부분 완료 지원 범위는 아래 새 입력 안내를 따른다. CQ04 Task09에서 Agent 연결과 실제 기본·혼합 대표 검증을 진행했다. Task10에서 전체448개·설계36개·예제20개를 확인해 위 개발 범위를 수락했다. 실제 모델 반복 신뢰도·운영 납품 보증은 별도다.
 
 ```bash
 # 대역 모델로 실행하며 API 비용이 없다. 출력 파일은 새 경로를 쓴다.
@@ -275,3 +375,88 @@ Task11 최종 검증과 보존 결과는 [B 작업 기록](PROJECT_STATUS.md)의
 ## 2026-10-28 노트북 승인 셀의 중복 시작 안내 수정
 
 두 실제 실행 노트북의 승인 셀에서 기존 live 시작 여부를 먼저 확인하고 현재 상태·5번 답변/6번 검토 안내를 표시한다. 최초 실행의 정확 승인·free gate 및 core 중복 실행 차단은 유지했다. 무료 검사 중·종료·비활성·새 사람 승인 등2노트북×5조건10검사 통과, 실제 API/프로세스/키읽기0. 사용자가 저장한 모든 다른 셀·출력·실행 카운터를 보존했고 B source/helper를 수정하지 않아 실행 중 캠페인과 free gate에 영향을 주지 않는다. 증거: artifacts/local/order_fulfillment/notebook_start_guard_20261028T083456_3b0cbefe/validation.json.
+# 새 입력을 터미널에서 CQ01~06 하나씩 실행
+
+정상 계산을 먼저 확인할 기본 예제는 [예제 안내](../../data/order_fulfillment/examples/README.md)의
+`basic_800_0600.md`(CQ01/02)와 `basic_800_1000.md`(CQ03~06)를 사용한다.
+같은 800개 계약의 06시/10시 관측이며, 아래 혼합 사례와 구분한다.
+무료 계산·모의 연결 통과는 실제 LLM 답변 품질의 성공을 뜻하지 않는다.
+
+`data/order_fulfillment/examples/terminal_800.md`는 기존 1,000개 예제와 다른 새
+800개 가상 사례다. 계약 표와 운영 관측 JSON 하나를 입력으로 받는다. 자연어
+운영 기록을 범용 추출하는 기능은 아니며, CQ01의 새 후보가 뒤 CQ로 자동 전달되는
+파이프라인도 아니다. 각 CQ가 같은 원문을 독립적으로 해석·계산한다.
+
+| 항목 | 입력/계산 기준 |
+| --- | --- |
+| 고객·장소·납기 | 가상고객사 B·제2수령창고·2026-10-30 15:00 한국 시간 |
+| 전체 약속 | 800개 |
+| 기존 납품·운송 | 납품 100개, 운송 중 100개(12:00 도착 예상) |
+| 새 출고 | 600개 = 현재 확보 300개(창고 200+생산 양품 100) + 미래 생산 300개 |
+| 생산 | 배정 400개, 09~10시 양품 증가 100개, 조건부 작업 완료 13:00 |
+| 출고 가정 | 준비 30분, 운송 2시간, 준비되는 대로 분할 출고 |
+| CQ04·05 기대 계산 | 전체 기한 내 750개·지연 50개·전량 15:30; 새 출고만 보면 기한 내 550개·지연 50개 |
+| CQ06 운송 변경 | 2→3시간: 기한 내 750→650개·지연 50→150개·전량 15:30→16:30 |
+
+**현재 기능 범위도 함께 확인한다.** CQ02는 한 회차에 전량 배정된 생산 작업의
+완료분과 미완료분을 구분한다. 위 사례는 생산 완료100개·진행300개이며,
+납품100·운송100·창고200개와 합하여800개다. 생산 완료는 창고 입고나 납품 완료가 아니다.
+일부/다회차 배정은 완료분 귀속이 불명확하므로 미확인으로 남긴다.
+CQ03는 다른 재고·배송 배정이 있어도 요청 생산 작업400개 자체의 조건부 완료13시를
+계산한다. 작업 전량이 요청 회차에 배정되어야 하며 계약 전체의 완료로 확대하지 않는다.
+B 예측 규칙은 `production-0.2`이고 공통 그래프/T-box 버전은 바꾸지 않았다.
+관측 시각 `as_of`와 조회 시각 `queried_at`을 구분하고, 한국어 답변의 날짜·기간은
+읽기 쉽게 표현하도록 지침을 보완했다. 기존 실제 결과는 보존하며 새 지침의 실제
+LLM 답변 품질은 다시 확인해야 한다. CQ04~06의 기존 상세 납품 계산은 유지한다.
+
+터미널에서 저장소 루트와 가상환경을 준비한 다음 아래를 한 번 입력한다.
+
+```bash
+cd /Users/junhwa/Desktop/Ontol/ontologics
+source .venv/bin/activate
+B_INPUT="$PWD/data/order_fulfillment/examples/terminal_800.md"
+B_POLICY="$PWD/artifacts/local/order_fulfillment/b_min_validation_20261030_7_233r2n/public-cost-policy.json"
+cat "$B_INPUT"
+
+b_new_case() {
+  local b_case="$1"
+  local b_output="/private/tmp/b-new-${b_case}-$(date +%Y%m%d-%H%M%S)"
+  python -B -m examples.order_fulfillment.b_run run \
+    --output "$b_output" --input "$B_INPUT" --cost-policy "$B_POLICY" \
+    --case "$b_case" --transport openai --representative-max-cost-usd 1.00
+  local b_result=$?
+  if [ -f "$b_output/shutdown.json" ]; then cat "$b_output/shutdown.json"; fi
+  return "$b_result"
+}
+```
+
+이후 **한 줄씩** 실행하고 한국어 답변·계산·도구 기록·종료를 확인한다. 함수 정의나
+`cat`만으로 유료 호출하지 않는다. 아래 각 함수 호출은 실제 유료 실행 명령이다.
+
+```bash
+b_new_case cq01_intake
+b_new_case cq01_promise
+b_new_case cq02_normal
+b_new_case cq03_normal
+b_new_case cq04_mixed
+b_new_case cq05_mixed
+b_new_case cq06_transport2h
+```
+
+마지막 식별자의 `transport2h`는 기존 CLI 이름이며, `--input`을 썼을 때 실제 비교
+조건은 원문의 `condition.transport_seconds`와 `comparison_transport_seconds`다.
+이번 사례는 2→3시간이다. CQ04/05도 원문이 정하는 혼합 물량을 사용한다.
+
+새 사례의 각 대표 실행 상한은 $1이다. 반복 실행 시 기존 기록의 비용을 확인하고
+남은 금액으로 `--representative-max-cost-usd`를 줄인다. CLI는 서로 다른 과거
+실행의 비용을 자동 합산하지 않는다. 공통 모델·토큰·시간·재시도·가격 정책은 기존
+설정 그대로다. 전체 CQ를 자동 실행하는 함수를 만들거나 실패를 자동 재시도하지 않는다.
+
+직접 입력을 바꾸려면 원본을 다른 이름의 `.md`로 복사하여 계약 표와 JSON을 수정하고
+`B_INPUT`을 그 절대 경로로 바꾼다. 원문은 공통 SourceDocument 무결성 검증을 재사용하기
+위해 `data/order_fulfillment/` 하위에 있어야 한다. 기존 예제·실행 중인 원문은 덮어쓰지 않는다.
+현재 지원하는 새 입력의 CQ 선택지는 위 7개다. 나머지 기존 대표는 `--input` 없이 유지된다.
+
+실행별 `input_source.md`와 `model_plan.json`에 원문과 해시를, `campaign/<case>/input.json`,
+`result.json`에 실제 전달 입력과 결과를 보존한다. 워커의 추가 파일 권한은 선택한 원문
+파일 하나뿐이다. `--input`은 일반 `run`에서만 사용하며 옛 시연의 승인/사전검사 증거와 섞지 않는다.

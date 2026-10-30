@@ -7,7 +7,8 @@ class ModelRuntime(CommonModelRuntime):
     """Keep shared budgets, audits and transactions; select the B gateway locally."""
 
     def __init__(self, service, actor, provider, *, config: ModelConfig,
-                 capture_tool_trace=False, allowed_tools=None):
+                 capture_tool_trace=False, allowed_tools=None, budget=None,
+                 pinned_context=None, final_validator=None, tool_observer=None):
         if allowed_tools is None:
             allowed_tools = tuple(AgentGateway.ALLOWED)
         if (not isinstance(allowed_tools, (list, tuple, set, frozenset))
@@ -20,7 +21,9 @@ class ModelRuntime(CommonModelRuntime):
         # execution fields. Its common-only gateway is then replaced on this B
         # instance, without changing the common class or global allowlist.
         super().__init__(service, actor, provider, config=config,
-                         capture_tool_trace=capture_tool_trace, allowed_tools=('lookup',))
+                         capture_tool_trace=capture_tool_trace, allowed_tools=('lookup',),
+                         budget=budget, pinned_context=pinned_context,
+                         final_validator=final_validator, tool_observer=tool_observer)
         self._gateway = AgentGateway(service, actor, allowed_tools=allowed_tools)
 
     def _model_response(self, response):

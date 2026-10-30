@@ -9,7 +9,9 @@ import unittest
 from pathlib import Path
 
 from ontologics.order_fulfillment.contracts import load_demo_contract
-from ontologics.model import ROOT, SCHEMA_VERSION, graph_jsonld, tbox_turtle, validate_graph
+from ontologics.model import ROOT
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
+from ontologics.order_fulfillment.schema_export import graph_jsonld as b_graph_jsonld, tbox_turtle as b_tbox_turtle
 
 
 WORK = 'work:test:CQ03'
@@ -61,12 +63,12 @@ class ProductionObservationValidationTests(unittest.TestCase):
         self.index = {node['id']: node for node in self.nodes}
 
     def valid(self):
-        result = validate_graph(self.nodes)
+        result = validate_input_graph(self.nodes)
         self.assertTrue(result['valid'], result)
         return result
 
     def invalid(self, code=None):
-        result = validate_graph(self.nodes)
+        result = validate_input_graph(self.nodes)
         self.assertFalse(result['valid'], result)
         if code:
             self.assertIn(code, {item['code'] for item in result['errors']}, result)
@@ -253,13 +255,11 @@ class ProductionObservationValidationTests(unittest.TestCase):
         self.valid()
 
     def test_jsonld_tbox_and_schema_include_observation_relationship(self):
-        self.assertEqual('graph-0.5', SCHEMA_VERSION)
-        graph = graph_jsonld(self.nodes)
+        graph = b_graph_jsonld(self.nodes)
         self.assertEqual({'@type': '@id'}, graph['@context']['production_work_id'])
         node = next(node for node in graph['@graph'] if node['type'] == 'ProductionObservation')
         self.assertEqual('urn:ontologics:entity:' + WORK, node['production_work_id'])
-        self.assertIn('o:ProductionObservation a owl:Class .', tbox_turtle())
-        self.assertEqual(tbox_turtle(), (ROOT / 'ontology/tbox.ttl').read_text())
+        self.assertIn('o:ProductionObservation a owl:Class .', b_tbox_turtle())
 
 
 if __name__ == '__main__':

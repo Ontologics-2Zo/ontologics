@@ -227,7 +227,7 @@ class TransportTests(unittest.TestCase):
         backend = mock.Mock(side_effect=error.HTTPError(transport.ENDPOINT, 503, 'fake', {}, SlowErrorBody()))
         wrapper = transport.Transport(self.ledger, self.case, self.out, backend, offline=False, paid_authorized=True)
         deadline = transport._hard_deadline
-        with mock.patch.object(transport, '_hard_deadline', side_effect=lambda: deadline(.01)):
+        with mock.patch.object(transport, '_hard_deadline', side_effect=lambda *args: deadline(.01)):
             with self.assertRaises(TimeoutError):
                 wrapper(self.req)
         self.assertEqual(backend.call_count, 1)
@@ -299,6 +299,7 @@ class AuthorizationTests(unittest.TestCase):
                     transport.load_authorized_settings('/unused', auth, loader=loader, **self.binding)
                 loader.assert_not_called()
 
+    @mock.patch.object(transport, "require_live_ready", lambda: None)  # unreachable legacy plumbing
     def test_fake_loader_receives_only_fixed_env_file_and_retains_only_key(self):
         loader = mock.Mock(return_value={'OPENAI_API_KEY': 'fake-key-for-offline-test', 'DATABASE_URL': 'ignored', 'OPENAI_MODEL': 'ignored'})
         settings = transport.load_authorized_settings('/unused', self.auth, loader=loader, **self.binding)
@@ -309,6 +310,7 @@ class AuthorizationTests(unittest.TestCase):
         self.assertEqual(settings.max_output_tokens, 1024)
         self.assertFalse(hasattr(settings, 'database_url'))
 
+    @mock.patch.object(transport, "require_live_ready", lambda: None)  # unreachable legacy plumbing
     def test_no_proxy_inheritance_redirect_or_retry(self):
         opener = mock.Mock()
         with mock.patch.object(transport.request, 'build_opener', return_value=SimpleNamespace(open=opener)) as build:

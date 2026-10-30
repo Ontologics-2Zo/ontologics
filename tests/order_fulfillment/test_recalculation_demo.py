@@ -8,7 +8,8 @@ from unittest.mock import patch
 
 from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import AS_OF, CONDITION, SNAPSHOT, WORK, load_demo_delivery
-from ontologics.model import ROOT, validate_graph
+from ontologics.model import ROOT
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
 from ontologics.order_fulfillment.production import production_completion
 from ontologics.order_fulfillment.recalculation_demo import (
     AFTER_AS_OF, CASES, SOURCE_ID, SOURCE_PATH, SOURCE_SHA256, load_demo_recalculation)
@@ -53,7 +54,7 @@ class RecalculationDemoTests(unittest.TestCase):
                 updates = load_demo_recalculation(case)
                 saved = copy.deepcopy(updates)
                 nodes = self.merged(updates)
-                report = validate_graph(nodes)
+                report = validate_input_graph(nodes)
                 self.assertTrue(report['valid'], report)
                 expected = self.golden['cases'][case]
                 at = AFTER_AS_OF[case]
@@ -113,7 +114,7 @@ class RecalculationDemoTests(unittest.TestCase):
         nodes = self.merged(load_demo_recalculation('continued11'))
         index = {n['id']: n for n in nodes}
         index.update({n['id']: n for n in load_demo_recalculation('defects11')})
-        report = validate_graph(list(index.values()))
+        report = validate_input_graph(list(index.values()))
         self.assertFalse(report['valid'])
         self.assertIn('DUPLICATE_PRODUCTION_OBSERVATION', {e['code'] for e in report['errors']})
 

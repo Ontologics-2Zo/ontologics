@@ -1,6 +1,9 @@
 """Offline HTTP boundary tests: no database, environment, or paid requests."""
 import json
 import unittest
+
+from ontologics.harness import BudgetLimits, ExecutionBudget, request_budget
+from ontologics.paid_budget import CostPolicy, ModelPrice
 from dataclasses import replace
 
 from examples.order_fulfillment import b_agent
@@ -28,6 +31,12 @@ class FakeResponse:
 
 class CQ01BoundedTests(unittest.TestCase):
     def setUp(self):
+        # Explicit synthetic pricing for local HTTP doubles; no network allowance.
+        self.cost_policy = CostPolicy('100', (ModelPrice(MODEL, '1', '2', 400000),))
+        self.budget = ExecutionBudget(BudgetLimits(max_model_calls=64), cost_policy=self.cost_policy)
+        scope = request_budget('b-provider-test', self.budget)
+        scope.__enter__()
+        self.addCleanup(scope.__exit__, None, None, None)
         self.settings = OpenAISettings(api_key='offline-test-key', model=MODEL,
                                        timeout_seconds=30, max_output_tokens=1024)
         self.task = {'mode': 'intake', 'source_id': 'source:test',

@@ -1,7 +1,8 @@
 """B-CQ02 snapshot relationships and quantities; no forecast or approval logic."""
 from __future__ import annotations
 
-from ..model import _positive_integer, instant
+from ..model import instant
+from .schema_validation import _positive_integer
 
 
 CONFIRMATION_KEYS = frozenset({

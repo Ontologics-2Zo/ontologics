@@ -1,12 +1,24 @@
 """B schemas compose with common tools without extending their registry."""
+import copy
 import unittest
 
 from ontologics import tool_specs as common
-from ontologics.order_fulfillment import tool_specs as b
+from ontologics import model
+from ontologics.order_fulfillment import schema, tool_specs as b
 from ontologics.order_fulfillment.service import B_TOOLS
 
 
 class ToolSchemaTests(unittest.TestCase):
+    def test_batch_kind_enum_preserves_current_common_and_b_type_order(self):
+        before = copy.deepcopy(model.SCHEMA)
+        common_tool = common.function_tools(('lookup',))
+        spec, = b.function_tools(('lookup_many',))
+        kinds = spec['parameters']['properties']['kind']['enum']
+        self.assertEqual(list(schema.lookup_schema(model.SCHEMA)), kinds)
+        self.assertTrue(set(schema.SCHEMA) <= set(kinds))
+        self.assertEqual(before, model.SCHEMA)
+        self.assertEqual(common_tool, common.function_tools(('lookup',)))
+
     def test_all_b_tools_exist_only_in_b_registry(self):
         specs = b.function_tools(sorted(B_TOOLS))
         self.assertEqual(sorted(B_TOOLS), [spec['name'] for spec in specs])

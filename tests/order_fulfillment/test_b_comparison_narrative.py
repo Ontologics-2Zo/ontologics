@@ -113,9 +113,15 @@ class ComparisonNarrativeTests(unittest.TestCase):
         self.assertIn('기한 내 960대·부족 40대입니다.',text['customer_reply'])
         self.assertIn('전후 변화 확인',text['change_summary'])
 
-    def test_mixed_forecast_known_even_when_direct_production_estimate_is_unknown(self):
+    def test_mixed_forecast_preserves_work_scope_after_production_support_expands(self):
         nodes=build_catalog()['nodes']+load_demo_contract()+load_demo_delivery(mixed=True)
         data=compare_response_plan(nodes,nodes,ROUND,AS_OF,AS_OF,
             before_version=2,after_version=2,queried_at=AS_OF)
-        self.assertEqual('partially_unknown',data['comparison_status'])
+        self.assertEqual('compared',data['comparison_status'])
+        for side in ('before', 'after'):
+            self.assertEqual('forecast', data[side]['production']['status'])
+            self.assertEqual('requested_production_work', data[side]['production']['assessment_scope'])
+            self.assertEqual(500, data[side]['production']['target_quantity'])
+            self.assertEqual('2026-10-27T13:20:00+09:00',
+                             data[side]['production']['estimated_completion_at'])
         self.assertIn('기한 내 1000대·부족 0대입니다.',build_explanation(data)['basic_text']['customer_reply'])

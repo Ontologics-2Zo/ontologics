@@ -49,11 +49,11 @@ def save(path: Path, value) -> None:
 
 
 def source_files() -> list[Path]:
-    # Four known source directories only; no artifact, database or credential scan.
+    # Include main's nested role packages in the sealed code; never artifacts,
+    # databases, credentials or bytecode. Old shallow gates are not reusable.
     paths = []
-    for relative in ('ontologics', 'ontologics/order_fulfillment',
-                     'examples', 'examples/order_fulfillment'):
-        paths.extend(sorted((ROOT / relative).glob('*.py')))
+    for relative in ('ontologics', 'examples'):
+        paths.extend(sorted((ROOT / relative).rglob('*.py')))
     return [checked_path(path) for path in paths]
 
 
@@ -83,9 +83,38 @@ def postgres_bin(explicit: str | None) -> Path:
     return candidate
 
 
+LEGACY_EXECUTION_MESSAGE = (
+    'B_LEGACY_EXECUTION_RETIRED: use python -m examples.order_fulfillment.b_run '
+    'tasks --output /absolute/new/run; input tasks are free validation only')
+
+
+def require_input_tasks(settings):
+    if settings.get('workflow') == 'input_model':
+        from .b_model_run import validate_plan
+        plan = settings.get('model_run')
+        validate_plan(plan)
+        if (settings.get('mode') != ('live' if plan['transport'] == 'openai' else 'free')
+                or any(settings.get(key) is not None for key in ('authorization', 'gate', 'free_gate_sha256'))):
+            raise ValueError('Model run mode must match the sealed plan')
+        return
+    if settings.get('workflow') != 'input_tasks':
+        raise ValueError(LEGACY_EXECUTION_MESSAGE)
+    if (settings.get('mode') != 'free' or any(settings.get(key) is not None
+            for key in ('authorization', 'gate', 'free_gate_sha256'))):
+        raise ValueError('input tasks are free validation only, never paid authorization')
+    if settings.get('model_preflight') is not None:
+        from .b_model_preflight import policy_from_snapshot
+        policy_from_snapshot(settings['model_preflight'])
+
+
 def prepare(output: Path, *, mode: str, cases: list[str], pg_bin: Path,
-            authorization=None, gate=None, gate_hash=None) -> dict:
+            authorization=None, gate=None, gate_hash=None, workflow='legacy',
+            policy_snapshot=None, model_run=None) -> dict:
+    require_input_tasks(dict(workflow=workflow, mode=mode, authorization=authorization,
+                             gate=gate, free_gate_sha256=gate_hash,
+                             model_preflight=policy_snapshot, model_run=model_run))
     output = checked_path(output)
+    inputs_manifest = workflow_inputs(workflow)
     if any(part.startswith('pgdata') or part in {'.pgdata', '.git', '.venv', '.aws', '.ssh'}
            or part.startswith(('task09_', 'task10_')) for part in output.parts):
         raise ValueError('output cannot be inside historical/protected resources')
@@ -98,21 +127,10 @@ def prepare(output: Path, *, mode: str, cases: list[str], pg_bin: Path,
     if not output.parent.is_dir():
         raise ValueError('output parent must already exist')
     # Inspect all immutable inputs before creating resources.
-    inputs = {name: sha(ROOT / name) for name in SAFE_INPUTS}
-    if inputs != SAFE_INPUTS:
+    inputs = {name: sha(ROOT / name) for name in inputs_manifest}
+    if inputs != inputs_manifest:
         raise ValueError('reviewed safe input hash changed')
     sources = source_digest()
-    if mode == 'live':
-        from .b_run_transport import validate_authorization
-        validate_authorization(authorization, run_id=str(output), cases=cases,
-                               free_gate_sha256=gate_hash, source_sha256=sources)
-        if (not gate or gate.get('passed') is not True or
-                gate.get('mode') != 'free' or gate.get('cases') != cases or
-                gate.get('source_sha256') != sources or
-                gate.get('safe_inputs') != inputs or
-                gate.get('actual_api_attempts') != 0 or
-                gate.get('server_stopped') is not True):
-            raise ValueError('matching completed free gate required')
     output.mkdir(mode=0o700)
     for name in ('home', 'temp', 'inputs', 'submissions'):
         (output / name).mkdir(mode=0o700)
@@ -128,7 +146,7 @@ def prepare(output: Path, *, mode: str, cases: list[str], pg_bin: Path,
     sock = Path('/private/tmp') / ('ontol-b-' + token)
     if sock.exists():
         raise ValueError('socket scope already exists')
-    settings = dict(run_id=str(output), mode=mode, cases=cases, output=str(output),
+    settings = dict(run_id=str(output), mode=mode, workflow=workflow, cases=cases, output=str(output),
                     input_root=str(output / 'inputs'), pg_bin=str(pg_bin),
                     socket=str(sock), pgdata=str(output / 'pgdata'),
                     port='56911', user='b_' + token, dbname='b_' + token,
@@ -137,13 +155,19 @@ def prepare(output: Path, *, mode: str, cases: list[str], pg_bin: Path,
                     site_packages=[str(p) for p in (ROOT / '.venv/lib').glob('python*/site-packages')],
                     authorization=authorization, free_gate_sha256=gate_hash,
                     endpoint_ips=[])
+    if model_run is not None:
+        if model_run['run_id'] != str(output) or model_run['cases'] != cases:
+            raise ValueError('The model plan must match this new run')
+        settings['model_run'] = json.loads(json.dumps(model_run))
+        settings['model_evidence_files'] = [str(Path(proof['path']) / name)
+            for proof in (model_run['preflight'], model_run['after']) if proof is not None
+            for name in proof['files']]
+        if 'terminal_input' in model_run:
+            settings['model_evidence_files'].append(str(ROOT / model_run['terminal_input']['path']))
+    if policy_snapshot is not None:
+        settings['model_preflight'] = json.loads(json.dumps(policy_snapshot))
     settings['url'] = ('postgresql://' + settings['user'] + '@/' + settings['dbname'] +
                        '?host=' + quote(str(sock), safe='') + '&port=56911&sslmode=disable&gssencmode=disable')
-    if mode == 'live':
-        settings['endpoint_ips'] = sorted({row[4][0] for row in socket.getaddrinfo(
-            'api.openai.com', 443, socket.AF_INET, socket.SOCK_STREAM)})
-        if not settings['endpoint_ips']:
-            raise ValueError('no pinned endpoint addresses')
     save(output / 'settings.json', settings)
     save(output / 'safe_inputs.json', copied)
     save(output / 'inputs/safe_input_manifest.json', inputs)
@@ -155,16 +179,17 @@ def sandbox_policy(settings: dict) -> str:
     literal = lambda p: '(literal ' + json.dumps(str(p)) + ')'
     subpath = lambda p: '(subpath ' + json.dumps(str(p)) + ')'
     output = Path(settings['output'])
-    files = settings['code_files'] + [str(ROOT / name) for name in SAFE_INPUTS]
+    files = (settings['code_files'] + settings.get('model_evidence_files', [])
+             + [str(ROOT / name) for name in workflow_inputs(settings.get('workflow', 'legacy'))])
     # Restrict user and temporary data even when launching outside Codex.
     lines = ['(version 1)', '(allow default)', '(deny network*)',
              '(deny file-write*)',
              '(allow file-write* ' + subpath(output) + ' ' + subpath(settings['socket']) + ' (literal "/dev/null"))',
              '(deny file-read-data (subpath "/Users") (subpath "/private/tmp") (subpath "/usr/local/var"))',
              '(allow file-read-data ' + ' '.join(literal(p) for p in files) + ')',
-             '(allow file-read-data ' + ' '.join(literal(p) for p in
-                 [ROOT, ROOT / 'examples', ROOT / 'examples/order_fulfillment',
-                  ROOT / 'ontologics', ROOT / 'ontologics/order_fulfillment']) + ')',
+             '(allow file-read-data ' + ' '.join(literal(p) for p in sorted(
+                 {ROOT, *(parent for path in settings['code_files']
+                          for parent in Path(path).parents if parent.is_relative_to(ROOT))})) + ')',
              '(allow file-read-data ' + subpath(output) + ' ' + subpath(settings['socket']) +
              ' ' + ' '.join(subpath(p) for p in settings['site_packages']) + ')',
              '(allow network* (local unix-socket ' + subpath(settings['socket']) +
@@ -179,9 +204,15 @@ def sandbox_policy(settings: dict) -> str:
 
 
 def launch(settings: dict) -> int:
+    require_input_tasks(settings)
     if sys.platform != 'darwin' or not Path('/usr/bin/sandbox-exec').is_file():
         raise RuntimeError('macOS sandbox-exec is required; no unprotected fallback')
     output = Path(settings['output'])
+    if settings.get('workflow') == 'input_model':
+        from .b_model_run import validate_authorization
+        validate_authorization(settings['model_run'], json.loads((output / 'authorization.json').read_text()))
+        # Atomic once-only claim precedes server/process creation; no resume.
+        save(output / 'launch_claim.json', dict(run_id=settings['run_id'], started=True))
     # -I/-B/-S exclude inherited paths, site hooks and bytecode writes.
     code = ('import sys;sys.path[:0]=' + repr([str(ROOT), *settings['site_packages']]) +
             ';from examples.order_fulfillment.b_run_isolation import own_run;'
@@ -204,6 +235,14 @@ def launch(settings: dict) -> int:
 
 def own_run(settings_path: str) -> int:
     settings = json.loads(checked_path(Path(settings_path)).read_text())
+    require_input_tasks(settings)
+    if settings.get('workflow') == 'input_model':
+        from .b_model_run import validate_authorization
+        validate_authorization(settings['model_run'], json.loads(
+            (Path(settings['output']) / 'authorization.json').read_text()))
+        claim = json.loads((Path(settings['output']) / 'launch_claim.json').read_text())
+        if claim != dict(run_id=settings['run_id'], started=True):
+            raise ValueError('Explicit once-only launch required')
     output = Path(settings['output']); pg = Path(settings['pg_bin'])
     socket_path = Path(settings['socket']); data = Path(settings['pgdata'])
     env = clean_environment(output); records = []; pid = None; attempted = False
@@ -215,7 +254,9 @@ def own_run(settings_path: str) -> int:
     def execute(name, args, *, required=True):
         with (output / (name + '.stdout.txt')).open('xb') as stdout, \
                 (output / (name + '.stderr.txt')).open('xb') as stderr:
-            child = subprocess.Popen(args, cwd=ROOT, env=env, stdout=stdout, stderr=stderr)
+            interactive = name == 'campaign' and settings.get('workflow') == 'input_model'
+            child = subprocess.Popen(args, cwd=ROOT, env=env,
+                stdout=None if interactive else stdout, stderr=stderr)
             try:
                 code = child.wait(timeout=None if name == 'campaign' else 60)
             except BaseException:
@@ -290,25 +331,47 @@ def own_run(settings_path: str) -> int:
         save(output / 'processes.json', records)
         signal.signal(signal.SIGTERM, old_term); signal.signal(signal.SIGINT, old_int)
     if not failed and not cleanup_errors and stopped and summary and summary.get('passed') is True:
-        save(output / 'free_gate.json' if settings['mode'] == 'free' else output / 'completion.json',
-             dict(passed=True, mode=settings['mode'], cases=settings['cases'],
+        marker = ('model_validation.json' if settings.get('workflow') == 'input_model' else
+                  'preflight_validation.json' if settings.get('model_preflight') is not None
+                  else 'task_validation.json')
+        validation = dict(passed=True, mode=settings['mode'], cases=settings['cases'],
+                  workflow=settings.get('workflow', 'legacy'),
+                  live_authorization_eligible=False,
                   source_sha256=settings['source_sha256'], safe_inputs=settings['safe_inputs'],
                   actual_api_attempts=summary['actual_api_attempts'], server_stopped=True,
                   summary_sha256=sha(output / 'campaign' / 'summary.json'),
-                  shutdown_sha256=sha(output / 'shutdown.json')))
+                  shutdown_sha256=sha(output / 'shutdown.json'))
+        if settings.get('model_run', {}).get('review_mode') in ('ai_semantic', 'none'):
+            validation.update(review_mode=settings['model_run']['review_mode'], validation_scope='technical',
+                              human_review='not_performed', business_approval='not_performed')
+        save(output / marker, validation)
+        if settings.get('model_preflight') is not None:
+            from .b_model_preflight import pending_authorization
+            save(output / 'authorization_pending.json', pending_authorization(settings, summary))
         return 0
     return 1
 
 
 def guarded_campaign(settings_path: str) -> int:
     settings = json.loads(checked_path(Path(settings_path)).read_text())
+    require_input_tasks(settings)
+    if settings.get('workflow') == 'input_model' and settings['mode'] == 'live':
+        import ipaddress
+        addresses = json.loads((Path(settings['output']) / 'endpoint_ips.json').read_text())
+        if (not isinstance(addresses, list) or not addresses or len(addresses) > 32
+                or any(not isinstance(value, str) or not ipaddress.IPv4Address(value).is_global
+                       for value in addresses)):
+            raise ValueError('Explicit public endpoint IPv4 addresses required')
+        settings['endpoint_ips'] = addresses
     output = Path(settings['output']); events = []; connections = []; connection_rejections = []
     sys.pycache_prefix = str(output / 'bytecode')
     key_window = False; send_window = False
     def terminate(signum, frame):
         raise RuntimeError('campaign interrupted')
     old_term = signal.signal(signal.SIGTERM, terminate)
-    allowed = frozenset(settings['code_files'] + [str(ROOT / name) for name in SAFE_INPUTS])
+    inputs_manifest = workflow_inputs(settings.get('workflow', 'legacy'))
+    allowed = frozenset(settings['code_files'] + [str(ROOT / name) for name in inputs_manifest])
+    allowed = allowed | frozenset(settings.get('model_evidence_files', []))
     pgdata = Path(settings['pgdata'])
     key_path = ROOT / '.env.local'
 
@@ -393,65 +456,69 @@ def guarded_campaign(settings_path: str) -> int:
     socket.getaddrinfo = pinned_resolver
     try:
         if source_digest() != settings['source_sha256'] or {
-            name: sha(Path(settings['input_root']) / name) for name in SAFE_INPUTS
-        } != settings['safe_inputs'] or {name: sha(ROOT / name) for name in SAFE_INPUTS} != settings['safe_inputs'] or json.loads(
+            name: sha(Path(settings['input_root']) / name) for name in inputs_manifest
+        } != settings['safe_inputs'] or {name: sha(ROOT / name) for name in inputs_manifest} != settings['safe_inputs'] or json.loads(
             (Path(settings['input_root']) / 'safe_input_manifest.json').read_text()
         ) != settings['safe_inputs']:
             raise ValueError('sealed code/input changed before campaign')
-        from .b_run_workflow import run_campaign
-        backend = None; provider_settings = None
-        if settings['mode'] == 'live':
-            from .b_run_transport import load_authorized_settings, AuthorizedBackend
-            kwargs = dict(run_id=settings['run_id'], cases=settings['cases'],
-                          free_gate_sha256=settings['free_gate_sha256'], source_sha256=settings['source_sha256'])
-            key_window = True
-            try:
-                provider_settings = load_authorized_settings(ROOT, settings['authorization'], **kwargs)
-            finally:
-                key_window = False
-            actual = AuthorizedBackend(provider_settings, settings['authorization'], **kwargs)
-            from contextlib import contextmanager
-
-            @contextmanager
-            def backend(req, *, timeout):
-                nonlocal send_window
-                if (output / 'submissions/stop.json').exists():
-                    raise RuntimeError('operator stopped run')
-                send_window = True
+        if settings.get('workflow') == 'input_model':
+            from . import b_model_run
+            from ontologics.database import DatabaseSettings
+            from ontologics.openai_provider import ENDPOINT, OpenAISettings, _NoRedirect
+            from urllib import request
+            plan = settings['model_run']
+            if plan['run_id'] != str(output) or plan['cases'] != settings['cases']:
+                raise ValueError('The sealed model plan does not match the owner')
+            approval = json.loads((output / 'authorization.json').read_text())
+            b_model_run.validate_authorization(plan, approval)
+            live_settings = None
+            live_opener = None
+            if settings['mode'] == 'live':
+                if not settings['endpoint_ips']:
+                    raise ValueError('No approved endpoint addresses')
+                key_window = True
                 try:
-                    with actual(req, timeout=timeout) as response:
-                        yield response
+                    checked_path(key_path)
+                    live_settings = OpenAISettings.from_environment(key_path, environ={})
                 finally:
-                    send_window = False
-
-        def wait_review(request):
-            # Operator/independent reviewer writes the requested exact-bound JSON.
-            # Timeouts stop the run and the owning process shuts its DB down.
-            import time
-            if (output / 'submissions/stop.json').exists():
-                raise RuntimeError('operator stopped run')
-            kind = request['kind']; case = request['case']
-            path = output / 'submissions' / (case + '-' + kind + '.json')
-            save(output / 'submissions' / (case + '-' + kind + '.requested.json'), request)
-            deadline = time.monotonic() + 3600
-            while not path.exists():
-                if (output / 'submissions' / 'stop.json').exists():
-                    raise RuntimeError('operator stopped run')
-                if time.monotonic() >= deadline:
-                    raise TimeoutError('review wait expired')
-                time.sleep(1)
-            if (output / 'submissions/stop.json').exists():
-                raise RuntimeError('operator stopped run')
-            checked_path(path)
-            if path.stat().st_size > 64_000:
-                raise ValueError('review JSON too large')
-            return json.loads(path.read_text())
-
-        summary = run_campaign(database_url=settings['url'], input_root=Path(settings['input_root']),
-                               output=output / 'campaign', cases=settings['cases'],
-                               offline=settings['mode'] == 'free', settings=provider_settings,
-                               backend=backend, review_wait=wait_review if settings['mode'] == 'live' else None)
-        return 0 if summary.get('passed') is True and not events else 1
+                    key_window = False
+                if (live_settings.timeout_seconds != 30 or live_settings.max_output_tokens != 4096):
+                    raise ValueError('Local key configuration does not match the approved profile')
+                # Explicitly disable ambient proxy discovery. Common provider
+                # still owns payloads, retry/error handling and cost accounting.
+                opener = request.build_opener(request.ProxyHandler({}), _NoRedirect()).open
+                def live_opener(req, timeout):
+                    nonlocal send_window
+                    if req.full_url != ENDPOINT:
+                        raise ValueError('Unexpected model endpoint')
+                    b_model_run.validate_authorization(plan, approval)
+                    send_window = True
+                    try:
+                        return opener(req, timeout=timeout)
+                    finally:
+                        send_window = False
+            database = DatabaseSettings(settings['url'], 'b_model_' + uuid.uuid4().hex)
+            review = (None if plan.get('review_mode') == 'none' else
+                      b_model_run.terminal_ai_review if plan.get('review_mode') == 'ai_semantic'
+                      else b_model_run.terminal_review)
+            summary = b_model_run.run_campaign(database=database, output=output / 'campaign',
+                plan=plan, approval=approval, review=review,
+                live_settings=live_settings, live_opener=live_opener)
+            return 0 if summary.get('passed') is True and not events else 1
+        if settings.get('workflow') == 'input_tasks':
+            if settings['mode'] != 'free' or settings.get('authorization') is not None:
+                raise ValueError('input tasks cannot enter paid execution')
+            from ontologics.database import DatabaseSettings
+            database = DatabaseSettings(settings['url'], 'b_tasks_' + uuid.uuid4().hex)
+            if settings.get('model_preflight') is not None:
+                from .b_model_preflight import run_preflight
+                summary = run_preflight(database=database, output=output / 'campaign',
+                    cases=settings['cases'], policy_snapshot=settings['model_preflight'])
+            else:
+                from .b_task_workflow import run_campaign
+                summary = run_campaign(database=database,
+                                       output=output / 'campaign', cases=settings['cases'])
+            return 0 if summary.get('passed') is True and not events else 1
     except BaseException as error:
         save(output / 'campaign_failure.json', dict(error_type=type(error).__name__, stopped=True,
                                                    automatic_paid_rerun=False))
@@ -468,7 +535,7 @@ def guarded_campaign(settings_path: str) -> int:
 
 # Fixed reviewed synthetic/source inputs. Updated only with an explicit fixture review.
 SAFE_INPUTS = {
-    "data/catalog.json": "c71e28685b4a6a2cfec1e9ed3616a341d9a03ad28120577bb5c618888e67ec98",
+    "data/catalog.json": "9884378d9879aab8175512c8c6758360715552bb403e7fb86d88af074dd0775c",
     "data/demo_records.json": "bf87153316dab7ed6e073d6edc7f4d378a5732c393f95c9c56e90751fdd1ca3c",
     "data/initial_graph.jsonld": "6e1fa833e64e67aebe7f5c8560848acc77f485b216e00f86f712fd2ad1ba55a5",
     "data/order_fulfillment/b_contract_expected.json": "eff8576170062bca019371d00fb9c3c52872e0815a48cf7887422472f5d4bed1",
@@ -506,3 +573,19 @@ SAFE_INPUTS = {
     "data/sources/manifest.json": "b676e91e3e6cd51ac3ebecedb3c40971879baf228a8af7890aec99a91471401e",
     "ontology/tbox.ttl": "f478550b606de4cedde1251cf2e1a0ff4406b1230723a7e7a0e39a59465f8e92"
 }
+
+
+# The input-only path consumes no generated graphs, T-box, or golden answers.
+# Keep every selected byte hash from the reviewed legacy inputs; do not update
+# the legacy manifest when its graph version disagrees with the current tree.
+TASK_INPUTS = {name: value for name, value in SAFE_INPUTS.items()
+               if name.startswith('data/') and not name.endswith(('_graph.jsonld', '_expected.json'))
+               and name not in {'data/initial_graph.jsonld', 'data/demo_records.json'}}
+
+
+def workflow_inputs(workflow):
+    if workflow == 'legacy':
+        return SAFE_INPUTS
+    if workflow in ('input_tasks', 'input_model'):
+        return TASK_INPUTS
+    raise ValueError('Unknown trusted B workflow')

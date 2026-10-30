@@ -6,7 +6,9 @@ import unittest
 
 from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import load_demo_delivery
-from ontologics.model import ROOT, SCHEMA_VERSION, graph_jsonld, tbox_turtle, validate_graph
+from ontologics.model import ROOT
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
+from ontologics.order_fulfillment.schema_export import graph_jsonld as b_graph_jsonld, tbox_turtle as b_tbox_turtle
 
 ROUND='delivery-round:demo:B-01:1'
 
@@ -23,12 +25,12 @@ class DeliveryConditionValidationTests(unittest.TestCase):
         self.index={n['id']:n for n in self.nodes}
 
     def valid(self):
-        report=validate_graph(self.nodes)
+        report=validate_input_graph(self.nodes)
         self.assertTrue(report['valid'],report)
         return report
 
     def invalid(self,code=None):
-        report=validate_graph(self.nodes)
+        report=validate_input_graph(self.nodes)
         self.assertFalse(report['valid'],report)
         if code:self.assertIn(code,{e['code'] for e in report['errors']},report)
         return report
@@ -167,13 +169,11 @@ class DeliveryConditionValidationTests(unittest.TestCase):
                 self.assertTrue(evidence['locator'])
 
     def test_schema_tbox_and_jsonld_expose_typed_condition_relationships(self):
-        self.assertEqual('graph-0.5',SCHEMA_VERSION)
-        graph=graph_jsonld(self.nodes)
+        graph=b_graph_jsonld(self.nodes)
         condition=next(n for n in graph['@graph'] if n['type']=='DeliveryCondition')
         self.assertEqual('urn:ontologics:entity:'+self.snapshot['id'],condition['snapshot_id'])
         self.assertEqual('urn:ontologics:entity:'+ROUND,condition['delivery_round_id'])
-        self.assertIn('o:DeliveryCondition a owl:Class .',tbox_turtle())
-        self.assertEqual(tbox_turtle(),(ROOT/'ontology/tbox.ttl').read_text())
+        self.assertIn('o:DeliveryCondition a owl:Class .',b_tbox_turtle())
 
 
 if __name__=='__main__':

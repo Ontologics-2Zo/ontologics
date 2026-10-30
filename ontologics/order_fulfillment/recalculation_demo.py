@@ -41,3 +41,26 @@ def load_demo_recalculation(case='continued11'):
             or source.get('path') != SOURCE_PATH or source.get('sha256') != SOURCE_SHA256):
         raise ValueError('CQ06 SourceDocument metadata differs from the pinned source')
     return nodes
+
+
+def load_demo_recalculation_input(case='continued11'):
+    """Build one independent, unregistered CQ06 input from the CQ04 baseline.
+
+    The existing loader returns only updates, not the full input. Always reload
+    the unchanged baseline here so alternative cases are never stacked. Nodes
+    with existing IDs are replaced, new IDs are added, and duplicate IDs within
+    either source list are rejected rather than silently discarded.
+    """
+    from .contracts import load_demo_contract
+    from .delivery_demo import load_demo_delivery
+
+    baseline = (json.loads((ROOT / 'data/catalog.json').read_text())['nodes']
+                + load_demo_contract() + load_demo_delivery())
+    updates = load_demo_recalculation(case)
+    for nodes in (baseline, updates):
+        ids = [node['id'] for node in nodes]
+        if len(ids) != len(set(ids)):
+            raise ValueError('CQ06 baseline and updates must each have unique node IDs')
+    index = {node['id']: node for node in baseline}
+    index.update({node['id']: node for node in updates})
+    return list(index.values())

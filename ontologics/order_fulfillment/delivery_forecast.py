@@ -1,8 +1,9 @@
-"""Conditional customer-arrival arithmetic over one explicit confirmed snapshot.
+"""Conditional customer-arrival arithmetic over one explicit source-backed input.
 
 No prediction is written as a shipment, production completion or actual arrival.
 Real records and synthetic calculations retain their distinct meanings. The
-approved graph and caller identity/version are supplied by the common Service.
+common Service supplies approval/identity/version when used through storage;
+the pure input calculation itself grants none of those authorities.
 """
 from __future__ import annotations
 
@@ -10,7 +11,8 @@ from datetime import timedelta
 from fractions import Fraction
 
 from .fulfillment_validation import CONFIRMATION_KEYS
-from ..model import instant, validate_graph
+from ..model import instant
+from .schema_validation import validate_input_graph
 from .production import calculate_completion
 
 FORECAST_RULE_VERSION = 'delivery-0.1'
@@ -36,7 +38,7 @@ def delivery_forecast(nodes, delivery_round_id, as_of, *, queried_at):
     instant(queried_at)
     if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
         raise ValueError('An explicit nonempty delivery round ID is required')
-    report = validate_graph(nodes)
+    report = validate_input_graph(nodes)
     if not report['valid']:
         raise ValueError(report)
     index = {n['id']: n for n in nodes}

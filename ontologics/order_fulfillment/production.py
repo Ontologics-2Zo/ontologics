@@ -1,6 +1,6 @@
 """Conditional production completion for one fully allocated synthetic work.
 
-Common Python owns arithmetic, snapshot scope and unknowns. No estimated counts,
+B business code owns arithmetic, snapshot scope and unknowns. No estimated counts,
 completion events, state transitions, arrivals or approvals are persisted here.
 """
 from __future__ import annotations
@@ -11,9 +11,10 @@ import hashlib
 import json
 
 from .fulfillment_validation import _nonnegative_integer
-from ..model import ROOT, _positive_integer, instant, validate_graph
+from .schema_validation import _positive_integer, validate_input_graph
+from ..model import ROOT, instant
 
-FORECAST_RULE_VERSION = 'production-0.1'
+FORECAST_RULE_VERSION = 'production-0.2'
 WORK = 'work:demo:CQ03:main'
 ROUND = 'delivery-round:demo:B-01:1'
 SNAPSHOT = 'snapshot:demo:CQ03:10'
@@ -91,18 +92,18 @@ def calculate_completion(previous, current, target_quantity):
 
 
 def production_completion(nodes, production_work_id, delivery_round_id, as_of, *, queried_at):
-    """Read one explicit instant of one confirmed graph; never silently use latest.
+    """Read one explicit input instant; never silently use latest or imply approval.
 
-    Existing valid split allocations/stale work remain valid stored facts but are
-    outside this query's first format. Missing observations/coverage stay unknown;
-    contradictory graph facts fail before interval selection.
+    The requested work must be fully assigned to this round. Other round sources
+    do not enter its production forecast. Split work assignments/stale work stay
+    unknown; contradictory graph facts fail before interval selection.
     """
     requested = instant(as_of)
     instant(queried_at)
     for value in (production_work_id, delivery_round_id):
         if not isinstance(value, str) or not value.strip():
             raise ValueError('Explicit nonempty work and delivery round IDs are required')
-    report = validate_graph(nodes)
+    report = validate_input_graph(nodes)
     if not report['valid']:
         raise ValueError(report)
     index = {n['id']: n for n in nodes}
@@ -120,6 +121,7 @@ def production_completion(nodes, production_work_id, delivery_round_id, as_of, *
     evidence = {e for n in (work, delivery, item, contract, config, revision, product, snapshot)
                 for e in n['evidence']}
     result = dict(status='needs_confirmation', forecast_rule_version=FORECAST_RULE_VERSION,
+        assessment_scope='requested_production_work',
         production_work_id=production_work_id, delivery_round_id=delivery_round_id,
         snapshot_id=snapshot['id'], as_of=as_of, queried_at=queried_at,
         available_as_of=[snapshot['as_of']], configuration_id=config['id'], unit=work['unit'],
@@ -137,7 +139,7 @@ def production_completion(nodes, production_work_id, delivery_round_id, as_of, *
             detail='Conditional estimate assumes continued recent interval production without interruption.',
             evidence=list(work['evidence'])),
             dict(code='GOOD_UNITS_USABLE', kind='calculation_condition',
-            detail='Conditional estimate assumes good units are usable for this fully allocated round.',
+            detail='Conditional estimate assumes good units of this fully allocated work are usable for the round.',
             evidence=list(work['evidence']))],
         evidence=[], unknowns=[], warnings=[dict(code='CONDITIONAL_PRODUCTION_ONLY',
             detail='No actual first completion, operating time, dispatch, customer arrival or delivery feasibility is established.')])
@@ -170,8 +172,7 @@ def production_completion(nodes, production_work_id, delivery_round_id, as_of, *
     evidence.update(e for n in result['allocations'] for e in n['evidence'])
     full_work = (bool(work_allocations)
         and all(n['delivery_round_id'] == delivery_round_id for n in work_allocations)
-        and all(n.get('production_work_id') == production_work_id for n in round_allocations)
-        and sum(n['quantity'] for n in work_allocations) == work['target_quantity'] == delivery['quantity'])
+        and sum(n['quantity'] for n in work_allocations) == work['target_quantity'])
     if not full_work:
         unknown(work['id'], 'allocations', 'SINGLE_WORK_FULL_ALLOCATION_REQUIRED')
     if work['production_state'] != 'in_progress':

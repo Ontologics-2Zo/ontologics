@@ -12,7 +12,8 @@ from unittest.mock import patch
 from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import load_demo_delivery
 from ontologics.order_fulfillment.delivery_forecast import delivery_forecast
-from ontologics.model import ROOT, instant, validate_graph
+from ontologics.model import ROOT, instant
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
 from ontologics.order_fulfillment.response_plan import response_plan
 
 AS_OF = '2026-10-27T10:00:00+09:00'
@@ -175,7 +176,7 @@ class ResponsePlanTests(unittest.TestCase):
                 else:
                     next(n for n in self.nodes if n['type'] == 'Shipment' and 'arrived_at' not in n)[
                         'expected_arrival_at'] = '2026-10-27T09:59:59+09:00'
-                self.assertTrue(validate_graph(self.nodes)['valid'])
+                self.assertTrue(validate_input_graph(self.nodes)['valid'])
                 self.expect_unassessed(self.query())
 
     def test_D16_confirmed_empty_is_zero_but_missing_coverage_is_unknown(self):

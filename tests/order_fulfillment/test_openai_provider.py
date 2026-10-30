@@ -3,6 +3,9 @@ import hashlib
 import io
 import json
 import unittest
+
+from ontologics.harness import BudgetLimits, ExecutionBudget, request_budget
+from ontologics.paid_budget import CostPolicy, ModelPrice
 from urllib.error import HTTPError, URLError
 
 from ontologics.openai_provider import OpenAIProvider as CommonOpenAIProvider
@@ -14,6 +17,14 @@ from tests.test_openai_provider import SECRET, Transport, response, text, tool
 
 
 class ProviderTests(unittest.TestCase):
+    def setUp(self):
+        # Synthetic prices and explicit local HTTP doubles, never a paid request.
+        self.cost_policy = CostPolicy('100', (ModelPrice(MODEL, '1', '2', 400000),))
+        self.budget = ExecutionBudget(BudgetLimits(max_model_calls=64), cost_policy=self.cost_policy)
+        scope = request_budget('b-provider-test', self.budget)
+        scope.__enter__()
+        self.addCleanup(scope.__exit__, None, None, None)
+
     def provider(self, items, tools=('lookup',), **kwargs):
         transport = Transport(items)
         return OpenAIProvider(OpenAISettings(SECRET), tools, opener=transport, **kwargs), transport
@@ -51,6 +62,44 @@ class ProviderTests(unittest.TestCase):
         self.assertIs(True, provider.public_config()['parallel_tool_calls'])
         self.assertIs(False, provider.settings.public_config()['parallel_tool_calls'])
         self.assertNotIn(SECRET, json.dumps(provider.public_config()))
+
+    def test_initial_lookup_is_required_until_its_result_then_returns_to_auto(self):
+        provider, transport = self.provider([ConnectionError('temporary'),
+            response([tool(args={'kind': 'ProductModel', 'version': 1})]),
+            response([text('final')])], require_initial_lookup=True)
+        messages = [{'role': 'user', 'content': 'Explain the comparison.'}]
+        with self.assertRaises(ConnectionError):
+            provider(model=MODEL, messages=messages)
+        first = provider(model=MODEL, messages=messages)
+        messages += [{'role': 'assistant', 'content': first['text'], 'tool_calls': first['tool_calls']},
+                     {'role': 'tool', 'name': 'lookup', 'call_index': 0, 'content': '{"ok":true}'}]
+        provider(model=MODEL, messages=messages)
+        self.assertEqual(['required', 'required', 'auto'],
+                         [json.loads(req.data)['tool_choice'] for req, _ in transport.requests])
+        self.assertTrue(provider.public_config()['require_initial_lookup'])
+        for (req, _), event in zip(transport.requests, provider.calls):
+            self.assertEqual(hashlib.sha256(req.data).hexdigest(), event['request_hash'])
+
+    def test_initial_lookup_option_rejects_invalid_config_before_transport(self):
+        for invalid in (None, 0, 1, 'true'):
+            with self.subTest(invalid=invalid), self.assertRaises(ProviderError):
+                self.provider([], require_initial_lookup=invalid)
+        for tools in (('delivery_forecast',), ('lookup', 'delivery_forecast')):
+            with self.subTest(tools=tools), self.assertRaises(ProviderError):
+                self.provider([], tools=tools, require_initial_lookup=True)
+
+    def test_usage_detail_filter_matches_common_adapter(self):
+        for cached, reasoning in ((8, 3), (-1, -1), (True, True), (13, 6), ('8', '3')):
+            with self.subTest(cached=cached, reasoning=reasoning):
+                body = response([text()], usage=dict(input_tokens=12, output_tokens=5, total_tokens=17,
+                    input_tokens_details=dict(cached_tokens=cached, secret=SECRET),
+                    output_tokens_details=dict(reasoning_tokens=reasoning, secret=SECRET)))
+                provider, _ = self.provider([body])
+                common = CommonOpenAIProvider(OpenAISettings(SECRET), ('lookup',), opener=Transport([body]))
+                provider(model=MODEL, messages=[])
+                common(model=MODEL, messages=[])
+                self.assertEqual(common.calls[0]['usage'], provider.calls[0]['usage'])
+                self.assertNotIn(SECRET, json.dumps(provider.calls))
 
     def test_parallel_tools_requires_a_real_boolean_before_any_transport_request(self):
         for invalid in (0, 1, 0.0, 1.0, None, 'true', [], {}):

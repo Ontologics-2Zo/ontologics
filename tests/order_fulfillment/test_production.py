@@ -5,7 +5,8 @@ import json
 import unittest
 
 from ontologics.order_fulfillment.contracts import load_demo_contract
-from ontologics.model import ROOT, validate_graph
+from ontologics.model import ROOT
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
 from ontologics.order_fulfillment.production import (AS_OF, ROUND, SNAPSHOT, WORK, SOURCE_PATH, SOURCE_SHA256,
     calculate_completion, load_demo_production, production_completion)
 
@@ -91,7 +92,7 @@ class ProductionCompletionTests(unittest.TestCase):
 
     def test_07_missing_latest_does_not_substitute_work_count_or_compare_different_instants(self):
         self.remove(self.latest['id'])
-        self.assertTrue(validate_graph(self.nodes)['valid'])
+        self.assertTrue(validate_input_graph(self.nodes)['valid'])
         r = self.query()
         self.assert_unknown(r, 'LATEST_OBSERVATION_REQUIRED')
         self.assertEqual(600, r['work_completed_quantity'])
@@ -224,9 +225,43 @@ class ProductionCompletionTests(unittest.TestCase):
                 else:
                     idx[ROUND]['quantity'] = 900
                     allocation['quantity'] = 900
-                report = validate_graph(self.nodes)
+                report = validate_input_graph(self.nodes)
                 self.assertTrue(report['valid'], report)
                 self.assert_unknown(self.query(), 'SINGLE_WORK_FULL_ALLOCATION_REQUIRED')
+
+    def test_mixed_round_forecasts_only_the_fully_allocated_requested_work(self):
+        from examples.order_fulfillment import b_terminal_input as terminal
+        value = terminal.load_input(ROOT / 'data/order_fulfillment/examples/terminal_800.md')
+        data = terminal.validate_input(value)
+        _, _, _, nodes, round_id, work_id = terminal._nodes(value, data)
+        before = copy.deepcopy(nodes)
+        response = production_completion(nodes, work_id, round_id, data['as_of'],
+                                         queried_at=data['queried_at'])
+        self.assertEqual('forecast', response['status'])
+        self.assertEqual('requested_production_work', response['assessment_scope'])
+        self.assertEqual((400, 100, 300, 100.0, '2026-10-30T13:00:00+09:00'), tuple(
+            response[key] for key in ('target_quantity', 'latest_good_quantity', 'remaining_quantity',
+                                      'good_rate_per_hour', 'estimated_completion_at')))
+        self.assertEqual(800, response['promise']['delivery_round']['quantity'])
+        self.assertFalse(response['fulfillment_assessed'])
+        self.assertIsNone(response['actual_completion_at'])
+        self.assertEqual([], response['unknowns'])
+        self.assertEqual(before, nodes)
+
+    def test_other_fully_allocated_work_in_round_does_not_enter_requested_work_forecast(self):
+        self.index['contract-item:demo:B-01:1']['quantity'] = 1400
+        self.index[ROUND]['quantity'] = 1400
+        other = dict(self.work, id='work:other', target_quantity=400, completed_quantity=0)
+        self.nodes += [other, dict(self.allocation, id='allocation:other',
+                                  production_work_id=other['id'], quantity=400)]
+        self.assertTrue(validate_input_graph(self.nodes)['valid'])
+        response = self.query()
+        self.assertEqual('forecast', response['status'])
+        self.assertEqual((1000, 600, 400, 90.0, '2026-10-27T14:26:40+09:00'), tuple(
+            response[key] for key in ('target_quantity', 'latest_good_quantity', 'remaining_quantity',
+                                      'good_rate_per_hour', 'estimated_completion_at')))
+        self.assertEqual(['observation:demo:CQ03:09', 'observation:demo:CQ03:10'],
+                         response['selected_observation_ids'])
 
     def test_22_exact_ratio_final_second_ceiling(self):
         self.previous.update(produced_quantity=993, good_quantity=992, defective_quantity=1)
@@ -260,7 +295,7 @@ class ProductionCompletionTests(unittest.TestCase):
         self.work['completed_quantity'] = 0
         for state in ('ready','waiting'):
             self.work['production_state'] = state
-            self.assertTrue(validate_graph(self.nodes)['valid'])
+            self.assertTrue(validate_input_graph(self.nodes)['valid'])
             self.assert_unknown(self.query(), 'WORK_NOT_STARTED')
         self.work['started_at'] = '2026-10-27T08:00:00+09:00'
         with self.assertRaises(ValueError):
@@ -269,7 +304,7 @@ class ProductionCompletionTests(unittest.TestCase):
     def test_stale_work_and_corresponding_old_observation_do_not_answer_new_snapshot(self):
         self.remove(self.latest['id'])
         self.work.update(observed_at=self.previous['observed_at'], completed_quantity=510)
-        self.assertTrue(validate_graph(self.nodes)['valid'])
+        self.assertTrue(validate_input_graph(self.nodes)['valid'])
         r = self.query()
         self.assert_unknown(r, 'WORK_STATE_NOT_CURRENT')
         self.assertIsNone(r['remaining_quantity'])
@@ -279,7 +314,7 @@ class ProductionCompletionTests(unittest.TestCase):
         for key in REQUIRED_CONFIRMATIONS:
             with self.subTest(key=key):
                 saved=self.snapshot['confirmations'].pop(key)
-                self.assertTrue(validate_graph(self.nodes)['valid'])
+                self.assertTrue(validate_input_graph(self.nodes)['valid'])
                 self.assert_unknown(self.query(),'COVERAGE_NOT_CONFIRMED')
                 self.snapshot['confirmations'][key]=saved
         # Unclaimed stock/shipment event coverage is not invented or required.

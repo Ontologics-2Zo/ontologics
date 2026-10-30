@@ -10,11 +10,12 @@ from copy import deepcopy
 from datetime import timedelta
 
 from .. import __version__
-from ..model import SCHEMA_VERSION, instant
+from ..model import SCHEMA_VERSION, digest, instant
 from .production import production_completion
 from .response_plan import response_plan
 
 COMPARISON_RULE_VERSION = 'comparison-0.1'
+INPUT_COMPARISON_VERSION = 'input-comparison-0.1'
 _DISPATCH_QUANTITIES = (
     'delivered_quantity', 'in_transit_quantity', 'new_dispatch_quantity',
     'on_time_new_dispatch_quantity', 'later_new_dispatch_quantity',
@@ -86,12 +87,12 @@ def _scope(nodes, forecast):
     return fingerprint, works, related_by_id
 
 
-def _side(nodes, rid, as_of, version, queried_at):
+def _side(nodes, rid, as_of, queried_at):
     response = response_plan(nodes, rid, as_of, queried_at=queried_at)
     scope, works, related = _scope(nodes, response['forecast'])
     production = (production_completion(nodes, works[0]['id'], rid, as_of, queried_at=queried_at)
                   if len(works) == 1 else None)
-    return ({'data_version': version, 'as_of': response['forecast']['as_of'],
+    return ({'as_of': response['forecast']['as_of'],
              'response_plan': response, 'production': production}, scope, related)
 
 
@@ -138,22 +139,15 @@ def compare_response_plan(before_nodes, after_nodes, delivery_round_id, before_a
         raise ComparisonError('INVALID_VERSION', 'Explicit nonnegative integer versions are required')
     if after_version < before_version:
         raise ComparisonError('INVALID_VERSION', 'After version must not precede before version')
-    if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
-        raise ComparisonError('INVALID_INPUT', 'An explicit nonempty delivery round ID is required')
-    try:
-        before_at, after_at = instant(before_as_of), instant(after_as_of)
-        instant(queried_at)
-    except (TypeError, ValueError) as exc:
-        raise ComparisonError('INVALID_TIME', str(exc)) from exc
-    if after_at < before_at:
-        raise ComparisonError('INVALID_TIME', 'After as_of must not precede before as_of')
+    before_at, after_at = _comparison_times(
+        delivery_round_id, before_as_of, after_as_of, queried_at)
     if before_version == after_version and before_at != after_at:
         raise ComparisonError('INVALID_TIME', 'One data version must be compared at one explicit instant')
 
     before, before_scope, before_related = _side(
-        before_nodes, delivery_round_id, before_as_of, before_version, queried_at)
+        before_nodes, delivery_round_id, before_as_of, queried_at)
     after, after_scope, after_related = _side(
-        after_nodes, delivery_round_id, after_as_of, after_version, queried_at)
+        after_nodes, delivery_round_id, after_as_of, queried_at)
     if before_version == after_version:
         before_index = {n['id']: n for n in before_nodes}
         after_index = {n['id']: n for n in after_nodes}
@@ -163,6 +157,31 @@ def compare_response_plan(before_nodes, after_nodes, delivery_round_id, before_a
         raise ComparisonError('INCOMPARABLE_INPUTS',
                               'Comparison requires the same promise, identity, sources, allocations and shipment plan')
 
+    before['data_version'], after['data_version'] = before_version, after_version
+    result = _compare_sides(before, after, delivery_round_id, queried_at,
+                            before_related, after_related)
+    result.update(contract_version=__version__, schema_version=SCHEMA_VERSION)
+    result['limitations'].insert(0,
+        'Previous approved inputs are recalculated with the same current rules, not historical model output.')
+    result['limitations'].append(
+        'No automatic refresh, notification, schedule optimisation or unapproved-input preview.')
+    return result
+
+
+def _comparison_times(delivery_round_id, before_as_of, after_as_of, queried_at):
+    if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
+        raise ComparisonError('INVALID_INPUT', 'An explicit nonempty delivery round ID is required')
+    try:
+        before_at, after_at = instant(before_as_of), instant(after_as_of)
+        instant(queried_at)
+    except (TypeError, ValueError) as exc:
+        raise ComparisonError('INVALID_TIME', str(exc)) from exc
+    if after_at < before_at:
+        raise ComparisonError('INVALID_TIME', 'After as_of must not precede before as_of')
+    return before_at, after_at
+
+
+def _compare_sides(before, after, delivery_round_id, queried_at, before_related, after_related):
     old_response, new_response = before['response_plan'], after['response_plan']
     old_forecast, new_forecast = old_response['forecast'], new_response['forecast']
     old_production, new_production = before['production'] or {}, after['production'] or {}
@@ -192,7 +211,6 @@ def compare_response_plan(before_nodes, after_nodes, delivery_round_id, before_a
                         if old_response[field] != new_response[field]]
     result = dict(
         comparison_rule_version=COMPARISON_RULE_VERSION, assessment_scope='delivery_response_comparison',
-        contract_version=__version__, schema_version=SCHEMA_VERSION,
         delivery_round_id=delivery_round_id, queried_at=queried_at,
         synthetic=True, draft_only=True, review_required=True, execution_performed=False,
         comparison_status='partially_unknown' if partial else 'compared',
@@ -204,9 +222,56 @@ def compare_response_plan(before_nodes, after_nodes, delivery_round_id, before_a
         evidence=sorted(set(selected['before']) | set(selected['after'])),
         evidence_by_side=selected, integrity_evidence_by_side=integrity,
         limitations=[
-            'Previous approved inputs are recalculated with the same current rules, not historical model output.',
             'Deltas mean after minus before; a missing value remains null rather than zero.',
             'Input changes are observed together; no causal attribution or fault cause is established.',
-            'Conditional synthetic forecasts and reviewer drafts do not send, register, approve or execute work.',
-            'No automatic refresh, notification, schedule optimisation or unapproved-input preview.'])
+            'Conditional synthetic forecasts and reviewer drafts do not send, register, approve or execute work.'])
     return deepcopy(result)
+
+
+def compare_input_response_plan(before_nodes, after_nodes, delivery_round_id,
+                                before_as_of, after_as_of, *, before_revision,
+                                after_revision, queried_at):
+    """Compare two validated, unregistered synthetic input revisions.
+
+    Revisions are opaque input identifiers, not database versions. The hash is
+    computed here from canonical input nodes, never accepted from the model.
+    Node-list order does not change the hash; field/list contents still do.
+    Source bytes and locators retain the existing B input validation boundary.
+    No data_version or approved database provenance is produced by this path.
+    """
+    before_at, after_at = _comparison_times(
+        delivery_round_id, before_as_of, after_as_of, queried_at)
+    if any(not isinstance(revision, str) or not revision.strip()
+           for revision in (before_revision, after_revision)):
+        raise ComparisonError('INVALID_INPUT_REVISION', 'Explicit nonempty input revisions are required')
+    from .schema_validation import validate_input_graph
+    hashes = []
+    for nodes in (before_nodes, after_nodes):
+        report = validate_input_graph(nodes)
+        if not report['valid']:
+            raise ValueError(report)
+        hashes.append(digest(sorted(nodes, key=lambda node: node['id'])))
+    if before_revision == after_revision:
+        if before_at != after_at:
+            raise ComparisonError('INVALID_TIME', 'One input revision must bind one explicit instant')
+        if hashes[0] != hashes[1]:
+            raise ComparisonError('INCOMPARABLE_INPUTS', 'One input revision cannot bind different input graphs')
+    before, before_scope, before_related = _side(
+        before_nodes, delivery_round_id, before_as_of, queried_at)
+    after, after_scope, after_related = _side(
+        after_nodes, delivery_round_id, after_as_of, queried_at)
+    if before_scope != after_scope:
+        raise ComparisonError('INCOMPARABLE_INPUTS',
+                              'Comparison requires the same promise, identity, sources, allocations and shipment plan')
+    for side, revision, input_hash in ((before, before_revision, hashes[0]),
+                                       (after, after_revision, hashes[1])):
+        side.update(input_revision=revision, input_sha256=input_hash,
+                    input_state='unregistered', synthetic=True)
+    result = _compare_sides(before, after, delivery_round_id, queried_at,
+                            before_related, after_related)
+    result.update(input_comparison_version=INPUT_COMPARISON_VERSION,
+                  assessment_scope='unregistered_delivery_input_comparison',
+                  input_state='unregistered')
+    result['limitations'].insert(0,
+        'Unregistered synthetic input revisions are recalculated; this is not approved database version comparison.')
+    return result

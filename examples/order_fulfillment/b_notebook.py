@@ -1,8 +1,8 @@
-"""Notebook controls for fresh fixed-case CQ01–06 runs through the existing protected CLI.
+"""Notebook controls for free input tasks and preserved legacy result inspection.
 
 Importing or constructing a Demo does not read credentials, start processes, or
-read historical results. Only an exact interactive run-bound confirmation can
-open the live path. The notebook never implements its own HTTP or DB transport.
+read historical results. New legacy free/live runs are retired; tasks never
+qualify as paid authorization. The notebook never implements its own HTTP or DB transport.
 """
 from __future__ import annotations
 
@@ -14,8 +14,10 @@ import re
 import subprocess
 import uuid
 
-from .b_run_isolation import ROOT, SAFE_INPUTS, checked_path, clean_environment, sha, source_digest
-from .b_run_transport import CASES, ENDPOINT, MODEL, validate_authorization
+from .b_run_isolation import (LEGACY_EXECUTION_MESSAGE, ROOT, SAFE_INPUTS, checked_path,
+                              clean_environment, sha, source_digest)
+from .b_run_transport import (CASES, ENDPOINT, MODEL,
+                              live_readiness, require_live_ready)
 
 CASE = 'cq04_normal'
 QUESTION = '이 회차는 기한까지 몇 대 도착하고 몇 대 부족한가요? 전량 도착 예상과 근거·조건도 설명해줘.'
@@ -75,7 +77,7 @@ class Demo:
         base = ROOT / 'artifacts/local/order_fulfillment'
         self.control = base / ('notebook_' + token + '_control')
         self.outputs = {mode: base / ('notebook_' + token + '_' + mode)
-                        for mode in ('free', 'live')}
+                        for mode in ('tasks', 'free', 'live')}
         self.processes = {}
         self.started = set()
         self._draft = None
@@ -91,7 +93,7 @@ class Demo:
 
     def _mode(self, mode):
         if mode not in self.outputs:
-            raise ValueError('explicit free/live mode required')
+            raise ValueError('explicit tasks/free/live mode required')
         return self.outputs[mode]
 
     def running(self):
@@ -127,6 +129,8 @@ class Demo:
                     source_text=path.read_text(encoding='utf-8'))
 
     def _start(self, mode, extra=()):
+        if mode != 'tasks' or extra:
+            raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
         output = checked_path(self._mode(mode))
         if mode in self.started or output.exists() or self.running():
             raise RuntimeError('duplicate/restart/concurrent execution refused')
@@ -153,8 +157,11 @@ class Demo:
             raise
         return self.status(mode)
 
+    def start_tasks(self):
+        return self._start('tasks')
+
     def start_free(self):
-        return self._start('free')
+        raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
     def wait(self, mode, seconds=30):
         self._mode(mode)
@@ -178,7 +185,9 @@ class Demo:
         result = dict(mode=mode, output=str(output), started=mode in self.started,
                       running=process is not None and process.poll() is None,
                       exit_code=None if process is None else process.poll())
-        for name in ('shutdown.json', 'free_gate.json' if mode == 'free' else 'completion.json',
+        marker = ('task_validation.json' if mode == 'tasks' else
+                  'free_gate.json' if mode == 'free' else 'completion.json')
+        for name in ('shutdown.json', marker,
                      'execution_failure.json', 'campaign_failure.json'):
             path = output / name
             if path.exists():
@@ -201,13 +210,16 @@ class Demo:
             result['events'] = [{k: row[k] for k in ('event', 'at', 'case', 'request', 'status', 'usage')
                                  if k in row} for row in rows]
         result['overall_passed'] = (
-            result.get('completion.json' if mode == 'live' else 'free_gate.json', {}).get('passed') is True
+            result.get(marker, {}).get('passed') is True
             and result.get('shutdown.json', {}).get('server_stopped') is True
             and result['exit_code'] == 0)
+        result['live_authorization_eligible'] = False
         return result
 
     def result(self, mode, case=None):
         case = self._case(case)
+        if mode == 'tasks':
+            return self._task_result(case)
         path = self._mode(mode) / 'campaign/reports' / (case + '.json')
         if not path.exists():
             return {'available': False, 'mode': mode, 'case': case, 'message': '이번 실행의 새 결과가 아직 없습니다.'}
@@ -228,6 +240,31 @@ class Demo:
                     model_text=report['runtime']['text'], tool_trace=report['runtime'].get('tool_trace', []),
                     answer=report['answer'], service_result=report['service_query_raw'],
                     report_sha256=sha(path), overall=self.status(mode))
+
+    def _task_result(self, case):
+        path = self._mode('tasks') / 'campaign' / case / 'result.json'
+        if not path.exists():
+            return dict(available=False, mode='tasks', case=case)
+        try:
+            report = _read(path)
+        except json.JSONDecodeError:
+            process = self.processes.get('tasks')
+            if process is not None and process.poll() is None:
+                return dict(available=False, mode='tasks', case=case, being_written=True)
+            raise
+        from .b_task_workflow import case_task
+        result = report['result']
+        role, task = case_task(case, version=result['context']['data_version'])
+        if (report.get('execution_mode') != 'scripted' or report.get('actual_api_attempts') != 0
+                or report.get('human_review') != 'not_performed'
+                or result.get('agent_name') != role[0].SPEC.name
+                or result.get('context') != task.context.to_dict()):
+            raise ValueError('current input task result mode/case/context mismatch')
+        return dict(available=True, mode='tasks', case=case, execution_mode='scripted',
+                    answer_producer=report['answer_producer'], result=result,
+                    live_authorization_eligible=False, human_review='not_performed',
+                    actual_api_attempts=report['actual_api_attempts'], report_sha256=sha(path),
+                    overall=self.status('tasks'))
 
     def results(self, mode):
         return {case: self.result(mode, case=case) for case in self.cases}
@@ -277,17 +314,21 @@ class Demo:
         # supplies it programmatically and has no live call in its default cells.
         if confirmation != self.approval_phrase():
             raise PermissionError('fresh exact human run-bound confirmation required')
-        if 'live' in self.started or self.running():
-            raise RuntimeError('live execution already started or another run active')
-        auth = self.approval_draft()
-        auth.update(approved=True, input_and_money_caps_unfixed_acknowledged=True)
-        validate_authorization(auth, run_id=str(self.outputs['live']), cases=list(self.cases),
-                               free_gate_sha256=auth['free_gate_sha256'],
-                               source_sha256=auth['source_sha256'])
-        path = self.control / 'authorization.json'
-        _write_new(path, auth)
-        return self._start('live', ('--authorization', str(path), '--free-gate',
-                                   str(self.outputs['free'] / 'free_gate.json')))
+        require_live_ready()
+        raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
+
+    def live_readiness(self):
+        return live_readiness()
+
+    def approval_token(self):
+        """Short explicit human confirmation, unique to this new live output."""
+        return '유료 승인 ' + self.outputs['live'].name.removeprefix('notebook_').removesuffix('_live')
+
+    def start_live_with_token(self, confirmation):
+        if confirmation != self.approval_token():
+            raise PermissionError('fresh exact human run-bound confirmation required')
+        require_live_ready()
+        return self.start_live(self.approval_phrase())
 
     def review_request(self, case=None):
         output = self.outputs['live']

@@ -1,27 +1,22 @@
-"""One bounded B role: raw contract -> unapproved draft, or confirmed promise.
+"""Historical B provider and answer helpers; stored-graph execution is retired.
 
-The scripted provider proves wiring only, never model comprehension. OpenAI
-reuses the existing fixed-snapshot provider. No model-created draft is approved.
+Pure compatibility checks retain these helpers. Supported agents run
+through b_run tasks without storing B types in the common graph.
 """
 from __future__ import annotations
 
-import argparse
 import copy
 import hashlib
 import json
-from pathlib import Path
 import sys
-import uuid
 
-from examples.order_fulfillment.b_contract import promise_values, run_example
-from ontologics.order_fulfillment.contracts import DEMO_EVIDENCE_IDS, DEMO_SOURCE_PATH, extract_contract, load_demo_contract
+from examples.order_fulfillment.b_contract import promise_values
+from ontologics.order_fulfillment.contracts import DEMO_SOURCE_PATH, extract_contract
 from ontologics.database import DatabaseSettings, environment_values
 from ontologics.demo import PRINCIPALS, must
-from ontologics.ingest import build_catalog
-from ontologics.model import ROOT, SCHEMA, canonical
-from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, OpenAISettings, ProviderError
-from ontologics.order_fulfillment.runtime import ModelConfig, ModelRuntime
-from ontologics.order_fulfillment.service import Service
+from ontologics.model import ROOT, canonical
+from ontologics.order_fulfillment.schema import SCHEMA
+from ontologics.order_fulfillment.openai_provider import OpenAIProvider, OpenAISettings, ProviderError
 from ontologics.order_fulfillment.tool_specs import B_INTAKE_TOOLS, B_PROMISE_TOOLS
 
 ACTOR = 'b-agent'
@@ -85,37 +80,9 @@ fulfillment_assessed:false. 모두 도구에서 복사한다. 관측 시각은 �
 
 
 def setup_intake(database=None, *, source_path=None):
-    """Trusted fixture setup; seed evidence, never seed extracted contract facts.
-
-    Variant inputs are separate synthetic test sources with new IDs/hashes and
-    broad, honest locators. Existing immutable source/evidence is never revised.
-    """
-    source_nodes = [n for n in load_demo_contract() if n['type'] in {'SourceDocument', 'Evidence'}]
-    path = Path(source_path) if source_path else ROOT / DEMO_SOURCE_PATH
-    raw = path.read_bytes()
-    text = raw.decode('utf-8')
-    if source_path:
-        sha = hashlib.sha256(raw).hexdigest()
-        suffix = ':agent-test-' + sha[:16]
-        source = source_nodes[0]
-        source.update(id=source['id'] + suffix, path=str(path), sha256=sha, version='agent-test-' + sha[:16])
-        for n in source_nodes[1:]:
-            n.update(id=n['id'] + suffix, source_id=source['id'], locator='Full synthetic test source; field group ' + n['id'].rsplit(':', 1)[-1],
-                     description='Unverified synthetic contract test input, not an actual transaction.')
-    service = Service(database, principals=PRINCIPALS_B,
-                      schema='b_intake_' + uuid.uuid4().hex if database is None else None)
-    try:
-        must(service.bootstrap('seed-admin', build_catalog()['nodes'] + source_nodes, request_key='b-agent-intake-seed'))
-        ids = {key: source_nodes[i + 1]['id'] for i, key in enumerate(DEMO_EVIDENCE_IDS)}
-        task = {'task': '계약 원문을 읽고 미승인 등록 초안을 준비하세요.',
-                'mode': 'intake', 'source_id': source_nodes[0]['id'], 'source_sha256': source_nodes[0]['sha256'],
-                'source_text': text, 'evidence_ids': ids, 'data_version': 1,
-                'request_key': 'b-agent-contract-' + uuid.uuid4().hex,
-                'node_fields': {k: SCHEMA[k][0] for k in ('Contract', 'ContractItem', 'DeliveryRound')}}
-        return service, task
-    except Exception:
-        service.close()
-        raise
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def intake_baseline(service, task, *, actor=ACTOR):
@@ -133,12 +100,9 @@ def intake_baseline(service, task, *, actor=ACTOR):
 
 
 def setup_promise(database=None):
-    fixture, _ = run_example(database)
-    service = Service(database, schema=fixture['database_schema'], principals=PRINCIPALS_B)
-    task = {'task': '이 회차의 고객·제품 구성·수량·도착 기한·장소와 미확인을 알려주세요.',
-            'mode': 'promise', 'delivery_round_id': fixture['promise']['delivery_round_id'],
-            'data_version': fixture['versions'][-1], 'not_assessed': NOT_ASSESSED}
-    return service, task
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def _calls(result, name):
@@ -287,58 +251,14 @@ class ScriptedProvider:
 
 
 def run_mode(mode, *, settings=None, database=None, provider_factory=None, source_path=None):
-    if mode not in {'intake', 'promise'}: raise ValueError('Unknown B mode')
-    service, task = setup_intake(database, source_path=source_path) if mode == 'intake' else setup_promise(database)
-    try:
-        baseline = intake_baseline(service, task) if mode == 'intake' else None
-        tools, prompt = (B_INTAKE_TOOLS, INTAKE_PROMPT) if mode == 'intake' else (B_PROMISE_TOOLS, PROMISE_PROMPT)
-        provider = provider_factory(service, task) if provider_factory else OpenAIProvider(settings, tools) if settings else ScriptedProvider(service, task)
-        before = service.lookup(ACTOR)['data_version']
-        result = ModelRuntime(service, ACTOR, provider, config=ModelConfig(model=settings.model if settings else MODEL, max_steps=16),
-                              allowed_tools=tools, capture_tool_trace=True).run([
-            {'role': 'system', 'content': prompt}, {'role': 'user', 'content': canonical(task)}])
-        checks, answer = evaluate(service, task, result, before)
-        return {'role': 'B', 'mode': mode, 'execution_mode': 'live_api' if settings and not provider_factory else 'test_double',
-                'database_schema': service.schema, 'task': task, 'runtime': result, 'answer': answer,
-                'baseline_status': baseline['status'] if baseline else None,
-                'provider_calls': getattr(provider, 'calls', []), 'provider_config': settings.public_config() if settings else None,
-                'fixture': 'source/evidence development seed; no approved contract' if mode == 'intake' else 'host scripted review before model run; never approval of a model draft',
-                'evaluation': {'checks': checks, 'passed': all(checks.values()), 'narrative_review': 'not_yet_reviewed',
-                               'scope': 'single fixed-format synthetic source; factual/authority checks only'},
-                'confirmed_version_after': service.lookup(ACTOR)['data_version']}
-    finally:
-        service.close()
+    """Reject the retired stored-graph path before accessing inputs or resources."""
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise RuntimeError(LEGACY_EXECUTION_MESSAGE)
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--mode', choices=['intake', 'promise', 'both'], default='both')
-    p.add_argument('--provider', choices=['scripted', 'openai'], default='scripted')
-    p.add_argument('--env-file', default=None)
-    p.add_argument('--output', default='artifacts/local/task09/b_agent.json')
-    args = p.parse_args()
-    report = {'execution_mode': 'live_api' if args.provider == 'openai' else 'test_double', 'roles': []}
-    try:
-        # Validate credentials before any DB seed or network request.
-        settings = OpenAISettings.from_environment(environ=environment_values(args.env_file)) if args.provider == 'openai' else None
-        for mode in (['intake', 'promise'] if args.mode == 'both' else [args.mode]):
-            report['roles'].append(run_mode(mode, settings=settings, database=DatabaseSettings.from_environment(
-                schema='b_agent_' + mode + '_' + uuid.uuid4().hex, env_file=args.env_file)))
-        passed = all(r['evaluation']['passed'] for r in report['roles'])
-        report['status'] = 'passed' if passed else 'failed_checks_or_runtime'
-    except ProviderError as e:
-        report.update(status='configuration_blocked', error={'code': e.code, 'message': e.message})
-        passed = False
-    except Exception as e:
-        report.update(status='example_failed', error={'code': 'EXAMPLE_ERROR', 'error_type': type(e).__name__})
-        passed = False
-    path = Path(args.output)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-    print(json.dumps({'output': str(path), 'status': report['status'], 'execution_mode': report['execution_mode'],
-                      'error': report.get('error'), 'roles': [{'mode': r['mode'], 'checks': r['evaluation']['checks'],
-                      'runtime_error': r['runtime']['error']} for r in report['roles']]}, ensure_ascii=False, indent=2))
-    return 0 if passed else 1
+    from .b_run_isolation import LEGACY_EXECUTION_MESSAGE
+    raise SystemExit(LEGACY_EXECUTION_MESSAGE)
 
 
 if __name__ == '__main__':

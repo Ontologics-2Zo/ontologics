@@ -3,6 +3,9 @@ from copy import deepcopy
 import json
 import unittest
 
+from ontologics.harness import BudgetLimits, ExecutionBudget, request_budget
+from ontologics.paid_budget import CostPolicy, ModelPrice
+
 from examples.order_fulfillment.b_fulfillment_agent import PROMPT, TOOLS, ProvenanceProvider
 from ontologics.model import canonical
 from ontologics.order_fulfillment.openai_provider import MODEL, OpenAIProvider, OpenAISettings, ProviderError
@@ -11,6 +14,14 @@ from tests.test_openai_provider import Transport, response, tool, text
 
 
 class CQ02StrictTransportTests(unittest.TestCase):
+    def setUp(self):
+        # Explicit synthetic pricing for local HTTP doubles; no network allowance.
+        self.cost_policy = CostPolicy('100', (ModelPrice(MODEL, '1', '2', 400000),))
+        self.budget = ExecutionBudget(BudgetLimits(max_model_calls=64), cost_policy=self.cost_policy)
+        scope = request_budget('b-provider-test', self.budget)
+        scope.__enter__()
+        self.addCleanup(scope.__exit__, None, None, None)
+
     task = dict(delivery_round_id='round:strict', as_of='2026-11-01T10:00:00+09:00', data_version=7)
 
     def history(self):

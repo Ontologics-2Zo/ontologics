@@ -7,7 +7,9 @@ import unittest
 
 from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.fulfillment import load_demo_fulfillment, fulfillment_status
-from ontologics.model import ROOT, graph_jsonld, instant, tbox_turtle, validate_graph
+from ontologics.model import ROOT, instant
+from ontologics.order_fulfillment.schema_validation import validate_input_graph
+from ontologics.order_fulfillment.schema_export import graph_jsonld as b_graph_jsonld, tbox_turtle as b_tbox_turtle
 
 
 ROUND = 'delivery-round:demo:B-01:1'
@@ -51,11 +53,11 @@ class FulfillmentTests(unittest.TestCase):
         return fulfillment_status(self.nodes, round_id, as_of, queried_at=queried_at)
 
     def valid(self):
-        report = validate_graph(self.nodes)
+        report = validate_input_graph(self.nodes)
         self.assertTrue(report['valid'], report)
 
     def invalid(self):
-        report = validate_graph(self.nodes)
+        report = validate_input_graph(self.nodes)
         self.assertFalse(report['valid'], report)
         self.assertTrue(report['errors'])
         return report
@@ -140,7 +142,7 @@ class FulfillmentTests(unittest.TestCase):
 
     def test_optional_source_refs_and_list_refs_export_as_entity_uris(self):
         self.valid()
-        exported = graph_jsonld(self.nodes)
+        exported = b_graph_jsonld(self.nodes)
         urn = 'urn:ontologics:entity:'
         by_id = {n['id']: n for n in exported['@graph']}
         self.assertEqual(urn + stock('W'), by_id[urn + allocation('W')]['stock_id'])
@@ -150,7 +152,7 @@ class FulfillmentTests(unittest.TestCase):
         self.assertEqual({urn + ROUND, urn + OTHER_ROUND}, set(by_id[urn + SNAPSHOT]['round_ids']))
         for key in ('snapshot_id', 'stock_id', 'production_work_id', 'allocation_id', 'round_ids'):
             self.assertEqual('@id', exported['@context'][key]['@type'])
-        turtle = tbox_turtle()
+        turtle = b_tbox_turtle()
         for kind in OPERATIONS:
             self.assertIn('o:' + kind + ' a owl:Class', turtle)
         self.assertIn('o:stock_id a owl:ObjectProperty', turtle)
@@ -300,12 +302,69 @@ class FulfillmentTests(unittest.TestCase):
         self.assertEqual('2026-10-27T09:00:00+09:00', self.index[stock('D')]['observed_at'])
         self.incomplete(self.result(as_of='2026-10-27T11:00:00+09:00', queried_at='2026-10-27T11:10:00+09:00'))
 
-    def test_partial_completion_requires_supplementation_not_counting_target_as_finished(self):
+    def test_partial_completion_is_separate_from_stock_delivery_and_unfinished_work(self):
         self.index[work('R')]['completed_quantity'] = 1
         self.valid()
-        self.incomplete(self.result())
+        before = copy.deepcopy(self.nodes)
+        result = self.result()
+        self.assertEqual('complete', result['status'])
+        expected = dict(EXPECTED_STATES, in_progress=299, production_completed=1)
+        self.assertEqual(expected, result['states'])
+        self.assertEqual((1000, 900, 0), tuple(result[key] for key in
+            ('allocated_quantity', 'remaining_quantity', 'unallocated_quantity')))
+        partial = next(item for item in result['items'] if item['source']['id'] == work('R'))
+        self.assertEqual({'production_completed': 1, 'in_progress': 299}, partial['state_quantities'])
+        self.assertEqual(before, self.nodes)
         self.index[work('R')]['completed_quantity'] = 301
         self.invalid()
+
+    def test_fully_completed_production_is_not_still_in_progress_or_delivered(self):
+        self.index[work('R')]['completed_quantity'] = 300
+        result = self.result()
+        self.assertEqual('complete', result['status'])
+        self.assertEqual(dict(EXPECTED_STATES, in_progress=0, production_completed=300), result['states'])
+        self.assertEqual(900, result['remaining_quantity'])
+        finished = next(item for item in result['items'] if item['source']['id'] == work('R'))
+        self.assertEqual('production_completed', finished['state'])
+        self.assertEqual({'production_completed': 300}, finished['state_quantities'])
+
+    def test_completed_shared_or_partly_allocated_work_does_not_get_proportional_counts(self):
+        self.index[work('P')]['production_state'] = 'in_progress'
+        self.index[work('P')]['started_at'] = '2026-10-27T09:00:00+09:00'
+        self.index[work('P')]['target_quantity'] = 300
+        self.index[work('P')]['completed_quantity'] = 100
+        self.index[allocation('OTHER-P')]['production_work_id'] = work('P')
+        self.valid()
+        for round_id in (ROUND, OTHER_ROUND):
+            result = self.result(round_id=round_id)
+            self.incomplete(result)
+            self.assertIn('PRODUCTION_COMPLETION_ALLOCATION_AMBIGUOUS',
+                          [unknown['code'] for unknown in result['unknowns']])
+        self.index[work('P')]['completed_quantity'] = 0
+        self.index[work('P')]['target_quantity'] = 100
+        self.index[allocation('OTHER-P')]['production_work_id'] = work('O')
+        self.index[work('R')]['completed_quantity'] = 100
+        self.index[allocation('R')]['quantity'] = 200
+        self.valid()
+        result = self.result()
+        self.incomplete(result)
+        self.assertIn('PRODUCTION_COMPLETION_ALLOCATION_AMBIGUOUS',
+                      [unknown['code'] for unknown in result['unknowns']])
+
+    def test_completed_production_on_another_round_does_not_block_this_round(self):
+        self.index[work('R')]['completed_quantity'] = 100
+        result = self.result(round_id=OTHER_ROUND)
+        self.assertEqual('complete', result['status'])
+        self.assertNotIn('production_completed', result['states'])
+        self.assertEqual(300, result['allocated_quantity'])
+
+    def test_unstarted_work_with_completed_units_needs_state_confirmation(self):
+        self.index[work('Q')]['completed_quantity'] = 1
+        self.valid()
+        result = self.result()
+        self.incomplete(result)
+        self.assertIn('PRODUCTION_COMPLETION_STATE_NOT_CONFIRMED',
+                      [unknown['code'] for unknown in result['unknowns']])
 
     def test_work_states_actual_start_and_count_shapes_are_consistent(self):
         node = self.index[work('P')]
@@ -388,7 +447,7 @@ class FulfillmentTests(unittest.TestCase):
             for value in (None, [], [[]], {'nested': []}):
                 with self.subTest(node=nid, field=field, value=value):
                     node[field] = value
-                    report = validate_graph(self.nodes)
+                    report = validate_input_graph(self.nodes)
                     self.assertIsInstance(report['valid'], bool)
                     self.assertFalse(report['valid'], report)
             node[field] = old

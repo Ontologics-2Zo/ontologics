@@ -1,16 +1,16 @@
 """Order Fulfillment tool schemas; common role schemas remain unchanged."""
 from copy import deepcopy
 
-from ..model import SCHEMA
 from ..tool_specs import (TEXT, VERSION, obj, PRODUCT_TOOLS, QUALITY_TOOLS,
                           KNOWLEDGE_TOOLS, SUPERVISOR_TOOLS,
                           function_tools as common_function_tools)
 from .service import AgentGateway
+from .schema import LOOKUP_SCHEMA
 
 _B_DEFINITIONS = {
     'lookup_many': ('Read all 1..16 unique node IDs of one kind from one explicit confirmed version. Atomic: any missing or wrong-kind ID fails the entire read. Does not mutate facts or approvals.',
         obj({'node_ids': {'type': 'array', 'items': TEXT, 'minItems': 1, 'maxItems': 16},
-             'kind': {'type': 'string', 'enum': list(SCHEMA)}, 'version': VERSION}, ['node_ids', 'kind', 'version'])),
+             'kind': {'type': 'string', 'enum': list(LOOKUP_SCHEMA)}, 'version': VERSION}, ['node_ids', 'kind', 'version'])),
     'compare_response_plan': ('Compare two explicit approved data versions and as_of instants for the same unchanged contract promise and allocation plan. Recomputes each full response plan using current common rules, preserves both drafts and provenance, and returns after-minus-before quantity/time differences; null is not zero. Read-only: no unapproved preview, approval, sending or dispatch execution.',
         obj({'delivery_round_id': TEXT, 'before_version': VERSION, 'before_as_of': TEXT,
              'after_version': VERSION, 'after_as_of': TEXT},

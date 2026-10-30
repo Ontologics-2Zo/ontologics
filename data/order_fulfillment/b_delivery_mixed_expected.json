@@ -1,0 +1,30 @@
+{
+  "delivery_round_id": "delivery-round:demo:B-01:1",
+  "snapshot_id": "snapshot:demo:CQ04:mixed:10",
+  "as_of": "2026-10-27T10:00:00+09:00",
+  "deadline_status": "met",
+  "on_time_quantity": 1000,
+  "shortfall_quantity": 0,
+  "estimated_full_arrival_at": "2026-10-27T14:20:00+09:00",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "unit": "piece",
+  "source_id": "source:demo:CQ04:delivery-mixed-v1",
+  "source_sha256": "392789dd5993d2c6b242d91f85aa8e06978c694f4c76bdfb3a847c7a5cb09544",
+  "assumptions_evidence": [
+    "evidence:demo:CQ04:mixed:assumptions"
+  ],
+  "condition_id": "condition:demo:CQ04:mixed",
+  "production_work_id": "work:demo:CQ04:mixed:P",
+  "selected_observation_ids": [
+    "observation:demo:CQ04:mixed:09",
+    "observation:demo:CQ04:mixed:10"
+  ],
+  "forecast_rule_version": "delivery-0.1",
+  "independent_variants": {
+    "due14": {
+      "on_time_quantity": 970,
+      "shortfall_quantity": 30,
+      "estimated_full_arrival_at": "2026-10-27T14:20:00+09:00"
+    }
+  }
+}

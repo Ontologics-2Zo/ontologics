@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Ontologics · B 워크플로 테스트</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Ontologics 테스트 홈"><span class="brand-mark">O<span>·</span></span><span>ontologics<small>DEVELOPMENT LAB</small></span></a>
+    <div class="workspace"><span class="workspace-icon">B</span><div>B · 납품 대응<small>기능 및 흐름 검증</small></div><span class="workspace-dots">···</span></div>
+    <p class="nav-label">WORKSPACE</p>
+    <div class="nav-active"><span>▦</span> 워크플로 테스트 <span class="nav-count">06</span></div>
+    <div class="sidebar-section"><p class="nav-label">테스트 사례 <span id="case-count">10</span></p><nav id="case-list" aria-label="테스트 사례"></nav></div>
+    <div class="sidebar-footer"><span class="status-dot"></span><div>로컬 개발 환경<small id="sidebar-mode">가상 자료 · 무료 모의 실행</small></div></div>
+  </aside>
+  <main>
+    <header class="topbar"><div><span class="breadcrumb">B 납품 대응</span><span class="slash">/</span>워크플로 테스트</div><span class="local-badge"><span class="status-dot"></span>LOCAL SANDBOX</span></header>
+    <section class="page-heading"><div><p class="eyebrow">WORKFLOW TEST BENCH</p><h1>기능에서 흐름까지, 한눈에.</h1><p class="subtitle">입력부터 판단과 근거까지, B의 납품 대응 흐름을 직접 확인하세요.</p></div><button id="download" class="button secondary" disabled><span aria-hidden="true">↓</span> 실행 기록 받기</button></section>
+    <div id="notice" class="notice"><span class="notice-icon">i</span><div><strong id="notice-title">무료 모의 실행 모드</strong><span id="notice-text">기존 공통 호스트와 B 역할의 연결을 확인합니다. 실제 LLM 답변 품질과 업무 승인은 별도 검증 대상입니다.</span></div><span id="notice-tag" class="notice-tag">API 비용 0</span></div>
+    <section class="flow-section"><div class="section-heading"><h2>업무 흐름</h2><span>단계를 선택해 대표 사례를 살펴보세요</span></div><div id="flow" class="flow" aria-label="업무 흐름 단계"></div></section>
+    <section class="test-workspace">
+      <div class="panel input-panel"><div class="panel-heading"><div><span class="panel-kicker">01 / INPUT</span><h2>테스트 입력</h2></div><span id="input-role" class="small-badge">고정 가상 사례</span></div><div class="case-control"><label for="case-select">대표 사례</label><select id="case-select" disabled><option>사례 불러오는 중…</option></select></div><div class="mode-control"><label for="execution-mode">실행 방식</label><select id="execution-mode"><option value="scripted">무료 연결 검사 · 모의 응답</option><option value="openai">실제 LLM · API 비용 발생</option></select><p id="mode-detail">기존 실행·계산·근거 연결을 무료로 확인합니다.</p></div><div class="question-box"><span class="question-label">확인할 질문</span><p id="question">자료를 불러오고 있습니다.</p></div><div class="tabs" role="tablist" aria-label="입력 보기"><button class="tab active" id="source-tab" role="tab" aria-selected="true" aria-controls="source-panel">원본 자료</button><button class="tab" id="input-tab" role="tab" aria-selected="false" aria-controls="input-panel">구조화 입력</button></div><div id="source-panel" role="tabpanel" aria-labelledby="source-tab"><pre id="source-text" class="source-text">불러오는 중…</pre></div><div id="input-panel" role="tabpanel" aria-labelledby="input-tab" hidden><pre id="input-json" class="json-view"></pre></div><div class="input-footnote"><span>⌁</span><span>각 대표는 고정 입력으로 독립 실행됩니다. 단계 간 자동 등록·승인은 수행하지 않습니다.</span></div><div class="run-controls"><button id="run-selected" class="button primary" disabled><span aria-hidden="true">▷</span> 이 사례 실행</button><button id="run-all" class="button secondary" disabled>전체 흐름 실행 <span class="button-count">10</span></button></div></div>
+      <div class="panel result-panel"><div class="panel-heading"><div><span class="panel-kicker">02 / OUTPUT</span><h2>실행 결과</h2></div><span id="result-badge" class="small-badge">실행 대기</span></div><div id="run-progress" class="run-progress" hidden><div class="progress-label"><span id="run-status" role="status" aria-live="polite">실행 준비 중</span><span id="progress-count">0 / 0</span></div><div class="progress-track"><div id="progress-bar"></div></div><p id="run-detail"></p></div><div id="error" class="error-message" role="alert" hidden></div><div id="result-empty" class="empty-state"><div class="empty-symbol"><span>↗</span><i></i><i></i></div><h3>첫 번째 결과를 확인해 보세요</h3><p>왼쪽에서 사례를 선택하고 실행하면<br>답변 · 계산 결과 · 근거 · 도구 기록이 표시됩니다.</p><span class="empty-chip">실제 B 실행 코드 연결</span></div><div id="result-content" hidden><div id="result-kind" class="result-kind"></div><div id="metrics" class="metrics"></div><section class="answer-section"><h3>업무 답변</h3><p id="answer" class="answer-text"></p></section><div id="result-details"></div></div></div>
+    </section>
+    <section class="bottom-bar"><div><span class="status-dot"></span><span id="footer-status">준비 중</span></div><span>제품 근거와 가상 운영 입력을 구분해 표시합니다.</span></section>
+    <footer>ONTOLOGICS <span> / </span> B CQ01–06 TEST BENCH <span>·</span> 개발 검증용</footer>
+  </main>
+</body>
+</html>

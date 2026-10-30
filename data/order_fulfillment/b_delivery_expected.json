@@ -1,0 +1,45 @@
+{
+  "delivery_round_id": "delivery-round:demo:B-01:1",
+  "snapshot_id": "snapshot:demo:CQ04:base:10",
+  "as_of": "2026-10-27T10:00:00+09:00",
+  "deadline_status": "shortfall",
+  "on_time_quantity": 960,
+  "shortfall_quantity": 40,
+  "estimated_full_arrival_at": "2026-10-27T15:26:40+09:00",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "unit": "piece",
+  "source_id": "source:demo:CQ04:delivery-v1",
+  "source_sha256": "510c474c1a68ab1cc34d3b323d3a1760f8ccda977fd127df0700c2b66a3e2d74",
+  "assumptions_evidence": [
+    "evidence:demo:CQ04:base:assumptions"
+  ],
+  "condition_id": "condition:demo:CQ04:base",
+  "production_work_id": "work:demo:CQ04:base",
+  "selected_observation_ids": [
+    "observation:demo:CQ04:base:09",
+    "observation:demo:CQ04:base:10"
+  ],
+  "forecast_rule_version": "delivery-0.1",
+  "independent_variants": {
+    "due16": {
+      "on_time_quantity": 1000,
+      "shortfall_quantity": 0,
+      "estimated_full_arrival_at": "2026-10-27T15:26:40+09:00"
+    },
+    "transport7200": {
+      "on_time_quantity": 870,
+      "shortfall_quantity": 130,
+      "estimated_full_arrival_at": "2026-10-27T16:26:40+09:00"
+    },
+    "preparation1800": {
+      "on_time_quantity": 915,
+      "shortfall_quantity": 85,
+      "estimated_full_arrival_at": "2026-10-27T15:56:40+09:00"
+    },
+    "all_at_once": {
+      "on_time_quantity": 0,
+      "shortfall_quantity": 1000,
+      "estimated_full_arrival_at": "2026-10-27T15:26:40+09:00"
+    }
+  }
+}

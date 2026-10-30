@@ -154,5 +154,91 @@ class LiveAgentWiringTests(unittest.TestCase):
         self.assertEqual(5, len(report['expected_from_reads']['matched_unit_ids']))
 
 
+
+
+
+class ScenarioAppTests(unittest.TestCase):
+    """Claim app: the 5 scenario input files, used like a person would, give the intended answers."""
+    def drive(self, claim, results=(), live_settings=None):
+        import shutil
+        import uuid
+        from examples.claim_response.scenario_app import INPUTS, UPLOADS, ClaimCase
+        uploads, docs = UPLOADS / ('test-' + uuid.uuid4().hex[:8]), tempfile.TemporaryDirectory()
+        self.addCleanup(shutil.rmtree, uploads, True)
+        self.addCleanup(docs.cleanup)
+        case = ClaimCase(database_for_test(self), docs_dir=docs.name, uploads_dir=uploads, live=live_settings)
+        self.addCleanup(case.close)
+        case.upload_claim(claim, (INPUTS / claim).read_bytes())
+        case.approve_claim()
+        case.confirm_claim()
+        if case.state == 'containment_ready':
+            case.approve_containment()
+            case.send_test_request()
+            for name in results:
+                case.upload_results(name, (INPUTS / name).read_bytes())
+            if case.state == 'reproduction_ready':
+                case.approve_reproduction()
+        return case, {e['title']: dict(e['rows']) for e in case.events}
+
+    def test_full_test_gives_six(self):
+        case, ev = self.drive('1_메일_전수시험_클레임.eml', ['1_테스트팀_결과.csv'])
+        self.assertEqual('done', case.state)
+        self.assertEqual('3대 · C-D021 ~ C-D023', ev['보드·생산라인 추적']['연결된 보드'])
+        self.assertTrue(ev['테스트 의뢰서']['의뢰 대상'].startswith('123대'))
+        self.assertEqual(('6대', '확정'), (ev['재생산 수량·A 요청서']['재생산 필요'], ev['재생산 수량·A 요청서']['상태']))
+        # After the reviews every document says reviewed, and still unsent.
+        docs = {n: text for e in case.events for n, text in e['documents'].items()}
+        self.assertEqual(4, len(docs))
+        for name, text in docs.items():
+            with self.subTest(document=name):
+                self.assertIn('| 검토 상태 | 검토·그래프 반영 완료 |', text)
+                self.assertIn('| 송부 상태 | 미송부 |', text)
+
+    def test_sample_test_gives_a_lower_bound(self):
+        case, ev = self.drive('2_엑셀_표본시험_클레임.xlsx', ['2_테스트팀_결과.csv'])
+        self.assertEqual('34대 / 90대', ev['테스트팀 결과 받음']['시험 / 미검사'])
+        self.assertEqual('3대', ev['재생산 수량·A 요청서']['재생산 필요'])
+        self.assertIn('하한', ev['재생산 수량·A 요청서']['상태'])
+
+    def test_not_reproduced_stays_undetermined(self):
+        case, ev = self.drive('3_CSV_증상미재현_클레임.csv', ['3_테스트팀_결과.csv'])
+        self.assertEqual('미정', ev['재생산 수량']['재생산 필요'])
+        self.assertIn('만들지 않음', ev['재생산 수량']['A 요청서'])
+
+    def test_mistyped_serial_stops_the_trace(self):
+        case, ev = self.drive('4_메일_일련번호오기재_클레임.eml')
+        self.assertEqual('trace_blocked', case.state)
+        self.assertEqual('C-D730 (not_found)', ev['보드·생산라인 추적 — 사람 확인 필요']['못 찾은 번호'])
+        self.assertNotIn('중단 요청서 초안', ev)
+
+    def test_broken_result_file_is_blocked_then_the_fix_goes_through(self):
+        case, ev = self.drive('5_CSV_결과파일오류_클레임.csv', ['5_테스트팀_결과_오류.csv', '5_테스트팀_결과_수정본.csv'])
+        blocked = ev['테스트팀 결과 — 오류로 차단']
+        self.assertEqual(('안 함 (0건)', '3건'), (blocked['저장'], blocked['오류']))
+        self.assertNotIn('시험 / 미검사', blocked)
+        rows = blocked['고칠 행']
+        for code in ('DUPLICATE_RESULT', 'UNIT_NOT_REQUESTED', 'TIMEZONE_REQUIRED'):
+            self.assertIn(code, rows)
+        self.assertEqual(('3대', '확정'), (ev['재생산 수량·A 요청서']['재생산 필요'], ev['재생산 수량·A 요청서']['상태']))
+        self.assertEqual('done', case.state)
+
+    def test_model_trace_is_checked_against_the_functions(self):
+        # Fake model, no network: right answer is accepted, a wrong one is rejected; the flow continues on functions.
+        _, ev = self.drive('1_메일_전수시험_클레임.eml', live_settings=live())
+        model = ev['C Agent 추적 (실제 모델)']
+        self.assertEqual(('예', '4/4 통과', 'C-D021 ~ C-D023'), (model['함수 계산과 일치'], model['자동 검사'], model['모델 답: 보드']))
+        _, ev = self.drive('1_메일_전수시험_클레임.eml', live_settings=live(wrong=True))
+        model = ev['C Agent 추적 (실제 모델)']
+        self.assertEqual(('아니요 (거부됨)', 'AGENT_RESULT_REJECTED'), (model['함수 계산과 일치'], model['거부 이유']))
+        self.assertIn('중단 요청서 초안', ev)
+
+    def test_actions_out_of_order_are_refused(self):
+        from examples.claim_response.scenario_app import ActionError, ClaimCase
+        case = ClaimCase(database_for_test(self))
+        with self.assertRaises(ActionError):
+            case.approve_containment()
+        with self.assertRaises(ActionError):
+            case.upload_claim('note.txt', b'x')
+
 if __name__ == '__main__':
     unittest.main()

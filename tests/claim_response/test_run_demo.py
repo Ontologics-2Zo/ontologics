@@ -159,16 +159,18 @@ class LiveAgentWiringTests(unittest.TestCase):
 
 class ScenarioAppTests(unittest.TestCase):
     """Claim app: the 5 scenario input files, used like a person would, give the intended answers."""
-    def drive(self, claim, results=(), live_settings=None):
+    def drive(self, claim, results=(), live_settings=None, content=None, clock=None):
         import shutil
         import uuid
         from examples.claim_response.scenario_app import INPUTS, UPLOADS, ClaimCase
         uploads, docs = UPLOADS / ('test-' + uuid.uuid4().hex[:8]), tempfile.TemporaryDirectory()
         self.addCleanup(shutil.rmtree, uploads, True)
         self.addCleanup(docs.cleanup)
-        case = ClaimCase(database_for_test(self), docs_dir=docs.name, uploads_dir=uploads, live=live_settings)
+        case = ClaimCase(database_for_test(self), docs_dir=docs.name, uploads_dir=uploads, live=live_settings, clock=clock)
         self.addCleanup(case.close)
-        case.upload_claim(claim, (INPUTS / claim).read_bytes())
+        case.upload_claim(claim, content if content is not None else (INPUTS / claim).read_bytes())
+        if case.state != 'claim_converted':
+            return case, {e['title']: dict(e['rows']) for e in case.events}
         case.approve_claim()
         case.confirm_claim()
         if case.state == 'containment_ready':
@@ -231,6 +233,28 @@ class ScenarioAppTests(unittest.TestCase):
         model = ev['C Agent 추적 (실제 모델)']
         self.assertEqual(('아니요 (거부됨)', 'AGENT_RESULT_REJECTED'), (model['함수 계산과 일치'], model['거부 이유']))
         self.assertIn('중단 요청서 초안', ev)
+
+    def test_configuration_comes_from_the_claim(self):
+        from examples.claim_response.scenario_app import INPUTS
+        csv = (INPUTS / '3_CSV_증상미재현_클레임.csv').read_bytes()
+        # An L1 claim on boards recorded as L stops for a person instead of continuing with either value.
+        case, ev = self.drive('l1.csv', content=csv.replace(b'"L"', b'"L1"'))
+        self.assertEqual('config:esp32-poe:L1:WROOM', ev['클레임 변환']['제품 구성'])
+        self.assertEqual('trace_blocked', case.state)
+        self.assertIn('L1', ev['보드·생산라인 추적 — 사람 확인 필요']['구성 불일치'])
+        # No revision: no configuration is guessed and the claim is not registered.
+        case, ev = self.drive('blank.csv', content=csv.replace(b'"L"', b'""'))
+        self.assertEqual('start', case.state)
+        self.assertIn('클레임 변환 — 제품 구성 확인 필요', ev)
+
+    def test_replacement_range_and_document_times_are_real_values(self):
+        case, ev = self.drive('1_메일_전수시험_클레임.eml', ['1_테스트팀_결과.csv'], clock=lambda: '2026-11-02T15:20:00+09:00')
+        self.assertEqual('7대 (C-R001 ~ C-R007)', ev['재생산 수량·A 요청서']['사용할 대체 재고'])
+        docs = {n: t for e in case.events for n, t in e['documents'].items()}
+        self.assertEqual(4, len(docs))
+        for name, text in docs.items():
+            with self.subTest(document=name):
+                self.assertIn('작성 시점: 2026년 11월 02일 15시 20분', text)
 
     def test_actions_out_of_order_are_refused(self):
         from examples.claim_response.scenario_app import ActionError, ClaimCase

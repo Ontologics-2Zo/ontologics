@@ -16,6 +16,7 @@ Local only: the server binds to 127.0.0.1.
 """
 import argparse
 import base64
+from datetime import datetime, timedelta, timezone
 import hashlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
@@ -26,7 +27,7 @@ import uuid
 from decimal import Decimal
 
 from examples.claim_response.run_demo import (
-    CONFIGURATION, PRINCIPALS, existing_nodes, live_agent_settings, live_report, must, run_agent_trace)
+    PRINCIPALS, existing_nodes, live_agent_settings, live_report, must, run_agent_trace)
 from ontologics.claim_response.fixtures import claim_response_nodes, load_operations
 from ontologics.claim_response.intake import convert_claim
 from ontologics.claim_response.reproduction import (
@@ -43,10 +44,7 @@ INPUTS = Path(__file__).resolve().parent / 'scenario_inputs'
 UPLOADS = ROOT / 'data/claim_response/uploads'
 DOCS = ROOT / 'artifacts/local/claim_response/app'
 MAX_UPLOAD = 2 * 1024 * 1024
-# Fictional clock of the demo: claim received, request drafts, test request, results, reproduction request.
-TIMES = {'received': '2026-10-26T10:30:00+09:00', 'containment': '2026-10-26T10:45:00+09:00',
-         'test_request': '2026-10-26T11:00:00+09:00', 'results': '2026-10-28T09:00:00+09:00',
-         'reproduction': '2026-10-28T09:30:00+09:00'}
+KST = timezone(timedelta(hours=9))
 DISPOSITIONS = {'customer_replacement': '고객 교체', 'stock_replacement': '보관 대체', 'release': '출고 허용',
                 'hold': '보류', 'unresolved': '미결'}
 
@@ -70,8 +68,10 @@ class ActionError(Exception):
 class ClaimCase:
     """One claim from upload to the A request, on its own fresh schema. Each public method is one user action."""
 
-    def __init__(self, database=None, *, docs_dir=DOCS, uploads_dir=UPLOADS, live=None):
+    def __init__(self, database=None, *, docs_dir=DOCS, uploads_dir=UPLOADS, live=None, clock=None):
         self.database, self.docs_dir, self.uploads_dir = database, Path(docs_dir), Path(uploads_dir)
+        # The time a person presses the button (KST). Tests may pass a fixed clock.
+        self.clock = clock or (lambda: datetime.now(KST).isoformat(timespec='seconds'))
         self.live = live  # live_agent_settings() result for the real model, None for the scripted stand-in
         self.state, self.events, self.s, self.svc = 'start', [], {}, None
 
@@ -129,7 +129,7 @@ class ClaimCase:
             raise ActionError('클레임은 처음 단계에서만 올릴 수 있습니다. "새 클레임"으로 다시 시작하세요.')
         path = self._save_upload(filename, content, ('.eml', '.xlsx', '.csv'))
         try:
-            conversion = convert_claim(path, collected_at=TIMES['received'])
+            conversion = convert_claim(path, collected_at=self.clock())
         except ValueError as exc:
             self._event('클레임 파일을 읽지 못함', [('파일', Path(filename).name), ('이유', str(exc))], tone='bad',
                         note='파일 형식이나 양식을 확인하세요.')
@@ -152,7 +152,14 @@ class ClaimCase:
         if report['state'] != 'needs_review' or intake is None:
             self._event('클레임 변환 막힘', rows, tone='bad', note='필수 항목이 없거나 값이 맞지 않습니다. 고친 파일을 다시 올리세요.')
             return
-        self.s.update(conversion=conversion, intake=intake)
+        configuration = report.get('configuration_candidate_id')
+        if configuration is None:
+            rows.append(('제품 구성', '정할 수 없음 (제조사·모델·설계 개정·변형 확인 필요)'))
+            self._event('클레임 변환 — 제품 구성 확인 필요', rows, tone='bad',
+                        note='구성을 추측하지 않습니다. 고객에게 제품 정보를 확인해 고친 파일을 올리세요.')
+            return
+        rows.append(('제품 구성', configuration))
+        self.s.update(conversion=conversion, intake=intake, configuration=configuration)
         self._event('클레임 변환', rows, tone='warn' if warnings else 'ok',
                     note='고객 표현을 그대로 옮겼습니다. 보드 연결과 원인 판단은 아직 하지 않았습니다.')
         self.state = 'claim_converted'
@@ -185,6 +192,10 @@ class ClaimCase:
                 ('못 찾은 번호', ', '.join(f"{l['serial']} ({l['match_state']})" for l in open_links) or '없음'),
                 ('생산라인', trace['lines']['single_line'] or '하나로 정해지지 않음')]
         self._agent_trace(intake['id'], version, matched, trace['lines']['single_line'])
+        mismatched = [l['serial'] for l in matched if any(w['code'] == 'CONFIGURATION_MISMATCH' for w in l.get('warnings', []))]
+        if mismatched:
+            rows.append(('구성 불일치', f"클레임은 {self.s['configuration']}, 보드 기록은 다른 구성: {', '.join(mismatched)}"))
+            case = dict(case, node=None, reason='claimed configuration differs from the board records')
         if case['node'] is None or trace['lines']['single_line'] is None:
             rows.append(('멈춘 이유', case.get('reason') or ', '.join(trace['lines'].get('unresolved_unit_ids') or [])))
             self._event('보드·생산라인 추적 — 사람 확인 필요', rows, tone='bad',
@@ -247,14 +258,15 @@ class ClaimCase:
                                            ('근거', 'C 운영 기록 (임시, B 공통 재고·출하 타입 전)')],
                     tone='ok' if hold['state'] == 'ready' else 'warn',
                     note='보류 대상은 불량 확정이 아닙니다.')
-        containment = prepare_containment(s['case'], s['line'], records, hold, prepared_at=TIMES['containment'],
-                                          external_claim_id=s['intake']['external_claim_id'], configuration_id=CONFIGURATION)
+        s['t_containment'] = self.clock()
+        containment = prepare_containment(s['case'], s['line'], records, hold, prepared_at=s['t_containment'],
+                                          external_claim_id=s['intake']['external_claim_id'], configuration_id=s['configuration'])
         extra = [candidate['node']] if candidate['node'] else []
         draft = must(self.svc.prepare_draft('claim-agent', [{'op': 'put', 'node': n} for n in [s['case'], *containment['nodes'], *extra]],
                                             request_key='app-containment'))['data']
         status = self._status(draft)
-        again = prepare_containment(s['case'], s['line'], records, hold, prepared_at=TIMES['containment'],
-                                    external_claim_id=s['intake']['external_claim_id'], configuration_id=CONFIGURATION,
+        again = prepare_containment(s['case'], s['line'], records, hold, prepared_at=s['t_containment'],
+                                    external_claim_id=s['intake']['external_claim_id'], configuration_id=s['configuration'],
                                     review_status=status)
         s['containment_draft'] = draft
         kinds = {'production_stop': '생산 중단', 'shipment_hold': '출고·배송 중단'}
@@ -272,15 +284,16 @@ class ClaimCase:
                              note='Request drafts reviewed in the claim app; sending is recorded by people.',
                              request_key='app-containment-review'))
         applied = must(self.svc.apply('workflow', draft['draft_id'], draft['draft_version'], request_key='app-containment-apply'))
-        refreshed = prepare_containment(s['case'], s['line'], s['records'], s['hold'], prepared_at=TIMES['containment'],
-                                        external_claim_id=s['intake']['external_claim_id'], configuration_id=CONFIGURATION,
+        refreshed = prepare_containment(s['case'], s['line'], s['records'], s['hold'], prepared_at=s['t_containment'],
+                                        external_claim_id=s['intake']['external_claim_id'], configuration_id=s['configuration'],
                                         review_status='applied')
         count = self._refresh(refreshed['documents'])
         self._event('중단 요청서 승인', [('그래프 버전', applied['data_version']),
                                     ('문서 검토 상태', f"{REVIEW_LABELS['applied']} ({count}개 문서 갱신)"),
                                     ('송부 상태', '미송부 (사람이 직접 송부)')])
-        test = prepare_test_request(s['case'], s['line'], s['hold'], prepared_at=TIMES['test_request'],
-                                    external_claim_id=s['intake']['external_claim_id'], configuration_id=CONFIGURATION,
+        s['t_test'] = self.clock()
+        test = prepare_test_request(s['case'], s['line'], s['hold'], prepared_at=s['t_test'],
+                                    external_claim_id=s['intake']['external_claim_id'], configuration_id=s['configuration'],
                                     candidate_result=s['candidate'])
         s['test'] = test
         groups = ' + '.join(f"{g['group']} {len(g['unit_ids'])}대" for g in test['targets']['groups'])
@@ -294,8 +307,8 @@ class ClaimCase:
         s = self.s
         sent = self._approve([{'op': 'put', 'node': s['test']['node']}], 'app-test-request',
                              'Test request reviewed and sent to the test team by a person (recorded in the claim app).')
-        refreshed = prepare_test_request(s['case'], s['line'], s['hold'], prepared_at=TIMES['test_request'],
-                                         external_claim_id=s['intake']['external_claim_id'], configuration_id=CONFIGURATION,
+        refreshed = prepare_test_request(s['case'], s['line'], s['hold'], prepared_at=s['t_test'],
+                                         external_claim_id=s['intake']['external_claim_id'], configuration_id=s['configuration'],
                                          candidate_result=s['candidate'], review_status='applied')
         self._refresh(refreshed['documents'])
         self._event('테스트 의뢰 송부 기록', [('그래프 버전', sent['data_version']),
@@ -309,7 +322,7 @@ class ClaimCase:
         s = self.s
         path = self._save_upload(filename, content, ('.csv',))
         try:
-            results = read_test_results(path, s['test']['node'], s['case'], collected_at=TIMES['results'])
+            results = read_test_results(path, s['test']['node'], s['case'], collected_at=self.clock())
         except ValueError as exc:
             self._event('결과 파일을 읽지 못함', [('파일', Path(filename).name), ('이유', str(exc))], tone='bad',
                         note='머리글은 보드, 시험 결과, 조치 판정, 관측 시각, 비고 순서여야 합니다.')
@@ -329,9 +342,11 @@ class ClaimCase:
                 ('조치 판정 (테스트팀)', ' · '.join(f"{DISPOSITIONS[k]} {counts[k]}" for k in DISPOSITIONS if k in counts) or '없음')]
         self._event('테스트팀 결과 받음', rows, note='판정은 파일에 적힌 그대로 옮겼습니다.')
         s['results'] = results
+        replacement = c_operations_replacement(load_operations())
         reproduction = reproduction_requirement(s['case'], s['test']['node'], results['nodes'],
-                                                c_operations_replacement(load_operations()), configuration_id=CONFIGURATION)
-        request = prepare_reproduction_request(s['case'], reproduction, prepared_at=TIMES['reproduction'],
+                                                replacement, configuration_id=s['configuration'])
+        s['t_reproduction'] = self.clock()
+        request = prepare_reproduction_request(s['case'], reproduction, prepared_at=s['t_reproduction'],
                                                external_claim_id=s['intake']['external_claim_id'])
         nodes = results['nodes'] + ([request['node']] if request['node'] else [])
         draft = must(self.svc.prepare_draft('claim-agent', [{'op': 'put', 'node': n} for n in nodes],
@@ -339,9 +354,12 @@ class ClaimCase:
         status = self._status(draft)
         s['reproduction_draft'] = draft
         r, required = reproduction, reproduction['required_good_quantity']
+        # The boards actually counted as replacement stock (same rule as reproduction_requirement).
+        available = (r['node'] or {}).get('replacement_unit_ids') or [
+            u for u in replacement['unit_ids'] if u not in s['test']['node']['unit_ids']]
         state_label = {'confirmed': '확정', 'lower_bound': '하한 (최소 수량, 추가 확인 필요)', 'undetermined': '미정'}[r['state']]
         rows = [('고객 교체 + 보관 대체', f"{r['customer_replacement_quantity']} + {r['stock_replacement_quantity']}"),
-                ('사용할 대체 재고', f"{r['available_replacement_quantity']}대 (C-R001 ~ C-R007)"),
+                ('사용할 대체 재고', f"{r['available_replacement_quantity']}대 ({serial_ranges(available) or '없음'})"),
                 ('계산', '계산하지 않음 (확정된 교체 수요 없음)' if required is None else
                  f"max(0, {r['customer_replacement_quantity'] + r['stock_replacement_quantity']} − {r['available_replacement_quantity']}) = {required}대"),
                 ('재생산 필요', '미정' if required is None else f'{required}대'), ('상태', state_label), ('미결', f"{r['unresolved_quantity']}대")]
@@ -349,7 +367,7 @@ class ClaimCase:
             rows.append(('A 요청서', '만들지 않음 (미정은 0으로 저장하지 않음)'))
             self._event('재생산 수량', rows, tone='warn', note='미결 보드의 판정이 나오면 새 결과로 다시 계산합니다.')
         else:
-            request = prepare_reproduction_request(s['case'], reproduction, prepared_at=TIMES['reproduction'],
+            request = prepare_reproduction_request(s['case'], reproduction, prepared_at=s['t_reproduction'],
                                                    external_claim_id=s['intake']['external_claim_id'], review_status=status)
             rows.append(('A 요청서', REVIEW_LABELS.get(status, status) + ' · 미송부'))
             self._event('재생산 수량·A 요청서', rows, tone='ok' if r['state'] == 'confirmed' else 'warn',
@@ -367,7 +385,7 @@ class ClaimCase:
         s = self.s
         required = s['reproduction']['required_good_quantity']
         if required is not None:
-            refreshed = prepare_reproduction_request(s['case'], s['reproduction'], prepared_at=TIMES['reproduction'],
+            refreshed = prepare_reproduction_request(s['case'], s['reproduction'], prepared_at=s['t_reproduction'],
                                                      external_claim_id=s['intake']['external_claim_id'], review_status='applied')
             self._refresh(refreshed['documents'])
         self._event('검토 완료', [('그래프 버전', applied['data_version']),

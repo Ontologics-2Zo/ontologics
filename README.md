@@ -74,7 +74,7 @@ AI 업무 지원은 기존 `.env`/`.env.local` 또는 `--model-env-file`의 `OPE
 
 일반 가상 이력 파일은 UTF-8 JSON `{origin:"synthetic",authored_at:"명시적 시각+offset",notice:"시연 근거 설명",records:[...]}`다. records는 기존 SCHEMA의 ProductUnit/ComponentLot/Installation/HistoryCoverage/InventoryMovement 필드(id/type 포함, origin/evidence 제외)를 사용한다. 호스트가 새 SourceDocument/Evidence·해시·JSON 위치를 붙인다. 실제 회사 운영 자료나 고장/안전/가동 필드는 허용하지 않는다. 원본은 Git 제외 `data/receipts/`에 무변경 보존하고 DB와 함께 별도 백업해야 한다. 파일 접수·형식 검증은 사실 확인이나 승인과 다르다.
 
-기본 네 Agent·여섯 화면·공통 기반은 프로젝트 담당자가 구현하고 동료는 이후 추가 Agent를 같은 호스트 경계에 연결한다. HTTP 계약은 [TOOLS](docs/TOOLS.md#개발용-http-api와-화면), 실제 검증 범위·제한은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 영향 검사 후 최종 `python -m unittest discover -v`를 실행한다. 모델 대역·실제 브라우저·실모델 검증은 구분한다.
+공통 담당자는 Harness·신원·권한·도구·승인·도메인 계약을 관리하고, 동료는 기존 네 Agent 중 맡은 역할의 고유 기능을 역할 폴더에서 개발·개선한다. 별도 신규 Agent 추가는 필수 요구가 아니다. HTTP 계약은 [TOOLS](docs/TOOLS.md#개발용-http-api와-화면), 실제 검증 범위·제한은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 영향 검사 후 최종 `python -m unittest discover -v`를 실행한다. 모델 대역·실제 브라우저·실모델 검증은 구분한다.
 
 ## 개발용 사용자 신원과 공통 호스트
 
@@ -198,7 +198,7 @@ python -m examples.index_evidence --schema web_s1_s2_team_001 --version 2 --env-
 
 ## 동료의 확장 Agent 연결
 
-기본 네 역할·여섯 화면·공통 기반은 프로젝트 담당자의 범위다. 동료는 기존 역할을 덮어쓰지 않고 `AgentRegistration(name, instructions, allowed_tools)`를 호스트 시작 코드에서 등록한다. `CommonHost(..., agent_registrations=(registration,))` → 요청 신원 고정 → `request.run_agent(registration.name, provider, messages, config=...)` 순서다. 도구는 기존 `AgentGateway.ALLOWED`의 부분집합이며 등록 자체가 사용자 권한을 늘리지 않는다. 승인·반영·seed·색인 도구는 등록할 수 없다. HTTP 요청이나 모델 출력으로 역할을 등록하지 않는다.
+동료가 맡은 기존 네 역할을 개선할 때는 위 [담당 폴더와 연결](#실제-agent-담당-폴더와-연결)을 사용하며 새 Agent 등록은 필요하지 않다. 아래는 별도 신규 역할이 필요한 경우의 선택적 확장 절차다. 기존 역할과 구별한 `AgentRegistration(name, instructions, allowed_tools)`를 호스트 시작 코드에서 등록한다. `CommonHost(..., agent_registrations=(registration,))` → 요청 신원 고정 → `request.run_agent(registration.name, provider, messages, config=...)` 순서다. 도구는 기존 `AgentGateway.ALLOWED`의 부분집합이며 등록 자체가 사용자 권한을 늘리지 않는다. 승인·반영·seed·색인 도구는 등록할 수 없다. HTTP 요청이나 모델 출력으로 역할을 등록하지 않는다.
 
 ```bash
 python -m examples.extension_agent --schema web_s1_s2_team_001 --version 2 --env-file .env.local
@@ -251,9 +251,11 @@ Sandbox는 네트워크 차단·non-root·읽기 전용 루트/입력·CPU/메�
 
 ## 저장소 공유 상태
 
-비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. PostgreSQL 전환 PR #1, 목표·완료 기준 문서 PR #2와 첫 개발용 통합 PR #3은 main에 병합됐다. 2026-10-27 확인한 main은 **`7c5e2d9`**이며 개발용 호스트·S1·S2·네 Agent를 포함한다. 이번 Harness·계약·Sandbox 보완의 리뷰 브랜치는 **`codex/harness-security-eval`**이다. 실제 push·PR·CI 상태는 해당 원격 브랜치와 PR에서 확인한다. 이 기준 버전은 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
+비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-10-29 확인한 main은 [`ca7c391a9e813b6ab9e6fddfb48ab639c09a764b`](https://github.com/Ontologics-2Zo/ontologics/commit/ca7c391a9e813b6ab9e6fddfb48ab639c09a764b)**다. PR #1~#3에 이어 공통 계약·한도·격리 파서 [PR #4](https://github.com/Ontologics-2Zo/ontologics/pull/4)와 실제 역할 패키지 분리 [PR #5](https://github.com/Ontologics-2Zo/ontologics/pull/5)가 모두 병합됐다. 이 기준 버전은 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
 
-저장소 접근 권한이 있는 팀원은 main의 통합 기준을 받아 기존 실행 순서를 따른다. 미커밋 작업이 있으면 먼저 보존하고, 위의 신규 Harness·Sandbox 명령은 후속 변경이 공유된 뒤 사용한다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
+저장소 접근 권한이 있는 팀원은 위 기준 커밋을 포함하는 main에서 담당 브랜치를 만들어 기존 실행·역할별 테스트 순서를 따른다. 미커밋 작업은 먼저 보존한다. Harness·Sandbox 구현과 역할 폴더는 이미 공유돼 있으며 환경 설정 후 사용할 수 있다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
+
+**과거 공유 이력:** 2026-10-27에는 main `7c5e2d9`에 PR #1~#3이 병합돼 있었고, `codex/harness-security-eval`은 Harness·계약·Sandbox 보완의 리뷰 브랜치였다. 당시의 공유 대기 안내는 위 현재 상태와 구분한다.
 
 ## 개발 기준
 

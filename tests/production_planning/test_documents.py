@@ -296,7 +296,12 @@ class DocumentPostgresTests(unittest.TestCase):
     def test_example_exports_three_utf8_drafts(self):
         self.assertIsNotNone(importlib.util.find_spec('examples.production_planning_documents'), 'Task08 example missing')
         from examples.production_planning_documents import run_example
-        with tempfile.TemporaryDirectory() as folder:
+        import os
+        from unittest.mock import patch
+        # Use the DB already selected by this isolated integration fixture.
+        # Keep the standalone example's explicit test-DB safety requirement.
+        with tempfile.TemporaryDirectory() as folder, patch.dict(
+                os.environ, {'TEST_DATABASE_URL': self.settings.url}):
             r = run_example(folder)
             self.assertEqual(3, len(r['exports']))
             self.assertEqual(0, r['model_api_calls']); self.assertEqual(0, r['demand_event_count'])

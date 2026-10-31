@@ -253,13 +253,19 @@ class ReferenceAdapterTests(unittest.TestCase):
                 external_contents=contents, registration_ref=self.registration_ref)
             self.assertFalse(result['report']['graph_integration_verified'], (change, result))
 
-    def test_adapter_rejects_submicrosecond_precision_while_candidate_still_accepts_it(self):
+    def test_adapter_rejects_submicrosecond_precision_across_python_versions(self):
         self.complete()
         for section, key in [('contract_item', 'delivery_due'), ('stock_scope', 'as_of')]:
             original = self.context[section][key]
             self.context[section][key] = '2026-11-10T12:30:00.1234567+09:00'
-            self.assertTrue(validate_planning_context(self.context)['valid'])
+            # Python 3.10 rejects this at candidate parsing; newer versions
+            # may parse it, but the adapter must still reject the precision.
+            candidate = validate_planning_context(self.context)
+            if not candidate['valid']:
+                self.assertIn('INVALID_TIME', {e['code'] for e in candidate['errors']})
             result, *_ = self.call()
+            self.assertFalse(result['report']['valid'])
+            self.assertFalse(result['report']['graph_integration_verified'])
             self.assertIn('INVALID_TIME', self.codes(result))
             self.context[section][key] = original
 

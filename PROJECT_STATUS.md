@@ -686,3 +686,9 @@ A 일정 검토 버튼을 ‘일정 초안 저장’으로 변경하고 흐름 �
 ### 2026-11-01 A 테스트의 Python 3.10 enterContext 호환 수정
 
 사용자 요청에 따라 CI 오류를 단계적으로 해결한다. tests/production_planning/test_reference_adapter.py의 enterContext 두 곳만 patch.start()/addCleanup(patch.stop)으로 변경했다. 공통 코드·CI·업무 검증 조건은 변경하지 않았다. 임시 Python3.10.21에서 수정 전 관련19개 중 오류13개를 재현했고, 수정 후 enterContext 오류는0개, 통과18개·실패1개다. 남은 실패는 test_adapter_rejects_submicrosecond_precision_while_candidate_still_accepts_it의 후보 시간 정밀도 기대값으로 다음 단계에서 조사한다. Python3.12 관련19개는 모두 통과. 이번에는 전체 회귀를 재실행하지 않았으며 CI 전체 통과를 주장하지 않는다.
+
+### 2026-11-01 A CI 잔여 실패 두 건 수정
+
+공통 코드·CI·업무 코드·예제 안전장치를 유지하고 A 테스트 두 파일만 수정했다. 문서 예제 테스트는 fixture에서 이미 선택한 격리 DB 주소를 patch.dict로 실행 범위 안에서만 TEST_DATABASE_URL에 전달한다. 시간 정밀도 테스트는 Python3.10 후보 파서가 7자리 소수를 먼저 거부하는 동작을 허용하되, 최종 adapter 결과의 INVALID_TIME·valid=False·graph_integration_verified=False를 모두 검사한다. 검증 삭제·skip 추가 없음.
+
+실제 임시 PostgreSQL 및 Docker 격리 파서 검증: Python3.10.21, DATABASE_URL만 설정한 CI 유사 전체 실행 646개 중505개 통과·141개 기존 skip·실패0(57.106초). 기존 Python3.12 전체 DB 회귀646개 모두 통과(279.768초). 사용자 DB·모델 API 미사용. GitHub 원격 CI 결과는 push 후 별도 확인 필요.

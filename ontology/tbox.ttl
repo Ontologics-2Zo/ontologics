@@ -25,3 +25,12 @@ o:evidence a owl:ObjectProperty ; rdfs:range o:Evidence .
 o:ProductModel owl:disjointWith o:ProductUnit, o:ComponentModel, o:ComponentLot .
 o:ComponentModel owl:disjointWith o:ComponentLot .
 # Required fields, identity, time and approvals are enforced by Python, not OWL inference.
+
+# Production planning extension
+o:Ontology owl:versionInfo "graph-0.5-a-planning-1" .
+o:Contract a owl:Class .
+o:ContractItem a owl:Class .
+o:DeliveryRound a owl:Class .
+o:ComponentStockSnapshot a owl:Class .
+o:contract_id a owl:ObjectProperty ; rdfs:range o:Contract .
+o:contract_item_id a owl:ObjectProperty ; rdfs:range o:ContractItem .

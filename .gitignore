@@ -17,3 +17,17 @@ artifacts/local/
 
 # User-submitted immutable evidence; back up separately from Git.
 data/receipts/
+
+# Local secrets and editor backups of environment files.
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Private inputs, exports, credentials and local logs belong here.
+.local/
+private/
+secrets/
+*.log

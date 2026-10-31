@@ -682,3 +682,7 @@ A 전용 library_schedule.py와 schedule_demo.py 추가. 라인, 구성별 작�
 ### 2026-10-31 일정 저장 명칭 명확화
 
 A 일정 검토 버튼을 ‘일정 초안 저장’으로 변경하고 흐름 문서의 명칭을 맞췄다. DB 저장·계산 동작은 그대로이며 설비 점유·생산 실행 승인 기능을 추가하지 않았다. 문구 변경 확인 완료. 이번 변경에서는 전체 자동 테스트를 다시 실행하지 않았다.
+
+### 2026-11-01 A 테스트의 Python 3.10 enterContext 호환 수정
+
+사용자 요청에 따라 CI 오류를 단계적으로 해결한다. tests/production_planning/test_reference_adapter.py의 enterContext 두 곳만 patch.start()/addCleanup(patch.stop)으로 변경했다. 공통 코드·CI·업무 검증 조건은 변경하지 않았다. 임시 Python3.10.21에서 수정 전 관련19개 중 오류13개를 재현했고, 수정 후 enterContext 오류는0개, 통과18개·실패1개다. 남은 실패는 test_adapter_rejects_submicrosecond_precision_while_candidate_still_accepts_it의 후보 시간 정밀도 기대값으로 다음 단계에서 조사한다. Python3.12 관련19개는 모두 통과. 이번에는 전체 회귀를 재실행하지 않았으며 CI 전체 통과를 주장하지 않는다.

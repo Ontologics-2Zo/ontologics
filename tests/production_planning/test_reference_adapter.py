@@ -45,7 +45,9 @@ def complete_inputs(test):
     content = path.read_bytes(); sha = contents_sha(content)
     mapping = dict(source_ref=ref, source_id=sid, path=str(path.relative_to(ROOT)),
                    evidence_id=eid, locator='/')
-    test.enterContext(patch.object(adapter, '_DELIVERY_SOURCE', mapping))
+    delivery_patch = patch.object(adapter, '_DELIVERY_SOURCE', mapping)
+    delivery_patch.start()
+    test.addCleanup(delivery_patch.stop)
     context['contract_item']['delivery_due'] = facts['due_at']
     context['external_inputs'].append(dict(source_ref=ref, sha256=sha))
     contents[ref] = content
@@ -304,7 +306,9 @@ class ReferenceAdapterTests(unittest.TestCase):
         source.update(path=str(path.relative_to(ROOT)), sha256=sha, version=sha)
         mappings = dict(adapter._SOURCES)
         mappings['input:planning:stock'] = (source['id'], source['path'])
-        self.enterContext(patch.object(adapter, '_SOURCES', mappings))
+        sources_patch = patch.object(adapter, '_SOURCES', mappings)
+        sources_patch.start()
+        self.addCleanup(sources_patch.stop)
         self.contents['input:planning:stock'] = raw
         next(e for e in self.context['external_inputs'] if e['source_ref'] == 'input:planning:stock')['sha256'] = sha
         self.context['stocks'][0].update(quantity_state='unknown', on_hand_quantity=None)

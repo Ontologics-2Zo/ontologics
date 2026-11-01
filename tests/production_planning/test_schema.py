@@ -17,10 +17,13 @@ class PlanningSchemaTests(unittest.TestCase):
         schema.validate_round_totals(index, error)
         return errors, [warning['code'] for warning in warnings]
 
-    def test_extension_is_separate_from_common_schema(self):
+    def test_role_metadata_is_a_detached_subset_of_common_schema(self):
         self.assertEqual(set(schema.SCHEMA), {
             'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot'})
-        self.assertFalse(set(schema.SCHEMA) & set(model.SCHEMA))
+        self.assertLessEqual(set(schema.SCHEMA), set(model.SCHEMA))
+        for kind, definition in schema.SCHEMA.items():
+            self.assertEqual(definition, model.SCHEMA[kind])
+            self.assertIsNot(definition[0], model.SCHEMA[kind][0])
         self.assertEqual(schema.SCHEMA['ContractItem'][1], {
             'contract_id': 'Contract', 'configuration_id': 'Configuration'})
         self.assertEqual(schema.SCHEMA['DeliveryRound'][1], {'contract_item_id': 'ContractItem'})

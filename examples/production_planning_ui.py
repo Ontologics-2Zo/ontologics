@@ -56,7 +56,7 @@ def scripted_interpretation(extracted,version, *, reference=None):
     return dict(source_sha256=extracted['source']['sha256'],data_version=version,items=[dict(fields=fields)])
 
 
-def make_application(settings,source_directory, *, direct_fixture=False, live_settings=None, cost_policy=None):
+def make_application(settings,source_directory, *, direct_fixture=False, live_settings=None, cost_policy=None, graph_settings=None):
     identities=DevelopmentIdentityProvider(USERS,enabled=True)
     request=json.loads((FOLDER/'request.json').read_text())
     for name,ref,expected in [('contract.txt','input:planning:contract','6e2057d140963a9584ea25e514971d81e00728a7dbaeac3b19dd9ba7c519a962'),('production.json','input:planning:production','5973421783a94e122fa5f3b84fb544802cd304e07872506ea875268eee442498')]:
@@ -94,7 +94,8 @@ def make_application(settings,source_directory, *, direct_fixture=False, live_se
                 if not result['ok']:raise ValueError('Empty test schema seed failed')
             initialize_inputs(seed,payload)
         finally:seed.close()
-        host=CommonHost(identities,database,agent_registrations=(REGISTRATION,),cost_policy=cost_policy)
+        host=CommonHost(identities,database,agent_registrations=(REGISTRATION,),cost_policy=cost_policy,
+                        graph_settings=graph_settings)
         demands=PersistentDemandConfirmationWorkflow(host,identities,database)
         scenarios[scenario]=dict(host=host,demands=demands,store=BusinessDocumentWorkflow(host,demands),
                                 inputs=WebInputStore(host))
@@ -107,8 +108,10 @@ def make_application(settings,source_directory, *, direct_fixture=False, live_se
 def serve(port=0, *, direct_fixture=False, live=False, env_file=None):
     from ontologics.database import environment_values
     from ontologics.openai_provider import OpenAISettings
+    from ontologics.graph_views import GraphSettings
     from ontologics.paid_budget import cost_policy_from_environment
-    values=environment_values(env_file) if live else {}
+    values=environment_values(env_file)
+    graph_settings=GraphSettings.from_environment(environ=values)
     provider_settings=OpenAISettings.from_environment(environ=values) if live else None
     policy=cost_policy_from_environment(values) if live else None
     if live and policy is None:raise ValueError("Live mode requires an explicit request cost policy")
@@ -116,7 +119,7 @@ def serve(port=0, *, direct_fixture=False, live=False, env_file=None):
     with ExitStack() as stack:
         settings={s:stack.enter_context(isolated_database()) for s in SCENARIOS}
         folder=Path(stack.enter_context(tempfile.TemporaryDirectory(prefix='task10-uploads-')))
-        app=make_application(settings,folder,direct_fixture=direct_fixture,live_settings=provider_settings,cost_policy=policy)
+        app=make_application(settings,folder,direct_fixture=direct_fixture,live_settings=provider_settings,cost_policy=policy,graph_settings=graph_settings)
         server=PlanningServer(app,port)
         print(json.dumps(dict(url=server.origin,mode='synthetic data / live API' if live else 'synthetic data / scripted',shutdown='Ctrl+C cleans schemas and uploads'),ensure_ascii=False),flush=True)
         try:server.serve_forever(poll_interval=.2)

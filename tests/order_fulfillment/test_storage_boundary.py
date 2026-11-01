@@ -288,12 +288,14 @@ class StorageBoundaryTests(unittest.TestCase):
         schema_validation.validate_domain({n['id']: n for n in nodes}, lambda nid, code, detail: errors.append(code))
         self.assertTrue({'INVALID_QUANTITY', 'INVALID_REFERENCE'} <= set(errors))
 
-    def test_lookup_and_output_composition_do_not_register_b_for_storage(self):
+    def test_current_export_does_not_mutate_the_pinned_legacy_schema(self):
         model = self.main_model
         before = copy.deepcopy(model['SCHEMA'])
         combined = schema.lookup_schema(model['SCHEMA'])
         self.assertEqual(22, len(combined))
-        with patch.object(schema_export, '_common_graph_jsonld', model['graph_jsonld']), patch.object(schema_export, '_common_tbox_turtle', model['tbox_turtle']):
+        # Current JSON-LD uses the registered common schema. The pinned old
+        # model remains an independent historical rejection oracle.
+        with patch.object(schema_export, '_common_tbox_turtle', model['tbox_turtle']):
             self.assertTrue(schema_export.graph_jsonld(self.contract)['@graph'])
             self.assertIn('o:Contract a owl:Class .', schema_export.tbox_turtle())
         self.assertEqual(before, model['SCHEMA'])

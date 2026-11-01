@@ -14,12 +14,12 @@ class LocalGraphValidationTests(unittest.TestCase):
     def codes(self, nodes):
         return {item['code'] for item in validate_graph(nodes)['errors']}
 
-    def test_valid_reference_does_not_register_shared_types_or_mutate_input(self):
+    def test_valid_reference_uses_shared_types_without_mutating_input(self):
         before = copy.deepcopy(self.nodes)
         self.assertTrue(validate_graph(self.nodes)['valid'])
         self.assertEqual(self.nodes, before)
-        self.assertNotIn('Contract', model.SCHEMA)
-        self.assertFalse(model.validate_graph(self.nodes)['valid'])
+        self.assertIn('Contract', model.SCHEMA)
+        self.assertEqual(validate_graph(self.nodes), model.validate_graph(self.nodes))
 
     def test_unknown_and_malformed_nodes_are_not_filtered_out(self):
         for node, code in [(None, 'INVALID_NODE'),

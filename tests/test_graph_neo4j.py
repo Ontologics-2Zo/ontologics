@@ -5,6 +5,7 @@ import copy
 from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
+import re
 from threading import Event
 import unittest
 import uuid
@@ -13,11 +14,30 @@ from unittest.mock import MagicMock, patch
 from ontologics.database import environment_values
 from ontologics.demo import CONFIG_L, CONFIG_L1, LOT, example_queries, fixture_nodes
 from ontologics.graph_neo4j import Neo4jProjection, ProjectionError
-from ontologics.model import SCHEMA_VERSION, digest
+from ontologics.graph_display import DISPLAY_NAMES
+from ontologics.model import SCHEMA, SCHEMA_VERSION, digest
 from ontologics.service import RULE_VERSION
 from ontologics.temporal import investigate
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class Neo4jDisplayContractTests(unittest.TestCase):
+    def test_every_domain_kind_has_a_safe_label_name_and_browser_style(self):
+        self.assertEqual(set(SCHEMA), set(DISPLAY_NAMES))
+        grass = (ROOT / 'ontology/neo4j-browser.grass').read_text()
+        styles = dict(re.findall(r'node\.([A-Za-z][A-Za-z0-9_]*)\s*\{([^}]+)\}',
+                                 grass.replace('{browser_caption}', 'BROWSER_CAPTION')))
+        self.assertEqual(set(SCHEMA) | {'OntologicsEntity'}, set(styles))
+        colors = set()
+        for kind in SCHEMA:
+            self.assertRegex(kind, r'^[A-Za-z][A-Za-z0-9_]*$')
+            self.assertTrue(DISPLAY_NAMES[kind].strip())
+            self.assertIn('caption: "BROWSER_CAPTION"', styles[kind])
+            color = re.search(r'color:\s*(#[0-9a-fA-F]{6})\s*;', styles[kind])
+            self.assertIsNotNone(color, kind)
+            colors.add(color.group(1).lower())
+        self.assertEqual(len(SCHEMA), len(colors))
 
 
 class Neo4jProjectionTests(unittest.TestCase):
@@ -65,9 +85,38 @@ class Neo4jProjectionTests(unittest.TestCase):
         with self.projection._driver.session(database=self.projection.database) as session:
             return session.run(query, namespace=self.namespace, **params).data()
 
+    def display_rows(self, version):
+        rows = self.run_cypher('MATCH (n:OntologicsEntity {namespace:$namespace,version:$version}) '
+            'RETURN labels(n) AS labels, properties(n) AS node ORDER BY n.ordinal', version=version)
+        for row in rows:
+            row['labels'] = sorted(row['labels'])
+        return rows
+
+    def assert_display(self, version, nodes):
+        rows = self.display_rows(version)
+        self.assertEqual(len(nodes), len(rows))
+        for expected, row in zip(nodes, rows):
+            props = row['node']
+            self.assertEqual(expected, json.loads(props['payload']))
+            self.assertEqual({expected['type']}, set(row['labels']) & set(SCHEMA))
+            self.assertIn('OntologicsEntity', row['labels'])
+            self.assertTrue(props['browser_caption'].strip())
+            self.assertEqual(expected['origin'] == 'synthetic', '[가상]' in props['browser_caption'])
+        by_id = {r['node']['id']: r['node'] for r in rows}
+        unit = next(n for n in nodes if n['id'] == 'unit:U104')
+        self.assertIn('보드', by_id[unit['id']]['browser_caption'])
+        self.assertIn(unit['serial'], by_id[unit['id']]['browser_caption'])
+        lot = next(n for n in nodes if n['id'] == LOT)
+        self.assertIn('로트', by_id[LOT]['browser_caption'])
+        self.assertIn(lot['lot_code'], by_id[LOT]['browser_caption'])
+        product = next(n for n in nodes if n['type'] == 'ProductModel')
+        self.assertIn(product['name'], by_id[product['id']]['browser_caption'])
+        return rows
+
     def test_relationship_queries_preserve_source_scope_payload_order_and_evidence(self):
         published = self.sync()
         self.assertEqual('ready', published['state'])
+        self.assert_display(1, self.nodes)
         snap = self.snapshot()
         self.assertEqual(self.nodes, snap.nodes())
         config = snap.configuration(CONFIG_L1)
@@ -97,7 +146,10 @@ class Neo4jProjectionTests(unittest.TestCase):
         self.sync()
         changed = copy.deepcopy(self.nodes)
         next(n for n in changed if n['id'] == CONFIG_L)['name'] += ' approved revision label'
+        next(n for n in changed if n['id'] == 'unit:U104')['serial'] = 'U104 "quoted" 제조'
         self.sync(2, changed)
+        self.assert_display(2, changed)
+        self.assert_display(1, self.nodes)
         self.assertNotEqual(self.snapshot().configuration(CONFIG_L)['configuration']['name'],
                             self.snapshot(2, changed).configuration(CONFIG_L)['configuration']['name'])
         self.error('GRAPH_NOT_READY', lambda: self.snapshot(3))
@@ -105,6 +157,56 @@ class Neo4jProjectionTests(unittest.TestCase):
         self.error('GRAPH_VERSION_CONFLICT', lambda: self.snapshot(rule_version='temporal-other'))
         self.error('GRAPH_VERSION_CONFLICT', lambda: self.sync(1, changed))
         self.assertEqual(self.nodes, self.snapshot().nodes())
+
+    def test_ab_optional_and_list_edges_payloads_and_display_share_one_version(self):
+        from tests.test_graph_rdf import ab_nodes
+        self.nodes = ab_nodes()
+        self.sync()
+        snapshot = self.snapshot()
+        self.assertEqual(self.nodes, snapshot.nodes())
+        self.assertTrue(self.sync()['replayed'])
+        by_id = {row['node']['id']: row for row in self.display_rows(1)}
+        for node in self.nodes:
+            with self.subTest(node=node['id']):
+                self.assertEqual([node], snapshot.lookup(node_id=node['id']))
+                row = by_id[node['id']]
+                self.assertEqual({node['type']}, set(row['labels']) & set(SCHEMA))
+                self.assertIn(DISPLAY_NAMES[node['type']], row['node']['browser_caption'])
+                self.assertEqual(node['origin'] == 'synthetic', '[가상]' in row['node']['browser_caption'])
+                self.assertEqual(node, json.loads(row['node']['payload']))
+        rows = self.run_cypher('MATCH (a:OntologicsEntity {namespace:$namespace,version:1})'
+            '-[r:OntologicsLink]->(b) WHERE r.field IN ["round_ids","stock_id","production_work_id"] '
+            'RETURN a.id AS source,r.field AS field,r.ordinal AS ordinal,b.id AS target')
+        actual = {(row['source'], row['field'], row['ordinal'], row['target']) for row in rows}
+        for node in self.nodes:
+            if node['type'] == 'FulfillmentSnapshot':
+                for ordinal, target in enumerate(node['round_ids']):
+                    self.assertIn((node['id'], 'round_ids', ordinal, target), actual)
+            if node['type'] == 'Allocation':
+                for field in ('stock_id', 'production_work_id'):
+                    selected = [r for r in actual if r[0] == node['id'] and r[1] == field]
+                    self.assertEqual([(node['id'], field, 0, node[field])] if field in node else [], selected)
+        multiple = ab_nodes(multiple_rounds=True)
+        self.sync(2, multiple)
+        self.assertEqual(multiple, self.snapshot(2, multiple).nodes())
+        row = next(n for n in multiple if n['type'] == 'FulfillmentSnapshot')
+        self.assertGreater(len(row['round_ids']), 1)
+        targets = self.run_cypher('MATCH (a:OntologicsEntity {namespace:$namespace,version:2,id:$id})'
+            '-[r:OntologicsLink {field:"round_ids"}]->(b) RETURN b.id AS target ORDER BY r.ordinal', id=row['id'])
+        self.assertEqual(row['round_ids'], [r['target'] for r in targets])
+        self.run_cypher('MATCH (:OntologicsEntity {namespace:$namespace,version:1})'
+                        '-[r:OntologicsLink {field:"round_ids"}]->() DELETE r')
+        self.error('GRAPH_INTEGRITY', snapshot.nodes)
+
+    def test_prior_mapping_cannot_be_read_or_overwritten_by_new_mapping(self):
+        self.sync()
+        self.run_cypher('MATCH (s:OntologicsSnapshot {namespace:$namespace,version:1}) '
+                        'SET s.projection_version="neo4j-projection-1"')
+        self.error('GRAPH_VERSION_CONFLICT', self.snapshot)
+        self.error('GRAPH_VERSION_CONFLICT', self.sync)
+        metadata = self.run_cypher('MATCH (s:OntologicsSnapshot {namespace:$namespace,version:1}) '
+                                  'RETURN s.projection_version AS mapping')[0]
+        self.assertEqual('neo4j-projection-1', metadata['mapping'])
 
     def test_identical_concurrent_retries_do_not_duplicate_nodes_or_relationships(self):
         # Initialize constraints once, then let two same-version writers race.
@@ -120,7 +222,59 @@ class Neo4jProjectionTests(unittest.TestCase):
                                'RETURN count(r) AS edges')[0]
         self.assertEqual(len(self.nodes), counts['nodes'])
         self.assertEqual(replay['relationship_count'], edges['edges'])
+        self.assert_display(1, self.nodes)
         self.assertEqual(self.nodes, self.snapshot().nodes())
+
+    def test_legacy_display_backfill_is_idempotent_and_preserves_other_versions(self):
+        self.sync(1); self.sync(2)
+        v2 = self.display_rows(2)
+        metadata = self.run_cypher('MATCH (s:OntologicsSnapshot {namespace:$namespace,version:1}) '
+                                  'RETURN properties(s) AS metadata')[0]['metadata']
+        # Simulate a projection created before display metadata was implemented.
+        labels = ':'.join(SCHEMA)  # Fixed executable-schema allowlist, never user input.
+        self.run_cypher('MATCH (n:OntologicsEntity {namespace:$namespace,version:1}) '
+                        'REMOVE n:' + labels + ', n.browser_caption')
+        self.assertEqual(self.nodes, self.snapshot(1).nodes())
+        # Only owned kind labels are corrected. A user's unrelated label survives.
+        self.run_cypher('MATCH (n:OntologicsEntity {namespace:$namespace,version:1,id:"unit:U104"}) '
+                        'SET n:LocalNote:ComponentModel, n.browser_caption="incorrect display only"')
+        self.assertTrue(self.sync(1)['replayed'])
+        decorated = self.assert_display(1, self.nodes)
+        unit = next(r for r in decorated if r['node']['id'] == 'unit:U104')
+        self.assertIn('LocalNote', unit['labels'])
+        self.assertEqual(v2, self.display_rows(2))
+        self.assertEqual(metadata, self.run_cypher(
+            'MATCH (s:OntologicsSnapshot {namespace:$namespace,version:1}) '
+            'RETURN properties(s) AS metadata')[0]['metadata'])
+        self.assertTrue(self.sync(1)['replayed'])
+        self.assertEqual(decorated, self.display_rows(1))
+        self.assertEqual(self.nodes, self.snapshot(1).nodes())
+
+    def test_display_failure_rolls_back_new_projection_and_ready_replay(self):
+        self.sync(1)
+        write_display = self.projection._write_display
+
+        def fail_after_display(tx, metadata, nodes):
+            write_display(tx, metadata, nodes)
+            raise RuntimeError('injected display failure')
+
+        with patch.object(self.projection, '_write_display', side_effect=fail_after_display):
+            with self.assertRaisesRegex(RuntimeError, 'injected display failure'):
+                self.sync(2)
+        self.assertEqual(0, self.run_cypher(
+            'MATCH (n) WHERE n.namespace=$namespace AND n.version=2 RETURN count(n) AS count')[0]['count'])
+        self.error('GRAPH_NOT_READY', lambda: self.snapshot(2))
+        self.assertEqual(self.nodes, self.snapshot(1).nodes())
+        self.assertFalse(self.sync(2)['replayed'])
+        self.assert_display(2, self.nodes)
+        self.run_cypher('MATCH (n:OntologicsEntity {namespace:$namespace,version:1,id:"unit:U104"}) '
+                        'SET n.browser_caption="before retry"')
+        before = self.display_rows(1)
+        with patch.object(self.projection, '_write_display', side_effect=fail_after_display):
+            with self.assertRaisesRegex(RuntimeError, 'injected display failure'):
+                self.sync(1)
+        self.assertEqual(before, self.display_rows(1))
+        self.assertEqual(self.nodes, self.snapshot(1).nodes())
 
     def test_failed_transaction_is_unpublished_and_retry_recovers_without_touching_previous(self):
         self.sync(1)
@@ -167,7 +321,9 @@ class Neo4jProjectionTests(unittest.TestCase):
                         'SET n.origin="real"', id=CONFIG_L)
         self.run_cypher('MATCH (n:OntologicsEntity {namespace:$namespace,version:1,id:$id})-[r]->() DELETE r', id=CONFIG_L)
         self.error('GRAPH_INTEGRITY', lambda: snap.configuration(CONFIG_L))
-        self.error('GRAPH_INTEGRITY', self.sync)
+        with patch.object(self.projection, '_write_display', wraps=self.projection._write_display) as display:
+            self.error('GRAPH_INTEGRITY', self.sync)
+        display.assert_not_called()
 
     def test_cross_version_relationships_are_never_served_as_normal_results(self):
         self.sync(1); self.sync(2)
@@ -232,7 +388,17 @@ class Neo4jProjectionTests(unittest.TestCase):
         try:
             self.error('GRAPH_NOT_READY', lambda: other.for_version(version=1, content_hash=digest(self.nodes),
                                         schema_version=SCHEMA_VERSION, rule_version=RULE_VERSION))
+            other.sync(self.nodes, version=1, schema_version=SCHEMA_VERSION, rule_version=RULE_VERSION)
+            def other_rows():
+                return self.run_cypher('MATCH (n:OntologicsEntity {namespace:$other,version:1}) '
+                    'RETURN labels(n) AS labels, properties(n) AS node ORDER BY n.ordinal', other=other.namespace)
+            before = other_rows()
+            self.sync()
+            self.assertEqual(before, other_rows())
         finally:
+            # This additional namespace is owned by this test only.
+            self.assertTrue(other.namespace.startswith('test_'))
+            self.run_cypher('MATCH (n) WHERE n.namespace=$other DETACH DELETE n', other=other.namespace)
             other.close()
         invalid = copy.deepcopy(self.nodes)
         next(n for n in invalid if n['type'] == 'ProductUnit')['origin'] = 'real'

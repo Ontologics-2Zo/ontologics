@@ -112,6 +112,24 @@ python -m unittest tests.test_graph_rdf -v
 
 실제 Neo4j·HTTP 통합 및 전체 회귀를 실행하려면 `.env.local` 또는 프로세스 환경에 같은 `NEO4J_*`·`ONTOLOGICS_GRAPH_NAMESPACE` 설정과 `TEST_NEO4J_URL`·`TEST_NEO4J_USER`·`TEST_NEO4J_PASSWORD`를 준비한다. unittest는 `.env.graph.local`을 자동으로 읽지 않는다. `python -m unittest tests.test_graph_neo4j tests.test_graph_integration -v`는 별도 시험 namespace/schema를 사용한다. CQ 실행 결과는 Git 제외 `artifacts/local/cq_graph_backends.json`에 저장한다. 실제 인증·AWS·운영 백업/복구 완료를 뜻하지 않는다.
 
+### A 생산계획 / B 계약·납품 타입 통합 (`graph-0.2`)
+
+PR #9·#10의 신규 업무 11종을 기존 12종과 함께 공통 저장·검증·조회·RDF·Neo4j로 연결했다. 정의는 `ontologics/domain_schema.py`, 공통 실행은 `model.py`다. 동료는 역할 내부 계산을 수정하고 공개 타입·근거·승인 의미 변경은 공통 계약 검토를 거친다. A/B 호환 Service·Host도 공통 승인 경로를 사용한다. 상세 계약은 [TOOLS](docs/TOOLS.md#ab-신규-업무-타입의-공통-저장조회)를 참조한다.
+
+```bash
+# 위 Neo4j 설정 + 새 namespace (예: ontologics_graph02)와 별도 시험 PG를 사용
+# 이전 graph-0.1/매핑1 namespace를 덮어쓰지 않는다.
+python -m ontologics.tbox --check
+python -m examples.ab_graph_check --schema test_ab_team_001
+python -m unittest tests.test_domain_graph tests.test_ab_graph_integration -v
+```
+
+예제 기대 결과는 `passed: true`, 신규 11종 조회 일치, 자기 승인/구 초안 버전 차단, 승인 후 동일 시간 조건에서 U104 A 제외/B 포함·U106 미확인 유지다. 기존 원본·가상 입력을 사용하고 모델 API를 호출하지 않는다. 최초 시드는 개발 자료이며 이후 승인도 개발 신원 검증이다. 기존 데이터의 스키마 업그레이드는 초안/승인 원장 변경 없이 새 namespace에 필요한 승인 버전만 명시적으로 재동기화한다. 실행 명령·환경변수는 바로 위 절을 따른다.
+
+A 웹 `contract_library_web`은 호스트 환경의 조회 backend를 사용한다. B 저수준 `make_host(..., graph_settings=...)`는 호출자가 명시 주입하며 기존 기본값은 PostgreSQL이다. 격리 시나리오 예제의 고정 대역·별도 업무 테이블·자동 승인 없는 산출물을 공통 확정 데이터와 구분한다. S1 JSON 이력 접수 범위는 기존 5종으로 유지한다.
+
+Neo4j Browser의 `:style`에서 `ontology/neo4j-browser.grass`를 불러오면 23종을 이름·색상으로 구분한다. 신규 승인 동기화 시 타입 label과 caption은 자동 생성되지만 브라우저별 스타일 가져오기는 한 번 필요하다.
+
 ## 개발용 사용자 신원과 공통 호스트
 
 아래 Python 예제는 로그인 없이 호스트가 지정한 개발 사용자로 등록·검토·반영 경로를 실행한다. **신원 연결과 권한 규칙의 개발 검증이며 실제 인증 완료가 아니다.** 브라우저 연결은 위 웹 통합 절차를 사용하며 실제 로그인·인증 세션은 아직 제공하지 않는다.
@@ -287,7 +305,7 @@ Sandbox는 네트워크 차단·non-root·읽기 전용 루트/입력·CPU/메�
 
 ## 저장소 공유 상태
 
-저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-10-30 GitHub에서 확인한 공개 상태는 public, 원격 main은 [`48d7c3bd76d67aed68fdbe0080c569b62813f6d2`](https://github.com/Ontologics-2Zo/ontologics/commit/48d7c3bd76d67aed68fdbe0080c569b62813f6d2)**다. 공통 계약·한도·격리 파서 [PR #4](https://github.com/Ontologics-2Zo/ontologics/pull/4), 실제 역할 패키지 분리 [PR #5](https://github.com/Ontologics-2Zo/ontologics/pull/5)에 이어 문서 정렬 [PR #8](https://github.com/Ontologics-2Zo/ontologics/pull/8)이 병합됐다. 과거 문서의 비공개 표기는 현재 공개 상태와 다르다. 개인 평가·경험 기록·환경 파일·비밀값은 공유 대상이 아니다. 이 main 기준과 별도 RDF/Neo4j 통합 변경의 검증·공유 상태는 [PROJECT_STATUS](PROJECT_STATUS.md)에서 구분하며, 실제 인증·운영 백업·AWS 완료를 의미하지 않는다.
+저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-11-01 확인한 main은 PR #10 병합 `7d2db577d0b6bc99f435f53205ab5a1ba5f49980`**이다. PR #4·#5·#8·#9·#10 위에 `codex/ab-domain-graph`에서 공통 저장·그래프 후속 통합을 별도 검토한다. 사용자는 공개 저장소에 팀 코드 공유를 허용했으며, 개인 평가·경험 기록·환경 파일·비밀값은 제외한다. 이번 브랜치의 검증과 main 반영 상태는 [PROJECT_STATUS](PROJECT_STATUS.md)로 구분한다. 실제 인증·운영 백업·AWS 완료를 뜻하지 않는다.
 
 저장소 접근 권한이 있는 팀원은 위 기준 커밋을 포함하는 main에서 담당 브랜치를 만들어 기존 실행·역할별 테스트 순서를 따른다. 미커밋 작업은 먼저 보존한다. Harness·Sandbox 구현과 역할 폴더는 이미 공유돼 있으며 환경 설정 후 사용할 수 있다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 

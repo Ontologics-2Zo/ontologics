@@ -2,6 +2,7 @@
 import copy
 import json
 import unittest
+from ontologics.graph_views import GraphSettings
 
 from ontologics.model import ROOT
 from ontologics.order_fulfillment.contracts import load_demo_contract
@@ -17,6 +18,7 @@ class _SnapshotService(Service):
     """In-memory action harness, deliberately not a database or approval substitute."""
     def __init__(self, nodes):
         self.nodes = tuple(copy.deepcopy(nodes))
+        self.graph_settings = GraphSettings()
         self.principals = {'reader': {'kind': 'agent', 'roles': ['read']},
                            'writer': {'kind': 'agent', 'roles': ['draft']}}
         self.calls = []
@@ -27,7 +29,7 @@ class _SnapshotService(Service):
     def _nodes(self, version=None):
         if version not in (None, 7):
             raise DomainError('VERSION_NOT_FOUND', 'Unknown test snapshot')
-        return self.nodes
+        return list(self.nodes)
 
     def _run(self, actor, tool, args, action, *, permission='read', request_key=None):
         self.calls.append((actor, tool, copy.deepcopy(args), permission, request_key))
@@ -158,3 +160,43 @@ class SharedBoundaryInheritanceTests(unittest.TestCase):
         self.assertIs(CommonGateway.__init__, AgentGateway.__init__)
         self.assertEqual(CommonGateway.ALLOWED | B_TOOLS, AgentGateway.ALLOWED)
         self.assertTrue({'review', 'apply', 'bootstrap'}.isdisjoint(AgentGateway.ALLOWED))
+
+
+class SharedProjectionReadTests(unittest.TestCase):
+    """Exercise B calculations through the actual RDF read mapping, not a DB stub."""
+    def test_every_b_read_uses_selected_projection_and_never_falls_back_on_failure(self):
+        from unittest.mock import Mock
+        from ontologics.graph_views import GraphViews
+        from ontologics.order_fulfillment.delivery_demo import AS_OF, ROUND, load_demo_delivery
+        catalog = json.loads((ROOT / 'data/catalog.json').read_text())['nodes']
+        nodes = catalog + load_demo_contract() + load_demo_delivery()
+        work = next(n['id'] for n in nodes if n['type'] == 'ProductionWork')
+        service = _SnapshotService(nodes)
+        service.now = lambda: '2026-10-27T12:00:00+09:00'
+        calls = [
+            ('lookup_many', ([ROUND], 'DeliveryRound'), dict(version=7)),
+            ('delivery_round', (ROUND,), dict(version=7)),
+            ('fulfillment_status', (ROUND, AS_OF), dict(version=7)),
+            ('production_completion', (work, ROUND, AS_OF), dict(version=7)),
+            ('delivery_forecast', (ROUND, AS_OF), dict(version=7)),
+            ('response_plan', (ROUND, AS_OF), dict(version=7)),
+            ('compare_response_plan', (ROUND, AS_OF, AS_OF), dict(before_version=7, after_version=7)),
+        ]
+        postgres = []
+        for method, args, kwargs in calls:
+            result = getattr(service, method)('reader', *args, **kwargs)
+            self.assertTrue(result['ok'], result)
+            postgres.append(result)
+        service.graph_settings = GraphSettings(backend='rdf')
+        service.graph_views = GraphViews(service, service.graph_settings)
+        self.addCleanup(service.graph_views.close)
+        for (method, args, kwargs), expected in zip(calls, postgres):
+            with self.subTest(method=method):
+                self.assertEqual(expected, getattr(service, method)('reader', *args, **kwargs))
+        # A missing/stale graph cannot be silently replaced by a PG answer.
+        service.graph_views.query = Mock(side_effect=DomainError('GRAPH_NOT_READY', 'Projection missing'))
+        for method, args, kwargs in calls:
+            with self.subTest(missing_projection=method):
+                result = getattr(service, method)('reader', *args, **kwargs)
+                self.assertFalse(result['ok'], result)
+                self.assertEqual('GRAPH_NOT_READY', result['errors'][0]['code'])

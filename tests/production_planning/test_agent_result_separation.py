@@ -81,7 +81,7 @@ class ResultSeparationTests(unittest.TestCase):
 
     def test_stored_conflict_blocks_before_calculation_and_model(self):
         from copy import deepcopy
-        from ontologics.production_planning.persistence import PlanningService as Service
+        from ontologics.service import Service
         original=Service.lookup
         def conflict(service,actor,**kwargs):
             r=original(service,actor,**kwargs)

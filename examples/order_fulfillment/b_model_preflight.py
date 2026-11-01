@@ -103,7 +103,7 @@ class ResponseDouble:
             usage=dict(input_tokens=100, output_tokens=100, total_tokens=200)))
 
 
-def run_preflight(*, database, output, cases, policy_snapshot):
+def run_preflight(*, database, output, cases, policy_snapshot, graph_settings=None):
     """Rehearse fresh input-only cases; every dispatch uses the local double."""
     if not isinstance(database, DatabaseSettings):
         raise ValueError('Use an explicit fresh development database')
@@ -131,7 +131,7 @@ def run_preflight(*, database, output, cases, policy_snapshot):
         if not seeded['ok']:
             raise ValueError('Catalog bootstrap failed')
         version = seeded['data_version']
-        host = connection.make_host(database, policy)
+        host = connection.make_host(database, policy, graph_settings=graph_settings)
         for case in cases:
             active = case
             role, task = case_task(case, version=version)

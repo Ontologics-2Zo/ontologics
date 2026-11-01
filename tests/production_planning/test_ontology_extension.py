@@ -1,5 +1,4 @@
-"""A rules use the separated validator; common graph contracts stay unchanged."""
-import ast
+"""A business rules survive additive shared registration of reviewed types."""
 import copy
 import hashlib
 import json
@@ -11,6 +10,7 @@ from ontologics import model
 from ontologics.production_planning.graph_validation import validate_graph
 from ontologics.production_planning.graph_export import graph_jsonld
 from ontologics.production_planning.export_tbox import build_tbox
+from tests.order_fulfillment.model_oracle import main_model
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -211,10 +211,11 @@ class OntologyExtensionTests(unittest.TestCase):
         self.assertEqual('urn:ontologics:entity:contract-item:planning:001', round_graph['contract_item_id'])
 
     def test_existing_schema_and_history_allowlist_are_preserved(self):
-        def literal(source, name):
-            tree = ast.parse(source)
-            return next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
-                        and any(isinstance(t, ast.Name) and t.id == name for t in n.targets))
-        old = subprocess.check_output(['git', 'show', 'HEAD:ontologics/model.py'], cwd=ROOT).decode()
-        for k, v in literal(old, 'SCHEMA').items(): self.assertEqual(v, model.SCHEMA[k])
-        self.assertEqual(literal(old, 'SYNTHETIC'), model.SYNTHETIC)
+        old = main_model()
+        for k, v in old.SCHEMA.items(): self.assertEqual(v, model.SCHEMA[k])
+        original_types = old.SYNTHETIC
+        self.assertLessEqual(original_types, model.SYNTHETIC)
+        self.assertEqual(model.SYNTHETIC - original_types, {
+            'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
+            'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
+            'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'})

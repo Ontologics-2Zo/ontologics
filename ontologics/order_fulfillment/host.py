@@ -91,7 +91,8 @@ class CommonHost(BaseCommonHost):
             raise
         except Exception:
             raise IdentityError('IDENTITY_PROVIDER_UNAVAILABLE', 'Cannot resolve request identity') from None
-        service = Service(self._database, principals={user.actor: user.principal()})
+        service = Service(self._database, principals={user.actor: user.principal()},
+                          graph_settings=self._graph_settings)
         service.embedding_provider = self._embedding_provider
         service.sandbox_client = self._sandbox_client
         try:

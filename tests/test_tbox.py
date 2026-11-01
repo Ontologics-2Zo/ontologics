@@ -14,7 +14,7 @@ from ontologics.order_fulfillment import schema as b
 
 
 class SharedTboxTests(unittest.TestCase):
-    def test_combined_declarations_preserve_common_and_each_role_without_registration(self):
+    def test_combined_declarations_preserve_common_and_each_role_without_mutating_runtime_schema(self):
         before = copy.deepcopy((model.SCHEMA, model.ALLOWED_FIELDS, model.SCHEMA_VERSION,
                                 a.SCHEMA, b.SCHEMA))
         graph = model.ROOT / 'data/initial_graph.jsonld'
@@ -31,8 +31,11 @@ class SharedTboxTests(unittest.TestCase):
         self.assertEqual(before, (model.SCHEMA, model.ALLOWED_FIELDS, model.SCHEMA_VERSION, a.SCHEMA, b.SCHEMA))
         self.assertEqual(graph_before, graph.read_bytes())
         self.assertEqual(result, (model.ROOT / 'ontology/tbox.ttl').read_text())
-        self.assertIn('UNKNOWN_TYPE', [e['code'] for e in model.validate_graph([
-            dict(id='new', type='Contract', origin='synthetic', evidence=[])])['errors']])
+        report = model.validate_graph([dict(id='new', type='Contract', origin='synthetic', evidence=[])])
+        self.assertFalse(report['valid'])
+        self.assertNotIn('UNKNOWN_TYPE', [e['code'] for e in report['errors']])
+        self.assertIn('MISSING_FIELD', [e['code'] for e in report['errors']])
+        self.assertIn('EVIDENCE_REQUIRED', [e['code'] for e in report['errors']])
 
     def test_same_definitions_deduplicate_but_conflicting_metadata_fails(self):
         a_ext, b_ext = tbox.registered_extensions()

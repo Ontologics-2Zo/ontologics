@@ -16,13 +16,26 @@ from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef, XSD
 from rdflib.collection import Collection
 from rdflib.plugins.sparql import prepareQuery
 
-from .model import (ALLOWED_FIELDS, REAL, SCHEMA, SCHEMA_VERSION, SYNTHETIC,
+from .model import (ALLOWED_FIELDS, JSON_FIELDS, LIST_REFERENCES, REAL, SCHEMA, SCHEMA_VERSION, SYNTHETIC,
                     canonical, digest, graph_jsonld, tbox_turtle, validate_graph)
 
 O = Namespace('urn:ontologics:')
 P = Namespace('urn:ontologics:projection:')
 SH = Namespace('http://www.w3.org/ns/shacl#')
 TEMPORAL_TYPES = ('ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage')
+
+# RDF datatype/cardinality checks mirror the common validators. They do not
+# replace cross-record business rules or infer quantities from missing facts.
+INTEGER_MINIMUMS = {
+    'ContractItem': {'quantity': 1}, 'DeliveryRound': {'quantity': 1},
+    'FinishedGoodsStock': {'quantity': 0},
+    'ProductionWork': {'target_quantity': 1, 'completed_quantity': 0},
+    'ProductionObservation': {'produced_quantity': 0, 'good_quantity': 0, 'defective_quantity': 0},
+    'Allocation': {'quantity': 1}, 'Shipment': {'quantity': 1},
+    'DeliveryCondition': {'preparation_seconds': 0, 'transport_seconds': 0},
+    'ComponentStockSnapshot': {field: 0 for field in (
+        'on_hand_quantity', 'reserved_quantity', 'held_quantity', 'available_quantity')},
+}
 
 
 def _check_budget():
@@ -45,9 +58,9 @@ def _rdf_terms(node, field):
         return set()
     if field in SCHEMA[node['type']][1]:
         return {entity_uri(value)}
-    if field == 'evidence':
+    if field == 'evidence' or field in LIST_REFERENCES.get(node['type'], {}):
         return {entity_uri(item) for item in value}
-    if field == 'specifications':
+    if field in JSON_FIELDS.get(node['type'], set()):
         return {Literal(canonical(value), datatype=RDF.JSON)}
     if isinstance(value, list):
         return {Literal(item) for item in value}
@@ -59,11 +72,16 @@ def _graph(nodes, version, schema_version, rule_version):
     # caller-controlled @context (which could otherwise perform network I/O).
     _check_budget()
     document = graph_jsonld(nodes)
-    document['@context']['specifications'] = {'@type': '@json'}
+    for fields in JSON_FIELDS.values():
+        for field in fields:
+            document['@context'][field] = {'@type': '@json'}
     for row, node in zip(document['@graph'], nodes):
         row['id'] = str(entity_uri(node['id']))
         for field in SCHEMA[node['type']][1]:
-            row[field] = str(entity_uri(node[field]))
+            if field in node:
+                row[field] = str(entity_uri(node[field]))
+        for field in LIST_REFERENCES.get(node['type'], {}):
+            row[field] = [str(entity_uri(value)) for value in node[field]]
         row['evidence'] = [str(entity_uri(value)) for value in node['evidence']]
     serialized = canonical(document)
     _check_budget()
@@ -75,9 +93,9 @@ def _graph(nodes, version, schema_version, rule_version):
         subject = entity_uri(node['id'])
         # RDF JSON lexical formatting is explicitly canonicalized for a stable
         # comparison with the existing domain's canonical JSON implementation.
-        if 'specifications' in node:
-            result.set((subject, O.specifications,
-                        Literal(canonical(node['specifications']), datatype=RDF.JSON)))
+        for field in JSON_FIELDS.get(node['type'], set()):
+            if field in node:
+                result.set((subject, O[field], Literal(canonical(node[field]), datatype=RDF.JSON)))
         for field, value in (('entity_id', node['id']), ('payload', canonical(node)),
                              ('ordinal', ordinal), ('data_version', version),
                              ('schema_version', schema_version), ('rule_version', rule_version)):
@@ -146,6 +164,12 @@ def shacl_shapes():
             minimum = int(field in required and field != 'positions')
             if field in refs:
                 prop(shape, O[field], minimum=minimum, target=O[refs[field]])
+            elif field in LIST_REFERENCES.get(kind, {}):
+                prop(shape, O[field], minimum=minimum, maximum=None,
+                     target=O[LIST_REFERENCES[kind][field]])
+            elif field in INTEGER_MINIMUMS.get(kind, {}):
+                p = prop(shape, O[field], minimum=minimum, datatype=XSD.integer)
+                shapes.add((p, SH.minInclusive, Literal(INTEGER_MINIMUMS[kind][field])))
             elif field == 'quantity':
                 p = prop(shape, O[field], minimum=minimum)
                 choices = []
@@ -155,12 +179,12 @@ def shacl_shapes():
                     choices.append(choice)
                 shapes.add((p, SH['or'], values(choices)))
                 shapes.add((p, SH.minExclusive, Literal(0)))
-            elif field in ('complete', 'conflict'):
+            elif field in ('complete', 'conflict', 'deductions_disjoint'):
                 p = prop(shape, O[field], minimum=minimum, datatype=XSD.boolean)
                 if field == 'complete':
                     shapes.add((p, SH.hasValue, Literal(True)))
-            elif field == 'specifications':
-                prop(shape, O[field], datatype=RDF.JSON)
+            elif field in JSON_FIELDS.get(kind, set()):
+                prop(shape, O[field], minimum=minimum, datatype=RDF.JSON)
             else:
                 p = prop(shape, O[field], minimum=minimum,
                          maximum=None if field == 'positions' else 1, datatype=XSD.string)

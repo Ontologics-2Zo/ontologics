@@ -1,4 +1,4 @@
-"""B input calculations without registering B types in the common graph."""
+"""B input calculations share registered validation without approving input facts."""
 import copy
 import json
 import subprocess
@@ -115,17 +115,17 @@ class InputValidationTests(unittest.TestCase):
         self.assertEqual('needs_confirmation', result['status'])
         self.assertIsNone(result['on_time_quantity'])
 
-    def test_fresh_b_calculations_run_with_original_main_model(self):
-        # Substitute only inside a child interpreter; never edit common files or
-        # patch shared production globals to make B types acceptable to storage.
+    def test_fresh_b_calculations_use_shared_schema_and_preserve_historical_boundary(self):
+        # Current calculations use the registered common schema. Keep the pinned
+        # original model as a separate rejection oracle; do not inject it into
+        # the current runtime or mutate either schema to make the test pass.
         script = textwrap.dedent('''
             import copy, json, socket, sys
             from unittest.mock import patch
             from tests.order_fulfillment.model_oracle import main_model
-            import ontologics
-            common = main_model()
-            sys.modules['ontologics.model'] = common
-            ontologics.model = common
+            from ontologics import model as common
+            historical = main_model()
+            historical_definitions = copy.deepcopy(historical.SCHEMA)
             def deny(*args, **kwargs):
                 raise AssertionError('No network or DB in the input calculation regression')
             with patch.object(socket.socket, 'connect', deny), patch('psycopg.connect', deny):
@@ -139,11 +139,14 @@ class InputValidationTests(unittest.TestCase):
                 from ontologics.order_fulfillment.response_comparison import compare_input_response_plan
                 from ontologics.order_fulfillment.recalculation_demo import load_demo_recalculation_input, AFTER_AS_OF
                 definitions = copy.deepcopy(common.SCHEMA)
-                assert common.SCHEMA_VERSION == 'graph-0.1'
-                assert not (set(common.SCHEMA) & set(schema.SCHEMA))
+                assert common.SCHEMA_VERSION == 'graph-0.2'
+                assert historical.SCHEMA_VERSION == 'graph-0.1'
+                assert set(schema.SCHEMA) <= set(common.SCHEMA)
+                assert not (set(historical.SCHEMA) & set(schema.SCHEMA))
                 base = json.loads((common.ROOT / 'data/catalog.json').read_text())['nodes'] + load_demo_contract()
                 rid, at = 'delivery-round:demo:B-01:1', '2026-10-27T10:00:00+09:00'
-                assert not common.validate_graph(base)['valid'], 'Common storage must still reject B types'
+                assert common.validate_graph(base)['valid'], 'The shared schema must validate B facts'
+                assert not historical.validate_graph(base)['valid'], 'The pinned old schema must still reject B types'
                 assert schema_validation.validate_input_graph(base)['valid']
                 promise = delivery_promise(base, rid)
                 assert promise['delivery_round']['quantity'] == 1000
@@ -165,7 +168,8 @@ class InputValidationTests(unittest.TestCase):
                     assert comparison['time_deltas'] == golden['cases'][case]['time_deltas']
                     assert 'data_version' not in comparison['after']
                 assert common.SCHEMA == definitions
-            print('Original main model: B promise and CQ02–06 calculations passed; common storage still rejects B')
+                assert historical.SCHEMA == historical_definitions
+            print('Shared schema: B promise and CQ02–06 calculations passed; pinned historical model remains unchanged')
         ''')
         result = subprocess.run([sys.executable, '-B', '-c', script], cwd=model.ROOT,
                                 capture_output=True, text=True, timeout=30)

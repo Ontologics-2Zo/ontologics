@@ -8,7 +8,7 @@ from rdflib import Graph, Literal, RDF
 
 from ontologics.demo import CONFIG_L, CONFIG_L1, example_queries, fixture_nodes
 from ontologics.graph_rdf import O, P, RdfSnapshot, entity_uri, validate_rdf
-from ontologics.model import ROOT, SCHEMA, SCHEMA_VERSION
+from ontologics.model import LIST_REFERENCES, ROOT, SCHEMA, SCHEMA_VERSION
 from ontologics.service import DomainError, RULE_VERSION, configuration_changes
 from ontologics.temporal import investigate
 
@@ -28,8 +28,107 @@ def closure(nodes, selected):
         wanted.add(nid)
         node = index[nid]
         pending.extend(node['evidence'])
-        pending.extend(node[field] for field in SCHEMA[node['type']][1])
+        pending.extend(node[field] for field in SCHEMA[node['type']][1] if field in node)
+        for field in LIST_REFERENCES.get(node['type'], {}):
+            pending.extend(node[field])
     return [n for n in nodes if n['id'] in wanted]
+
+
+def ab_nodes(*, multiple_rounds=False):
+    """Existing, source-pinned A/B examples; no model call or source mutation."""
+    from ontologics.order_fulfillment.contracts import load_demo_contract
+    from ontologics.order_fulfillment.delivery_demo import load_demo_delivery
+    from ontologics.order_fulfillment.fulfillment import load_demo_fulfillment
+    catalog = json.loads((ROOT / 'data/catalog.json').read_text())['nodes']
+    a = json.loads((ROOT / 'data/production_planning/graph_nodes_v1.json').read_text())['nodes']
+    b = load_demo_contract() + (load_demo_fulfillment() if multiple_rounds else load_demo_delivery(mixed=True))
+    return closure(catalog + a + b, [n['id'] for n in a + b])
+
+
+class RdfABProjectionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.nodes = ab_nodes()
+        cls.projected = snapshot(cls.nodes)
+
+    def test_all_business_types_roundtrip_with_optional_and_list_references(self):
+        self.assertEqual(self.nodes, self.projected.nodes())
+        kinds = {'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
+                 'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
+                 'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'}
+        for kind in kinds:
+            with self.subTest(kind=kind):
+                expected = [n for n in self.nodes if n['type'] == kind]
+                self.assertTrue(expected)
+                self.assertEqual(expected, self.projected.lookup(kind=kind))
+        graph = self.projected.rdf_graph()
+        for node in self.nodes:
+            if node['type'] == 'Allocation':
+                for field in ('stock_id', 'production_work_id'):
+                    self.assertEqual({entity_uri(node[field])} if field in node else set(),
+                                     set(graph.objects(entity_uri(node['id']), O[field])))
+            elif node['type'] == 'FulfillmentSnapshot':
+                self.assertEqual({entity_uri(x) for x in node['round_ids']},
+                                 set(graph.objects(entity_uri(node['id']), O.round_ids)))
+                self.assertEqual(RDF.JSON, graph.value(entity_uri(node['id']), O.confirmations).datatype)
+        multiple = ab_nodes(multiple_rounds=True)
+        row = next(n for n in multiple if n['type'] == 'FulfillmentSnapshot')
+        self.assertGreater(len(row['round_ids']), 1)
+        projected = snapshot(multiple, version=3)
+        self.assertEqual([row], projected.lookup(node_id=row['id']))
+        self.assertEqual({entity_uri(x) for x in row['round_ids']},
+                         set(projected.rdf_graph().objects(entity_uri(row['id']), O.round_ids)))
+
+    def test_unknown_nulls_zeroes_and_boolean_are_not_invented_or_retyped(self):
+        nodes = copy.deepcopy(self.nodes)
+        stock = next(n for n in nodes if n['type'] == 'ComponentStockSnapshot')
+        stock.update(quantity_state='unknown', on_hand_quantity=None,
+                     reserved_quantity=None, held_quantity=None, deductions_disjoint=None)
+        projected = snapshot(nodes)
+        self.assertEqual([stock], projected.lookup(node_id=stock['id']))
+        graph = projected.rdf_graph()
+        for field in ('on_hand_quantity', 'reserved_quantity', 'held_quantity', 'deductions_disjoint'):
+            self.assertFalse(list(graph.objects(entity_uri(stock['id']), O[field])))
+        condition = next(n for n in nodes if n['type'] == 'DeliveryCondition')
+        self.assertEqual(0, condition['preparation_seconds'])
+        self.assertEqual([condition], projected.lookup(node_id=condition['id']))
+
+    def test_shacl_and_payload_checks_reject_business_field_and_relation_tampering(self):
+        rows = {kind: next(n for n in self.nodes if n['type'] == kind)
+                for kind in ('FulfillmentSnapshot', 'Contract', 'ContractItem', 'FinishedGoodsStock',
+                             'ComponentStockSnapshot', 'DeliveryCondition')}
+        def change(kind, field, value):
+            return lambda graph: graph.set((entity_uri(rows[kind]['id']), O[field], value))
+        mutations = {
+            'wrong_list_target': change('FulfillmentSnapshot', 'round_ids', entity_uri(rows['Contract']['id'])),
+            'empty_required_list': lambda g: g.remove((entity_uri(rows['FulfillmentSnapshot']['id']), O.round_ids, None)),
+            'confirmations_not_json': change('FulfillmentSnapshot', 'confirmations', Literal('{}')),
+            'float_stock_count': change('FinishedGoodsStock', 'quantity', Literal(1.0)),
+            'boolean_contract_count': change('ContractItem', 'quantity', Literal(True)),
+            'negative_duration': change('DeliveryCondition', 'transport_seconds', Literal(-1)),
+            'string_disjoint': change('ComponentStockSnapshot', 'deductions_disjoint', Literal('true')),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(case=name):
+                graph = self.projected.rdf_graph()
+                mutate(graph)
+                self.assertFalse(validate_rdf(graph)['valid'])
+        # Well-typed JSON changes still fail exact approved-payload comparison.
+        altered = snapshot(self.nodes)
+        row = rows['FulfillmentSnapshot']
+        altered._graph.set((entity_uri(row['id']), O.confirmations, Literal('{}', datatype=RDF.JSON)))
+        with self.assertRaisesRegex(ValueError, 'RDF field disagrees'):
+            altered.lookup(node_id=row['id'])
+
+    def test_optional_reference_null_or_both_sources_cannot_reach_projection(self):
+        for change in ('null', 'both'):
+            with self.subTest(case=change):
+                nodes = copy.deepcopy(self.nodes)
+                allocation = next(n for n in nodes if n['type'] == 'Allocation' and 'stock_id' in n)
+                allocation['production_work_id'] = (None if change == 'null' else
+                    next(n['id'] for n in nodes if n['type'] == 'ProductionWork'))
+                with self.assertRaisesRegex(ValueError, 'Invalid domain graph'):
+                    snapshot(nodes)
 
 
 class RdfBudgetBoundaryTests(unittest.TestCase):

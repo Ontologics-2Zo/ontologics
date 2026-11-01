@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import replace
+import json
 import unittest
 from unittest.mock import patch
 
@@ -18,7 +19,7 @@ from ontologics.graph_views import GraphSettings
 from ontologics.graph_neo4j import Neo4jProjection, ProjectionError
 from ontologics.host import CommonHost
 from ontologics.identity import DevelopmentIdentityProvider
-from ontologics.model import ROOT, SCHEMA_VERSION, digest
+from ontologics.model import ROOT, SCHEMA, SCHEMA_VERSION, digest
 from ontologics.service import AgentGateway, RULE_VERSION, Service
 from ontologics.web import USERS, seed_development
 from tests.db import database_for_test
@@ -124,6 +125,25 @@ class GraphHttpWorkflowTests(WebCase):
         self.alice, self.bob, self.reader = (self.start(user) for user in ('alice', 'bob', 'reader'))
         _, self.operations = fixture_nodes()
 
+    def assert_approved_display(self, version):
+        stored = self.indexer.db.execute('SELECT nodes,reason FROM snapshots WHERE version=%s', (version,)).fetchone()
+        self.assertTrue(stored['reason'].startswith('approved:'))
+        nodes = stored['nodes']
+        self.assertEqual(nodes, self.indexer.graph_views.reader(version).nodes())
+        projection = self.indexer.graph_views.projection()
+        with projection._driver.session(database=projection.database) as session:
+            rows = session.run('MATCH (n:OntologicsEntity {namespace:$namespace,version:$version}) '
+                'RETURN labels(n) AS labels, properties(n) AS node ORDER BY n.ordinal',
+                namespace=self.indexer.graph_views.namespace, version=version).data()
+        self.assertEqual(len(nodes), len(rows))
+        for expected, row in zip(nodes, rows):
+            self.assertEqual(expected, json.loads(row['node']['payload']))
+            self.assertEqual({expected['type']}, set(row['labels']) & set(SCHEMA))
+            self.assertTrue(row['node']['browser_caption'].strip())
+            self.assertEqual(expected['origin'] == 'synthetic', '[가상]' in row['node']['browser_caption'])
+        return {r['node']['id']: {'labels': sorted(r['labels']), 'caption': r['node']['browser_caption']}
+                for r in rows}
+
     def test_l1_receipt_and_u104_supplement_keep_approval_versions_and_agent_query_results(self):
         status, html, _ = self.http(self.alice, '/')
         self.assertEqual(200, status)
@@ -146,6 +166,9 @@ class GraphHttpWorkflowTests(WebCase):
         registered = self.ok(self.http(self.bob, '/api/review', self.review_body(registration, key='register-l1')))
         self.assertEqual(2, registered['data']['application']['data_version'])
         self.assertEqual('ready', registered['data']['application']['data']['graph_projection']['status'])
+        display_v2 = self.assert_approved_display(2)
+        self.assertIn('Configuration', display_v2[CONFIG_L1]['labels'])
+        self.assertIn('L1', display_v2[CONFIG_L1]['caption'])
         config = self.ok(self.tool('configuration', {'configuration_id': CONFIG_L1, 'version': 2}))
         self.assertEqual(74, len(config['data']['items']))
         self.assertTrue(all(n['origin'] == 'real' for n in config['data']['items']))
@@ -175,6 +198,14 @@ class GraphHttpWorkflowTests(WebCase):
         self.assertEqual(3, replay['data']['application']['data_version'])
         self.assertEqual('ready', replay['data']['application']['data']['graph_projection']['status'])
         self.assertIn('IDEMPOTENT_REPLAY', [w['code'] for w in replay['data']['application']['warnings']])
+        display_v3 = self.assert_approved_display(3)
+        self.assertEqual(display_v2, self.assert_approved_display(2))
+        new_coverage = next(op['node']['id'] for op in self.operations
+                            if op['node']['type'] == 'HistoryCoverage' and op['node']['unit_id'] == 'unit:U104')
+        self.assertNotIn(new_coverage, display_v2)
+        self.assertIn('HistoryCoverage', display_v3[new_coverage]['labels'])
+        self.assertIn('[가상]', display_v3[new_coverage]['caption'])
+        self.assertIn('U104', display_v3[new_coverage]['caption'])
         direct = {}
         for mode, query in queries.items():
             direct[mode] = self.ok(self.tool('compare_investigation', {'query': query, 'before_version': 2, 'after_version': 3}))

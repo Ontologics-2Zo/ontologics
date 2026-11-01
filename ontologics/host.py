@@ -21,6 +21,7 @@ from .runtime import ModelRuntime
 from .harness import BudgetLimits, ExecutionBudget, PinnedContext, build_context_messages, request_budget, canonical
 from .contracts import AgentSpec, AgentTask, AgentResult, EvidenceRef
 from .service import AgentGateway, DomainError, Service
+from .model import SCHEMA_VERSION
 from .tool_specs import PRODUCT_TOOLS, QUALITY_TOOLS, KNOWLEDGE_TOOLS, SUPERVISOR_TOOLS
 
 
@@ -448,6 +449,7 @@ class RequestSession:
             task_hash = hashlib.sha256(canonical({'payload': task.data(), 'context': task.context.to_dict()}).encode()).hexdigest()
             saved['read_checkpoint'] = {
                 'schema_version': 'read-checkpoint-1', 'task_hash': task_hash,
+                'graph_schema_version': SCHEMA_VERSION,
                 'base_version': current_version, 'data_version': task.context.data_version,
                 'budget': usage, 'expires_at': time.time() + max(0, usage['limits']['deadline_seconds'] - usage['elapsed_seconds']),
                 'consumed': False,
@@ -522,6 +524,7 @@ class RequestSession:
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Task implementation returned invalid messages')
         definition_hash = _definition_fingerprint(spec, self._task_messages(implementation, task, supplied), provider, implementation)
         if (definition_hash is None or metadata.get('definition_hash') != definition_hash or checkpoint.get('schema_version') != 'read-checkpoint-1' or checkpoint.get('task_hash') != expected_hash
+                or checkpoint.get('graph_schema_version') != SCHEMA_VERSION
                 or metadata.get('agent_name') != spec.name or metadata.get('agent_version') != spec.version
                 or any(saved.get(k) != value for k, value in asdict(config).items())):
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Resume requires the same task, contract, model and settings')

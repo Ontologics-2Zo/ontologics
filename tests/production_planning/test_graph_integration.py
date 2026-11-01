@@ -40,7 +40,9 @@ class HistoryBoundaryTests(unittest.TestCase):
         from unittest.mock import patch
         from ontologics.receipts import history_intake
         from ontologics.service import DomainError
-        for kind in ('Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot'):
+        for kind in ('Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
+                     'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
+                     'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'):
             raw = dict(origin='synthetic', authored_at='2026-10-27T17:10:21+09:00',
                        notice='Synthetic test', records=[dict(id='test:new', type=kind)])
             with self.subTest(kind=kind):
@@ -186,7 +188,9 @@ class GraphIntegrationTests(unittest.TestCase):
             self.assertTrue(result['data']['validation']['valid'], result)
             self.assertEqual({'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'},
                              {n['type'] for n in result['data']['records']})
-            for kind in ('Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot'):
+            for kind in ('Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
+                     'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
+                     'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'):
                 body = dict(origin='synthetic', authored_at='2026-10-27T17:10:21+09:00',
                             notice='Rejected planning type', records=[dict(id='rejected:test', type=kind)])
                 with self.assertRaises(DomainError) as caught:

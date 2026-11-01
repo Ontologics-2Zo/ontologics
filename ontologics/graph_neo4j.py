@@ -15,10 +15,11 @@ from typing import Callable
 from neo4j import GraphDatabase, Query, unit_of_work
 from neo4j.exceptions import Neo4jError, DriverError
 
-from .model import SCHEMA, canonical, digest, validate_graph
+from .model import LIST_REFERENCES, SCHEMA, canonical, digest, validate_graph
+from .graph_display import browser_caption
 
 
-PROJECTION_VERSION = 'neo4j-projection-1'
+PROJECTION_VERSION = 'neo4j-projection-2'
 TEMPORAL_TYPES = ['ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage']
 
 
@@ -45,7 +46,11 @@ def _links(nodes):
     result = []
     for node in nodes:
         for field in SCHEMA[node['type']][1]:
-            result.append({'source': node['id'], 'target': node[field], 'field': field, 'ordinal': 0})
+            if field in node:
+                result.append({'source': node['id'], 'target': node[field], 'field': field, 'ordinal': 0})
+        for field in LIST_REFERENCES.get(node['type'], {}):
+            for ordinal, target in enumerate(node[field]):
+                result.append({'source': node['id'], 'target': target, 'field': field, 'ordinal': ordinal})
         for ordinal, target in enumerate(node['evidence']):
             result.append({'source': node['id'], 'target': target, 'field': 'evidence', 'ordinal': ordinal})
     return result
@@ -173,6 +178,10 @@ class Neo4jProjection:
             if any(current.get(k) != v for k, v in metadata.items()):
                 raise ProjectionError('GRAPH_VERSION_CONFLICT', 'Data version already has different projection content or rules')
             if current['state'] == 'ready':
+                verified = self._verify(tx, metadata)
+                # Legacy projections remain readable. Only a trusted explicit
+                # resync backfills/rebuilds display metadata after core checks.
+                self._write_display(tx, metadata, verified)
                 self._verify(tx, metadata)
                 return dict(metadata, state='ready', replayed=True)
             if current['state'] != 'loading':
@@ -185,6 +194,7 @@ class Neo4jProjection:
                 raise ProjectionError('GRAPH_INTEGRITY', 'Unexpected partial projection requires operator inspection')
             self._write_nodes(tx, metadata, rows)
             self._write_edges(tx, metadata, edges)
+            self._write_display(tx, metadata, nodes)
             self._verify(tx, metadata, require_ready=False)
             tx.run('MATCH (s:OntologicsSnapshot {namespace:$namespace, version:$version}) '
                    'SET s.state="ready"', **metadata).consume()
@@ -203,6 +213,25 @@ class Neo4jProjection:
                'MATCH (b:OntologicsEntity {namespace:$namespace, version:$version, id:edge.target}) '
                'CREATE (a)-[:OntologicsLink {field:edge.field, ordinal:edge.ordinal}]->(b)',
                **metadata, edges=edges).consume()
+
+    def _write_display(self, tx, metadata, nodes):
+        """Atomic, repeatable display metadata; no changes to approved content.
+
+        Only SCHEMA-owned labels are managed. Preserve the generic label and
+        unrelated operator labels. Never interpolate node values into Cypher.
+        """
+        index = {node['id']: node for node in nodes}
+        for kind in SCHEMA:
+            rows = [{'id': node['id'], 'caption': browser_caption(node, index)}
+                    for node in nodes if node['type'] == kind]
+            if not rows:
+                continue
+            other_labels = ':'.join(name for name in SCHEMA if name != kind)
+            tx.run('UNWIND $rows AS row '
+                   'MATCH (n:OntologicsEntity {namespace:$namespace, version:$version, '
+                   'id:row.id, kind:$kind}) '
+                   f'REMOVE n:{other_labels} SET n:{kind}, n.browser_caption=row.caption',
+                   **metadata, kind=kind, rows=rows).consume()
 
     def _verify(self, tx, expected, *, require_ready=True):
         row = tx.run('MATCH (s:OntologicsSnapshot {namespace:$namespace, version:$version}) '

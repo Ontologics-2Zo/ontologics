@@ -158,6 +158,17 @@ class CatalogReadTests(unittest.TestCase):
 
 
 class ModelProfileTests(unittest.TestCase):
+    def test_graph_backend_is_explicit_without_loading_environment(self):
+        from unittest.mock import patch
+        from ontologics.graph_views import GraphSettings
+        selected = GraphSettings(backend='rdf')
+        database = DatabaseSettings('postgresql://not-used/unused', 'new_b_model_profile')
+        with patch('ontologics.database.environment_values', side_effect=AssertionError('No implicit environment read')):
+            host = connection.make_host(database, policy(), graph_settings=selected)
+            default = connection.make_host(database, policy())
+        self.assertIs(selected, host._graph_settings)
+        self.assertIsNone(default._graph_settings)
+
     def test_remaining_roles_do_not_require_model_provenance_transcription(self):
         for case in CASES[1:]:
             with self.subTest(case=case):

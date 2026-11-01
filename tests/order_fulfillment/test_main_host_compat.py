@@ -17,13 +17,17 @@ class MainHostCompatibilityTests(unittest.TestCase):
     setUp = baseline.HostBoundaryTests.setUp
     service_scope = baseline.HostBoundaryTests.service_scope
     def test_request_forwards_sandbox_identity_lookup_and_shared_cost_policy(self):
+        from ontologics.graph_views import GraphSettings
         sandbox = object()
+        graph_settings = GraphSettings(backend="rdf")
         policy = CostPolicy('1', (ModelPrice('fixed-test', '1', '1', 400000),))
         host = b_host.CommonHost(self.identities, self.database,
-            agent_registrations=(self.registration,), sandbox_client=sandbox, cost_policy=policy)
+            agent_registrations=(self.registration,), sandbox_client=sandbox, cost_policy=policy,
+            graph_settings=graph_settings)
         created, factory = self.service_scope()
         with factory, host.request(DevelopmentContext(self.reader.subject)) as session:
             self.assertIs(sandbox, session._service.sandbox_client)
+            self.assertIs(graph_settings, session._service.graph_settings)
             self.assertEqual(self.identities.lookup, session._identity_lookup)
             self.assertIs(policy, session._budget.cost_policy)
             self.assertIs(session._budget, current_budget())

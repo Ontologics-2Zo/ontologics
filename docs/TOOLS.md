@@ -4,7 +4,7 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 
 ## 그래프·저장·시간
 
-[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. [ontology/tbox.ttl](../ontology/tbox.ttl)은 이 공통 정의와 A/B 역할 정의를 [공유 생성기](../ontologics/tbox.py)로 합성한 OWL/RDFS 클래스·관계 선언이다. 클래스 선언이 공통 검증·저장·승인·SHACL/Neo4j 지원을 뜻하지 않는다. [data/catalog.json](../data/catalog.json)은 실제 원본 정규화 노드, [data/initial_graph.jsonld](../data/initial_graph.jsonld)는 실제·가상 관계를 ID로 연결한 인계용 JSON-LD A-box(데모 버전 3)다. PostgreSQL의 `snapshots.nodes` JSONB에 정규화 노드 묶음을 불변 데이터 버전으로 저장한다. 작은 기준 데이터에 맞춘 저장이며 대규모 그래프 최적화·SPARQL 서버는 포함하지 않는다.
+[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. 기존 12종과 [domain_schema.py](../ontologics/domain_schema.py)의 A 생산계획/B 계약·납품 신규 11종을 `graph-0.2`로 관리한다. 역할 schema 모듈은 같은 정의의 호환 사본을 제공한다. [공유 생성기](../ontologics/tbox.py)가 [T-box](../ontology/tbox.ttl)를 생성하며 [graph_rdf.py](../ontologics/graph_rdf.py)는 같은 메타데이터로 RDF·SHACL·SPARQL을 연결한다. [catalog.json](../data/catalog.json)은 실제 원본 정규화, [initial_graph.jsonld](../data/initial_graph.jsonld)는 기존 S1/S2 인계용 A-box(데모 버전 3)이며 신규 업무 사실을 자동 추가하지 않는다. PostgreSQL `snapshots.nodes` JSONB가 승인 버전의 정본이고 RDF/Neo4j는 그 조회 표현이다.
 
 모든 노드는 `id`, `type`, `origin`, `evidence`를 가진다. `origin`은 `real` 또는 `synthetic`이고 `evidence`는 Evidence ID 목록이다. SourceDocument/Evidence 외의 사실은 근거가 필수다.
 
@@ -43,17 +43,31 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 
 ### 공유 T-box 생성 계약
 
-`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.production_planning.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 기존 호출 호환용 공통+B 부분 출력이며 공유 파일에 직접 쓰지 않는다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
+`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.production_planning.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 현재 공통 정의를 사용하는 호환 출력이다. 역할별 provenance를 합치는 공유 파일은 공식 생성기로 작성한다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
 
-`model.SCHEMA`가 공통 기준이고 `production_planning/schema.py`, `order_fulfillment/schema.py`를 명시적으로 합성한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
+`model.SCHEMA`가 공통 기준이다. A/B 메타데이터는 중립 `domain_schema.py`에서 한 번 정의하며 역할별 schema의 선언을 대조한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 생성기 호출 자체로 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
 
-공통 `graph-0.1`과 A의 기존 버전 주석을 보존한다. B `EXTRACTED_GRAPH_VERSION`은 추출 이력이며 공통 버전을 올리는 값이 아니다. 공통 저장·조회에 새 타입을 편입할 때에는 별도로 도메인·호환성·마이그레이션·RDF/Neo4j 검증을 수행한다. 생성물 변경만으로 저장된 초안이나 데이터 버전을 변경하지 않는다.
+공통 실행 버전은 `graph-0.2`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
 
 검사: `python -m unittest tests.test_tbox tests.production_planning.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
 
+### A/B 신규 업무 타입의 공통 저장·조회
+
+`Contract`, `ContractItem`, `DeliveryRound`, `ComponentStockSnapshot`, `FulfillmentSnapshot`, `FinishedGoodsStock`, `ProductionWork`, `ProductionObservation`, `Allocation`, `Shipment`, `DeliveryCondition`은 기존 `prepare_draft → validate_draft → 사람 review → 호스트 apply_approved` 경로로 저장한다. 신규 타입도 synthetic·원본 hash·Evidence·참조·업무 규칙 검증을 거친다. 업무 역할 A/B와 S1 시간 조건 A/B는 다른 구분이다.
+
+- 공통 스키마와 함께 사용하는 A `schema.validate_node_rules`의 재고 규칙, B `schema_validation`·`fulfillment_validation`·`production_validation`·`delivery_validation`의 사실 검증은 공개 도메인 계약이다. 이 규칙의 의미 변경은 역할 내부 지침 수정과 달리 공통 검토·회귀가 필요하다.
+- A `PlanningService/PlanningHost`는 공통 저장·승인을 상속한다. A/B 전체 그래프 검증과 JSON-LD는 공통 정의를 사용한다. B 7개 업무 조회는 `_read_nodes`를 사용하여 선택 backend와 승인 버전을 유지한다. B 계산 규칙 자체는 기존 역할 코드에 남긴다.
+- `Allocation.stock_id/production_work_id`는 키 생략 가능한 선택 관계이며 정확히 하나가 필요하다. 명시적 null은 오류다. `FulfillmentSnapshot.round_ids`는 순서를 보존하는 참조 목록, `confirmations`는 JSON 객체다. A 재고 unknown/null과 0을 구분한다.
+- S1 JSON 접수는 기존 보드·로트·장착·이력 범위·입출고 5종만 허용한다. 신규 업무 타입은 이력 접수로 우회하지 않는다. A의 별도 수요 확인/창고/일정 테이블·산출 문서는 자동으로 승인된 공통 사실이 되지 않는다.
+- `ProductionObservation`의 good/defective 수량은 가상 입력의 누계 기록이다. 저장 승인은 실제 검사·불량 원인·안전 판정이나 생산/출하 실행 승인이 아니다. Shipment만으로 Installation을 생성하지 않는다.
+- Neo4j 매핑은 `neo4j-projection-2`다. 이전 namespace의 투영은 재사용하거나 덮어쓰지 않는다. **새 `ONTOLOGICS_GRAPH_NAMESPACE`**를 정하고 기존 승인 버전을 `graph_projection sync`로 재투영한 뒤 `status`로 확인한다. PostgreSQL 초안·승인 원장은 재작성하지 않는다. 준비 전 조회는 실패하며 과거 버전/다른 backend로 대체하지 않는다.
+- 생성되는 모든 노드에 타입 label·`browser_caption`을 붙인다. Browser에 [neo4j-browser.grass](../ontology/neo4j-browser.grass)를 한 번 적용하면 이후 승인·동기화된 23종도 같은 스타일을 사용한다. Browser 스타일은 DB 권한·데이터 의미를 바꾸지 않는다.
+
+실행: `python -m examples.ab_graph_check --schema test_ab_team_001`. 아래 그래프 환경변수와 **비어 있는 시험 schema**를 사용한다. 기존 출처 있는 fixture를 재사용하며 저장·승인·읽기 3 backend와 S1 전후 결과를 검사한다. 실제 사람 인증·실모델 품질 평가가 아니다.
+
 ### PostgreSQL 저장과 pgvector 검색
 
-현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.1`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
+현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.2`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
 
 `database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors와 Neo4j 공개 버전 메타데이터 graph_projections다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
 
@@ -126,7 +140,7 @@ AWS 완료 검증은 실제 환경의 S1/S2 전체 업무, 인증·권한, 영�
   "data": {},
   "evidence": ["evidence:..."],
   "data_version": 3,
-  "schema_version": "graph-0.1",
+  "schema_version": "graph-0.2",
   "rule_version": "temporal-0.1",
   "contract_version": "0.3.0",
   "warnings": [],
@@ -190,7 +204,7 @@ B query: `{mode:'B', lot_id, unit_ids:[...], start, end, period_meaning:'install
 | 책임·코드 | 추가 계약 | 유지되는 경계 |
 | --- | --- | --- |
 | `harness.py` / `ExecutionBudget` | 요청과 하위 Agent의 모델/도구/repair 한도·deadline·비용 원장 공유, 호스트 취소. 다른 새 예산으로 교체 불가 | provider timeout을 잔여 시간으로 제한. 호출 중 강제 중단·계정 전체 과금 통제는 아님 |
-| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. ontology `graph-0.1`, context 형식 `context-1` 구분 |
+| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. ontology `graph-0.2`, context 형식 `context-1` 구분 |
 | `build_context_messages` | 동일 고정 조건 + 비신뢰 자료. baseline은 전체 자료, structured는 명시된 Evidence ID만 선별하고 생략 ID 표시 | 새로운 사실 요약·검색 정답 발견 기능 아님. 원자료는 호출자가 보존 |
 | `contracts.py` | `AgentSpec`·`AgentTask`·`AgentResult`, 얕은 `PayloadSchema`와 역할 검증기를 합성. 신원/승인 필드는 계약 권한으로 사용하지 않음 | Task `agent-task-1`·Result `agent-result-1`·역할 버전과 확정/초안 버전은 별개. DB migration/OWL 상속 기능 아님 |
 | `host.py` / `run_task` | 서버에 등록한 Spec·구현의 messages·Task·provider를 공통 실행기로 전달. `agents/registry.py`에 등록한 역할 폴더의 실제 구현으로 네 화면 역할도 같은 경로 사용. 결과 data_version이 있으면 고정 정수 버전과 대조. 실제 도구 결과의 Evidence만 확정 원본 정보로 연결하고 역할 결과 검증기 실행 | 기존 `AgentRegistration`/`run_agent` 호환. 웹 응답의 `data.agent_result`에 공통 DTO 추가; 자유 설명은 `free_text_unverified`로 구분 |
@@ -228,7 +242,7 @@ typed `AgentResult`는 기존 `schema_version/agent_name/agent_version/payload/r
 - `tests.test_agent_extensions`: 서로 다른 역할 payload/단일·순차 내부 흐름이 같은 Harness를 사용하고 직접 A/B 결과와 일치하는지 확인한다. `tests.test_agent_workflows`·`tests.test_postgres`는 오래된 버전·재시도·중복/경쟁 반영의 기존 업무 규칙을 유지한다.
 - 실제 저장 형식 변경 시에는 변경 전 공개 버전으로 만든 비밀 없는 fixture를 보존하고 신·구 reader/adapter와 정확 승인 버전을 시험한다. 이번 변경은 DB DDL·초안 저장 형식을 바꾸지 않으며, 검사에서 생긴 저장 초안의 재연결을 과거 모든 배포 버전 migration 검증으로 확대하지 않는다.
 
-이벤트/Outbox 저장 경로는 현재 없어 이벤트 migration 검증을 완료로 표시하지 않는다. 실제 인증·운영 격리·RDF/Neo4j·AWS도 별도 목표다.
+이벤트/Outbox 저장 경로는 현재 없어 이벤트 migration 검증을 완료로 표시하지 않는다. 실제 인증·운영 격리·AWS는 별도 목표다. RDF/Neo4j의 구현·검증 범위는 위 그래프 절을 따른다.
 
 ## 제한된 파일 파싱 Sandbox
 

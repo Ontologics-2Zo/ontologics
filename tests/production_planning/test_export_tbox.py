@@ -73,7 +73,9 @@ class ExportTboxTests(unittest.TestCase):
         build_tbox()
         self.assertEqual(graph.read_bytes(), before)
         self.assertEqual(model.ALLOWED_FIELDS, allowed)
-        self.assertTrue(set(schema.SCHEMA).isdisjoint(model.SCHEMA))
+        self.assertLessEqual(set(schema.SCHEMA), set(model.SCHEMA))
+        for kind, definition in schema.SCHEMA.items():
+            self.assertEqual(definition, model.SCHEMA[kind])
 
     def test_checked_in_tbox_matches_current_definitions(self):
         self.assertEqual((model.ROOT / 'ontology' / 'tbox.ttl').read_text(), build_tbox())

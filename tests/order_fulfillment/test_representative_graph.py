@@ -1,7 +1,8 @@
 """Pure B graph selection regressions; no DB example, approval or file export.
 
 Definitions and expected output come from pinned historical Git objects. These
-selection/output tests do not establish storage or whole-application compatibility.
+selection/output tests preserve historical node payloads and the additive JSON
+literal context; they do not establish storage or application compatibility.
 """
 import ast
 from collections import deque
@@ -42,6 +43,14 @@ def legacy_selected_nodes(base, candidates):
 
 
 class RepresentativeGraphTests(unittest.TestCase):
+    def assert_legacy_graph_preserved(self, nodes, actual):
+        expected = legacy.graph_jsonld(nodes)
+        # Only explicit JSON literals are additive; order, payloads and every
+        # historical relationship must remain byte-for-byte equal as values.
+        expected['@context'].update(specifications={'@type': '@json'},
+                                    confirmations={'@type': '@json'})
+        self.assertEqual(expected, actual)
+
     @classmethod
     def setUpClass(cls):
         cls.catalog = build_catalog()['nodes']
@@ -84,7 +93,7 @@ class RepresentativeGraphTests(unittest.TestCase):
                 before = copy.deepcopy((prior, candidates, model.SCHEMA, getattr(model, 'LIST_REFERENCES', {}), legacy.SCHEMA, legacy.LIST_REFERENCES))
                 selected = legacy_selected_nodes(prior, candidates)
                 graph = b_delivery.representative_graph(prior, candidates)
-                self.assertEqual(legacy.graph_jsonld(selected), graph)
+                self.assert_legacy_graph_preserved(selected, graph)
                 ids = [node['id'] for node in selected]
                 self.assertEqual(['urn:ontologics:entity:' + nid for nid in ids],
                                  [node['id'] for node in graph['@graph']])
@@ -105,7 +114,7 @@ class RepresentativeGraphTests(unittest.TestCase):
         for allocation in allocations:
             with self.subTest(allocation=allocation['id']):
                 selected = legacy_selected_nodes(base, [allocation])
-                self.assertEqual(legacy.graph_jsonld(selected), b_delivery.representative_graph(base, [allocation]))
+                self.assert_legacy_graph_preserved(selected, b_delivery.representative_graph(base, [allocation]))
         snapshot = next(node for node in candidates if node['type'] == 'FulfillmentSnapshot')
         graph = b_delivery.representative_graph(base, [snapshot])
         ids = {node['id'] for node in graph['@graph']}

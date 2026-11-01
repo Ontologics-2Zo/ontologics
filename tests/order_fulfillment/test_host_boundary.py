@@ -23,8 +23,9 @@ class ServiceDouble:
 
     _require = CoreService._require
 
-    def __init__(self, database, *, principals):
+    def __init__(self, database, *, principals, graph_settings=None):
         self.database, self.principals = database, principals
+        self.graph_settings = graph_settings
         self.closed = False
         self.db = SimpleNamespace(info=SimpleNamespace(transaction_status=TransactionStatus.IDLE))
         self.calls = []

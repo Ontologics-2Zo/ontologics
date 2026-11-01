@@ -1,12 +1,12 @@
-"""B input validation, separate from common graph registration and approval.
+"""B domain rules reused by common validation and B input adapters.
 
-Common nodes retain the common validator's source/identity/time checks. B input
-nodes use their own schema and domain checks without registering common types.
-The lower-level domain functions also serve the existing extraction regressions.
+The shared validator owns shape, origin, evidence and graph references. The
+lower-level functions remain available for domain and extraction regressions.
+Validation alone never approves or stores facts.
 """
-from ..model import COMMON_FIELDS, _string_list, _text, instant
+from ..model import _string_list, instant
 from ..model import validate_graph as validate_common_graph
-from .schema import ALLOWED_FIELDS, LIST_REFERENCES, OPTIONAL_REFERENCES, SCHEMA, STRUCTURED_FIELDS
+from .schema import LIST_REFERENCES, OPTIONAL_REFERENCES, SCHEMA
 
 
 def _positive_integer(value):
@@ -14,71 +14,8 @@ def _positive_integer(value):
 
 
 def validate_input_graph(nodes):
-    """Validate supplied B business inputs; this never approves or stores them.
-
-    SourceDocument/Evidence and design nodes remain common nodes, even for a
-    synthetic B source. Only B business types are excluded from the common
-    validator, then checked against the full input index here.
-    """
-    if not isinstance(nodes, list) or len(nodes) > 20000:
-        return {'valid': False, 'errors': [dict(node_id=None, code='INVALID_GRAPH_SIZE',
-                detail='A list with at most 20000 nodes is required')], 'warnings': []}
-    business, common = [], []
-    for node in nodes:
-        if (isinstance(node, dict) and isinstance(node.get('type'), str)
-                and node['type'] in SCHEMA):
-            business.append(node)
-        else:
-            common.append(node)
-    report = validate_common_graph(common)
-    errors = list(report['errors'])
-
-    def error(nid, code, detail):
-        errors.append(dict(node_id=nid, code=code, detail=detail))
-
-    index = {}
-    for node in nodes:
-        if not isinstance(node, dict) or not _text(node.get('id')):
-            continue
-        nid = node['id']
-        previous = index.get(nid)
-        if previous is not None and any(
-                isinstance(n.get('type'), str) and n['type'] in SCHEMA for n in (previous, node)):
-            error(nid, 'DUPLICATE_ID', 'IDs must be unique')
-        index[nid] = node
-
-    for node in business:
-        nid, kind = node.get('id'), node['type']
-        if not _text(nid):
-            error(None, 'INVALID_NODE', 'Every node needs a nonempty string id')
-            continue
-        extra = set(node) - ALLOWED_FIELDS[kind]
-        if extra:
-            error(nid, 'UNKNOWN_FIELD', ', '.join(sorted(str(k) for k in extra)))
-        if node.get('origin') not in ('real', 'synthetic'):
-            error(nid, 'ORIGIN_REQUIRED', 'real or synthetic')
-        if node.get('origin') != 'synthetic':
-            error(nid, 'DEMO_OPERATIONS_ONLY', 'B examples require synthetic business inputs')
-        for key in COMMON_FIELDS | set(SCHEMA[kind][0]):
-            if key not in node or node[key] is None or node[key] == '':
-                error(nid, 'MISSING_FIELD', key)
-        for key in ALLOWED_FIELDS[kind] - STRUCTURED_FIELDS - {'evidence', 'quantity'}:
-            if key in node and not _text(node[key]):
-                error(nid, 'INVALID_FIELD_TYPE', key + ' must be nonempty text')
-        evidence = node.get('evidence', [])
-        if not _string_list(evidence, allow_empty=True):
-            error(nid, 'INVALID_EVIDENCE', 'evidence must be a list of unique nonempty IDs')
-            evidence = []
-        if not evidence:
-            error(nid, 'EVIDENCE_REQUIRED', 'Every factual node needs source locators')
-        for eid in evidence:
-            source = index.get(eid, {})
-            if source.get('type') != 'Evidence':
-                error(nid, 'EVIDENCE_NOT_FOUND', eid)
-            elif source.get('origin') != node.get('origin'):
-                error(nid, 'EVIDENCE_ORIGIN_MISMATCH', eid)
-    validate_domain(index, error)
-    return {'valid': not errors, 'errors': errors, 'warnings': list(report['warnings'])}
+    """Validate the complete shared graph; this never approves or stores it."""
+    return validate_common_graph(nodes)
 
 
 def validate_references(index, error):

@@ -17,6 +17,13 @@ from ontologics.order_fulfillment.production import load_demo_production
 legacy = legacy_model()
 
 
+def additive_export(nodes):
+    """Keep historical nodes/relations, adding explicit JSON literal context."""
+    expected = legacy.graph_jsonld(nodes)
+    expected['@context'].update(specifications={'@type': '@json'}, confirmations={'@type': '@json'})
+    return expected
+
+
 class BSchemaExportTests(unittest.TestCase):
     def test_adapters_reuse_common_exporters(self):
         self.assertIs(model.graph_jsonld, getattr(schema_export, '_common_graph_jsonld', None))
@@ -27,51 +34,44 @@ class BSchemaExportTests(unittest.TestCase):
                  + load_demo_production() + load_demo_delivery() + load_demo_delivery(mixed=True))
         self.assertEqual(set(schema.SCHEMA), {n['type'] for n in nodes} & set(schema.SCHEMA))
         before = copy.deepcopy((nodes, model.SCHEMA, getattr(model, 'LIST_REFERENCES', {})))
-        self.assertEqual(legacy.graph_jsonld(nodes), schema_export.graph_jsonld(nodes))
+        self.assertEqual(additive_export(nodes), schema_export.graph_jsonld(nodes))
         self.assertEqual(before, (nodes, model.SCHEMA, getattr(model, 'LIST_REFERENCES', {})))
 
-    def test_common_only_exporter_receives_no_b_nodes_and_supplies_context(self):
+    def test_shared_exporter_receives_full_graph_and_supplies_context(self):
         nodes = build_catalog()['nodes'][:2] + load_demo_contract()
-        common_nodes = [n for n in nodes if n['type'] not in schema.SCHEMA]
-        common = model.graph_jsonld(common_nodes)
-        common_keys = {key for kind, (_, refs) in model.SCHEMA.items()
-                       if kind not in schema.SCHEMA for key in refs}
-        common['@context'] = {k: v for k, v in common['@context'].items()
-                              if k not in schema_export.jsonld_context() or k in common_keys}
+        common = model.graph_jsonld(nodes)
         original = copy.deepcopy(common)
         def strict_export(rows):
-            self.assertEqual(common_nodes, rows)
-            self.assertTrue(all(n['type'] not in schema.SCHEMA for n in rows))
+            self.assertEqual(nodes, rows)
             return common
         with patch.object(schema_export, '_common_graph_jsonld', side_effect=strict_export) as exporter:
             actual = schema_export.graph_jsonld(nodes)
         exporter.assert_called_once()
-        self.assertEqual(legacy.graph_jsonld(nodes), actual)
+        self.assertEqual(additive_export(nodes), actual)
         self.assertEqual(original, common)
 
     def test_iterator_order_and_duplicate_ids_are_preserved(self):
         common = dict(id='same', type='SourceDocument', evidence=[])
         b_node = dict(id='same', type='Contract', evidence=['e:first', 'e:second'])
         nodes = [b_node, common, dict(b_node, id='last'), common]
-        self.assertEqual(legacy.graph_jsonld(nodes), schema_export.graph_jsonld(iter(nodes)))
+        self.assertEqual(additive_export(nodes), schema_export.graph_jsonld(iter(nodes)))
         self.assertEqual(4, len(schema_export.graph_jsonld(nodes)['@graph']))
 
     def test_empty_and_b_only_graphs_still_reuse_common_context(self):
         b_nodes = [node for node in load_demo_contract() if node['type'] in schema.SCHEMA]
         for nodes in ([], b_nodes):
             with self.subTest(nodes=len(nodes)):
-                common = model.graph_jsonld([])
+                common = model.graph_jsonld(nodes)
                 with patch.object(schema_export, '_common_graph_jsonld', return_value=common) as exporter:
-                    self.assertEqual(legacy.graph_jsonld(nodes), schema_export.graph_jsonld(nodes))
-                exporter.assert_called_once_with([])
+                    self.assertEqual(additive_export(nodes), schema_export.graph_jsonld(nodes))
+                exporter.assert_called_once_with(nodes)
 
-    def test_context_conflict_is_rejected_without_mutating_common_result(self):
+    def test_role_context_cannot_override_shared_relation_meaning(self):
         key = next(iter(schema_export.jsonld_context()))
-        result = {'@context': {key: {'@type': 'wrong'}}, '@graph': []}
+        result = model.graph_jsonld([])
         before = copy.deepcopy(result)
-        with patch.object(schema_export, '_common_graph_jsonld', return_value=result):
-            with self.assertRaisesRegex(ValueError, 'context'):
-                schema_export.graph_jsonld([])
+        with patch.object(schema_export, 'jsonld_context', return_value={key: {'@type': 'wrong'}}):
+            self.assertEqual(before, schema_export.graph_jsonld([]))
         self.assertEqual(before, result)
 
     def test_unknown_types_keep_common_exporter_error(self):
@@ -83,7 +83,7 @@ class BSchemaExportTests(unittest.TestCase):
         nodes = [dict(id='allocation', type='Allocation', stock_id='stock', evidence=['e']),
                  dict(id='work-allocation', type='Allocation', production_work_id='work', evidence=[]),
                  dict(id='snapshot', type='FulfillmentSnapshot', round_ids=['r2', 'r1'], evidence=['e'])]
-        self.assertEqual(legacy.graph_jsonld(nodes), schema_export.graph_jsonld(nodes))
+        self.assertEqual(additive_export(nodes), schema_export.graph_jsonld(nodes))
         rows = schema_export.graph_jsonld(nodes)['@graph']
         self.assertNotIn('production_work_id', rows[0])
         self.assertEqual(['urn:ontologics:entity:r2', 'urn:ontologics:entity:r1'], rows[2]['round_ids'])
@@ -157,12 +157,16 @@ class BExtensionArtifactTests(unittest.TestCase):
 class CommonArtifactBoundaryTests(unittest.TestCase):
     """Keep common model/file obligations separate from B composed output."""
 
-    def test_active_common_schema_matches_pinned_main_contract(self):
+    def test_additive_common_schema_preserves_pinned_core_contract(self):
         expected = main_model()
         with self.subTest(contract='version'):
-            self.assertEqual(expected.SCHEMA_VERSION, model.SCHEMA_VERSION)
+            self.assertEqual('graph-0.1', expected.SCHEMA_VERSION)
+            self.assertEqual('graph-0.2', model.SCHEMA_VERSION)
         with self.subTest(contract='types_fields_references'):
-            self.assertEqual(expected.SCHEMA, model.SCHEMA)
+            self.assertLessEqual(set(expected.SCHEMA), set(model.SCHEMA))
+            for kind, definition in expected.SCHEMA.items():
+                self.assertEqual(definition, model.SCHEMA[kind])
+            self.assertEqual(11, len(set(model.SCHEMA) - set(expected.SCHEMA)))
 
     def test_stored_tbox_preserves_main_and_matches_shared_export(self):
         stored = (model.ROOT / 'ontology/tbox.ttl').read_text()
@@ -170,7 +174,9 @@ class CommonArtifactBoundaryTests(unittest.TestCase):
         with self.subTest(exporter='active_common'):
             self.assertTrue(stored.startswith(common))
         with self.subTest(exporter='pinned_main'):
-            self.assertEqual(main_model().tbox_turtle(), common)
+            for line in main_model().tbox_turtle().splitlines():
+                if 'owl:versionInfo' not in line:
+                    self.assertIn(line, common.splitlines())
         with self.subTest(exporter='common_plus_a_plus_b'):
             self.assertEqual(build_tbox(), stored)
 

@@ -1,7 +1,6 @@
-"""A ontology definitions and rules, consumed by the explicit A validator.
+"""A business rules and compatibility exports of shared graph metadata.
 
-The common schema is unchanged. graph_validation, graph_export and export_tbox
-compose common and A definitions for the A-owned execution and export paths.
+Definitions live in domain_schema; the common validator invokes the stock rules.
 These rule functions alone do not constitute approval or a whole-graph report.
 """
 from __future__ import annotations
@@ -9,25 +8,14 @@ from __future__ import annotations
 import re
 
 from ..model import instant, _text
+from .. import domain_schema
 
 # Version of the formerly combined model, retained for migration traceability.
 SCHEMA_VERSION = 'graph-0.5-a-planning-1'
 
-SCHEMA = {
-    'Contract': (['company', 'customer_name'], {}),
-    'ContractItem': (['contract_id', 'configuration_id', 'quantity', 'unit'], {'contract_id': 'Contract', 'configuration_id': 'Configuration'}),
-    'DeliveryRound': (['contract_item_id', 'quantity', 'unit', 'due_at', 'due_basis', 'destination'], {'contract_item_id': 'ContractItem'}),
-    'ComponentStockSnapshot': (['lot_id', 'location', 'as_of', 'unit', 'availability_basis', 'quantity_state'], {'lot_id': 'ComponentLot'}),
-}
-
-OPTIONAL_FIELDS = {
-    'ComponentStockSnapshot': {'available_quantity', 'deductions_disjoint', 'held_quantity', 'on_hand_quantity', 'reserved_quantity'},
-}
-
-# Additional non-text fields formerly added to the common shape validator.
-STRUCTURED_FIELDS = {
-    'ComponentStockSnapshot': set(OPTIONAL_FIELDS['ComponentStockSnapshot']),
-}
+SCHEMA = domain_schema.subset(domain_schema.SCHEMA, domain_schema.A_TYPES)
+OPTIONAL_FIELDS = domain_schema.subset(domain_schema.OPTIONAL_FIELDS, SCHEMA)
+STRUCTURED_FIELDS = domain_schema.subset(domain_schema.STRUCTURED_FIELDS, SCHEMA)
 
 
 def validate_node_rules(n, index, identities, error, warnings):
@@ -39,8 +27,9 @@ def validate_node_rules(n, index, identities, error, warnings):
     nid, kind = n['id'], n.get('type')
     if kind in SCHEMA and n.get('origin') != 'synthetic':
         error(nid, 'DEMO_OPERATIONS_ONLY', 'Planning reference facts must be synthetic')
-    # Rules visible inside the received B model only; no claim of parity
-    # with B's unavailable fulfillment/production/delivery modules.
+    # Compatibility entry points retain the original A rule API. The shared
+    # validator calls this function only for stock; common contract rules are
+    # applied once through the B contract validator against the complete index.
     if kind in ('ContractItem', 'DeliveryRound'):
         if type(n.get('quantity')) is not int or n['quantity'] <= 0:
             error(nid, 'INVALID_QUANTITY', 'Contract and round quantities must be positive integers, not booleans or floats')

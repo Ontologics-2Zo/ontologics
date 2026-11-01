@@ -33,3 +33,18 @@ class WebInputStoreTests(unittest.TestCase):
         response=self.scenario['inputs'].get(self.app.context)
         self.assertFalse(response['ok'])
         self.assertEqual(response['errors'][0]['code'],'INPUTS_NOT_FOUND')
+
+    def test_explicit_rdf_backend_reaches_each_temporary_ui_host(self):
+        from ontologics.graph_views import GraphSettings
+        from tests.db import isolated_database
+        from examples.production_planning_ui import make_application, SCENARIOS
+        settings={name:self.stack.enter_context(isolated_database()) for name in SCENARIOS}
+        folder=self.stack.enter_context(tempfile.TemporaryDirectory())
+        selected=GraphSettings(backend='rdf')
+        app=make_application(settings,Path(folder),graph_settings=selected)
+        for scenario in app.scenarios.values():
+            self.assertIs(selected,scenario['host']._graph_settings)
+            with scenario['host'].request(app.context) as session:
+                result=session.call('lookup',{'kind':'ContractItem','version':1})
+                self.assertTrue(result['ok'],result)
+                self.assertEqual(1,len(result['data']))

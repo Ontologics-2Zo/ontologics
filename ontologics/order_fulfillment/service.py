@@ -1,4 +1,4 @@
-"""Order fulfillment tools layered on the unchanged common service boundary.
+"""Order fulfillment tools layered on the common service boundary.
 
 Only B reads and their public tool allowlist live here. Database transactions,
 identity checks, immutable drafts, review/apply and auditing remain inherited.
@@ -23,7 +23,7 @@ class Service(CommonService):
                     or any(not isinstance(nid, str) or not nid.strip() for nid in node_ids)
                     or len(set(node_ids)) != len(node_ids) or not isinstance(kind, str) or kind not in LOOKUP_SCHEMA):
                 raise DomainError('INVALID_INPUT', 'Provide 1..16 unique nonempty node IDs and one known kind')
-            index = {n['id']: n for n in self._nodes(version)}
+            index = {n['id']: n for n in self._read_nodes(version)}
             if any(nid not in index or index[nid]['type'] != kind for nid in node_ids):
                 raise DomainError('NOT_FOUND', 'Every requested ID must exist with the requested kind in this version')
             return self._envelope(ok=True, data=[index[nid] for nid in node_ids], version=version)
@@ -37,7 +37,7 @@ class Service(CommonService):
                 raise DomainError('INVALID_VERSION', 'Delivery queries require an explicit nonnegative data version')
             if not isinstance(delivery_round_id, str) or not delivery_round_id.strip():
                 raise DomainError('INVALID_INPUT', 'delivery_round_id must be nonempty text')
-            idx = {n['id']: n for n in self._nodes(version)}
+            idx = {n['id']: n for n in self._read_nodes(version)}
             round_node = idx.get(delivery_round_id)
             if not round_node or round_node['type'] != 'DeliveryRound':
                 raise DomainError('NOT_FOUND', 'Unknown delivery round in the requested data version')
@@ -66,7 +66,7 @@ class Service(CommonService):
                 instant(as_of)
             except (ValueError, TypeError) as exc:
                 raise DomainError('INVALID_TIME', str(exc)) from exc
-            nodes = self._nodes(version)
+            nodes = self._read_nodes(version)
             if not any(n['id'] == delivery_round_id and n['type'] == 'DeliveryRound' for n in nodes):
                 raise DomainError('NOT_FOUND', 'Unknown delivery round in the requested data version')
             try:
@@ -93,7 +93,7 @@ class Service(CommonService):
                 instant(as_of)
             except (ValueError, TypeError) as exc:
                 raise DomainError('INVALID_TIME', str(exc)) from exc
-            nodes = self._nodes(version)
+            nodes = self._read_nodes(version)
             if not any(n['id'] == delivery_round_id and n['type'] == 'DeliveryRound' for n in nodes):
                 raise DomainError('NOT_FOUND', 'Unknown delivery round in the requested data version')
             try:
@@ -118,7 +118,7 @@ class Service(CommonService):
                 instant(as_of)
             except (ValueError, TypeError) as exc:
                 raise DomainError('INVALID_TIME', str(exc)) from exc
-            nodes = self._nodes(version)
+            nodes = self._read_nodes(version)
             if not any(n['id'] == delivery_round_id and n['type'] == 'DeliveryRound' for n in nodes):
                 raise DomainError('NOT_FOUND', 'Unknown delivery round in the requested data version')
             try:
@@ -150,7 +150,7 @@ class Service(CommonService):
                 instant(after_as_of)
             except (ValueError, TypeError) as exc:
                 raise DomainError('INVALID_TIME', str(exc)) from exc
-            before, after = self._nodes(before_version), self._nodes(after_version)
+            before, after = self._read_nodes(before_version), self._read_nodes(after_version)
             for nodes in (before, after):
                 if not any(n['id'] == delivery_round_id and n['type'] == 'DeliveryRound' for n in nodes):
                     raise DomainError('NOT_FOUND', 'Unknown delivery round in one comparison version')
@@ -183,7 +183,7 @@ class Service(CommonService):
                 instant(as_of)
             except (ValueError, TypeError) as exc:
                 raise DomainError('INVALID_TIME', str(exc)) from exc
-            nodes = self._nodes(version)
+            nodes = self._read_nodes(version)
             index = {n['id']: n for n in nodes}
             for nid, kind in ((production_work_id, 'ProductionWork'), (delivery_round_id, 'DeliveryRound')):
                 if index.get(nid, {}).get('type') != kind:

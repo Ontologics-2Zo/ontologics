@@ -111,7 +111,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(3,len(a['documents']))
 
     def test_stored_contract_conflict_blocks_before_calculation_not_choose_a_number(self):
-        from ontologics.production_planning.persistence import PlanningService as Service
+        from ontologics.service import Service
         original=Service.lookup
         def conflicting(service,actor,**kw):
             r=original(service,actor,**kw)

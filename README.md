@@ -24,13 +24,15 @@ ONTOLOGICS_DB_SCHEMA=ontologics
 
 ```bash
 docker compose --env-file .env.local up -d --wait
+# 전체 회귀는 아래 그래프 조회 절의 Neo4j·시험 환경변수도 준비한 뒤 실행한다.
+python -m pip install -e '.[test]'  # A PDF 접수 회귀용 pypdf 포함
 python -m unittest discover -v
 python -m ontologics.demo
 python -m examples.cq_check
 python -m examples.agent_tools
 ```
 
-테스트·데모·CQ 확인에는 모델 키가 필요 없다. 테스트는 `test_<UUID>` 스키마만 만들고 정리한다. 필요하면 `TEST_DATABASE_URL`로 별도 시험 DB를 지정한다. 전체 테스트는 실제 PostgreSQL을 사용하며 DB가 없을 때 성공으로 건너뛰지 않는다. CI도 같은 pgvector 이미지에서 실행한다.
+테스트·데모·CQ 확인에는 모델 키가 필요 없다. PostgreSQL 테스트는 `test_<UUID>` 스키마만 만들고 정리한다. 필요하면 `TEST_DATABASE_URL`로 별도 시험 DB를 지정한다. 전체 회귀에는 실제 PostgreSQL과 아래 Neo4j 시험 설정이 필요하며, 미설정 상태를 성공으로 건너뛰지 않는다. 기본 PostgreSQL 데모·웹은 Neo4j 없이 실행할 수 있다.
 
 데모는 **실제 ODS 파싱 → L1 등록 초안 → 개발용 사람 역할 검토 → 승인 반영 → 조사 → 보완 요청·수정 → 재승인 → 같은 조건 재조회**를 실행한다. 승인은 시험용 신원으로 실행되며 실제 운영 승인 이력이 아니다.
 
@@ -75,6 +77,59 @@ AI 업무 지원은 기존 `.env`/`.env.local` 또는 `--model-env-file`의 `OPE
 일반 가상 이력 파일은 UTF-8 JSON `{origin:"synthetic",authored_at:"명시적 시각+offset",notice:"시연 근거 설명",records:[...]}`다. records는 기존 SCHEMA의 ProductUnit/ComponentLot/Installation/HistoryCoverage/InventoryMovement 필드(id/type 포함, origin/evidence 제외)를 사용한다. 호스트가 새 SourceDocument/Evidence·해시·JSON 위치를 붙인다. 실제 회사 운영 자료나 고장/안전/가동 필드는 허용하지 않는다. 원본은 Git 제외 `data/receipts/`에 무변경 보존하고 DB와 함께 별도 백업해야 한다. 파일 접수·형식 검증은 사실 확인이나 승인과 다르다.
 
 공통 담당자는 Harness·신원·권한·도구·승인·도메인 계약을 관리하고, 동료는 기존 네 Agent 중 맡은 역할의 고유 기능을 역할 폴더에서 개발·개선한다. 별도 신규 Agent 추가는 필수 요구가 아니다. HTTP 계약은 [TOOLS](docs/TOOLS.md#개발용-http-api와-화면), 실제 검증 범위·제한은 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 영향 검사 후 최종 `python -m unittest discover -v`를 실행한다. 모델 대역·실제 브라우저·실모델 검증은 구분한다.
+
+### RDF·Neo4j 조회를 선택해 실행
+
+기본값은 PostgreSQL이다. `--graph-backend rdf`는 PostgreSQL의 정확한 버전을 RDFLib으로 변환하고 pySHACL 검증 후 고정 SPARQL로 조회한다. `--graph-backend neo4j`는 같은 검증을 거쳐 동기화한 Neo4j 관계를 조회한다. **초안·승인·확정 버전의 정본과 pgvector 검색은 PostgreSQL에 유지한다.** A/B 계산·권한·Agent 도구 계약은 공통 코드를 재사용하며, 임의 OWL 추론이나 새 CQ 지원을 추가하지 않는다. 상세 공개 조건은 [TOOLS](docs/TOOLS.md#후속-통합배포-설계-미구현)를 따른다.
+
+Neo4j를 사용할 때만 Git 제외 로컬 파일 `.env.graph.local`에 아래 설정을 작성한다. 비밀번호는 본인이 정한 로컬 값으로 바꾸고 공유하지 않는다.
+
+```dotenv
+ONTOLOGICS_GRAPH_BACKEND=neo4j
+ONTOLOGICS_GRAPH_NAMESPACE=ontologics-local
+NEO4J_URI=bolt://127.0.0.1:17687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=replace-local-graph-password
+NEO4J_DATABASE=neo4j
+```
+
+```bash
+docker compose --env-file .env.local --env-file .env.graph.local -f compose.yaml -f compose.graph.yaml up -d neo4j
+# 위 웹 절에서 준비한 schema의 개발 시드 v1을 먼저 공개한다. 기존 seed를 반복하지 않는다.
+python -m ontologics.graph_projection sync --schema web_s1_s2_team_001 --version 1 --request-key graph-v1-initial --env-file .env.local --graph-env-file .env.graph.local
+python -m ontologics.graph_projection status --schema web_s1_s2_team_001 --version 1 --env-file .env.local --graph-env-file .env.graph.local
+python -m ontologics.web serve --development --user alice --port 8000 --schema web_s1_s2_team_001 --env-file .env.local --graph-backend neo4j --graph-env-file .env.graph.local
+```
+
+처음 컨테이너가 준비 중이면 `GRAPH_UNAVAILABLE` 원인을 해결한 뒤 같은 동기화 키로 재시도한다. `status`의 `ok=true`, `data.status=ready`는 해당 버전의 실제 Neo4j 조회·내용 검증 성공이다. 기존 `--model-env-file`·`--sandbox-socket` 옵션은 같은 serve 명령에 유지한다. PostgreSQL 시드·과거 승인 버전은 자동 일괄 동기화하지 않으므로 전후 비교에 사용할 각 버전을 `--version`과 해당 버전의 고유 요청 키로 먼저 동기화한다. 개발 시드는 사람 승인이 아닌 `source_status=development_seed`로 구분한다.
+
+Neo4j 모드의 CommonHost는 사람 승인 후 PostgreSQL 반영을 완료한 다음 새 데이터 버전을 동기화한다. 반영 응답의 `data.graph_projection.status=ready`와 `pending`을 구분한다. `pending`이면 PostgreSQL 승인은 유지되지만 해당 버전의 그래프 조회는 차단한다. 같은 승인 요청을 재시도하면 확정 데이터를 중복 반영하지 않고 동기화를 다시 확인한다. CLI의 **이미 성공한** 동기화 키는 이전 성공 응답을 재생하므로, 복구 후 재검증·재동기화에는 `status`와 새로운 `--request-key`를 쓴다. 손상·다른 내용으로 같은 버전을 덮어쓰는 수리는 허용하지 않는다. 백그라운드 자동 재시도·강제 종료 복구는 제공하지 않는다.
+
+```bash
+# 모델 호출 없이 새 demo schema에서 동일 CQ를 PostgreSQL/SPARQL/Neo4j로 대조한다.
+python -m examples.graph_cq_check --env-file .env.local --graph-env-file .env.graph.local
+python -m unittest tests.test_graph_rdf -v
+```
+
+실제 Neo4j·HTTP 통합 및 전체 회귀를 실행하려면 `.env.local` 또는 프로세스 환경에 같은 `NEO4J_*`·`ONTOLOGICS_GRAPH_NAMESPACE` 설정과 `TEST_NEO4J_URL`·`TEST_NEO4J_USER`·`TEST_NEO4J_PASSWORD`를 준비한다. unittest는 `.env.graph.local`을 자동으로 읽지 않는다. `python -m unittest tests.test_graph_neo4j tests.test_graph_integration -v`는 별도 시험 namespace/schema를 사용한다. CQ 실행 결과는 Git 제외 `artifacts/local/cq_graph_backends.json`에 저장한다. 실제 인증·AWS·운영 백업/복구 완료를 뜻하지 않는다.
+
+### A 생산계획 / B 계약·납품 타입 통합 (`graph-0.2`)
+
+PR #9·#10의 신규 업무 11종을 기존 12종과 함께 공통 저장·검증·조회·RDF·Neo4j로 연결했다. 정의는 `ontologics/domain_schema.py`, 공통 실행은 `model.py`다. 동료는 역할 내부 계산을 수정하고 공개 타입·근거·승인 의미 변경은 공통 계약 검토를 거친다. A/B 호환 Service·Host도 공통 승인 경로를 사용한다. 상세 계약은 [TOOLS](docs/TOOLS.md#ab-신규-업무-타입의-공통-저장조회)를 참조한다.
+
+```bash
+# 위 Neo4j 설정 + 새 namespace (예: ontologics_graph02)와 별도 시험 PG를 사용
+# 이전 graph-0.1/매핑1 namespace를 덮어쓰지 않는다.
+python -m ontologics.tbox --check
+python -m examples.ab_graph_check --schema test_ab_team_001
+python -m unittest tests.test_domain_graph tests.test_ab_graph_integration -v
+```
+
+예제 기대 결과는 `passed: true`, 신규 11종 조회 일치, 자기 승인/구 초안 버전 차단, 승인 후 동일 시간 조건에서 U104 A 제외/B 포함·U106 미확인 유지다. 기존 원본·가상 입력을 사용하고 모델 API를 호출하지 않는다. 최초 시드는 개발 자료이며 이후 승인도 개발 신원 검증이다. 기존 데이터의 스키마 업그레이드는 초안/승인 원장 변경 없이 새 namespace에 필요한 승인 버전만 명시적으로 재동기화한다. 실행 명령·환경변수는 바로 위 절을 따른다.
+
+A 웹 `contract_library_web`은 호스트 환경의 조회 backend를 사용한다. B 저수준 `make_host(..., graph_settings=...)`는 호출자가 명시 주입하며 기존 기본값은 PostgreSQL이다. 격리 시나리오 예제의 고정 대역·별도 업무 테이블·자동 승인 없는 산출물을 공통 확정 데이터와 구분한다. S1 JSON 이력 접수 범위는 기존 5종으로 유지한다.
+
+Neo4j Browser의 `:style`에서 `ontology/neo4j-browser.grass`를 불러오면 23종을 이름·색상으로 구분한다. 신규 승인 동기화 시 타입 label과 caption은 자동 생성되지만 브라우저별 스타일 가져오기는 한 번 필요하다.
 
 ## 개발용 사용자 신원과 공통 호스트
 
@@ -183,7 +238,7 @@ PostgreSQL 전환의 실제 API 결과와 실패·수정 이력은 [검증 요�
 
 ## pgvector 근거 검색을 연결하는 위치
 
-`ontologics/retrieval.py`의 `EvidenceIndex`는 승인된 데이터 버전의 Evidence·SourceDocument·연결된 사실을 텍스트로 제공하고, 호스트가 만든 임베딩을 PostgreSQL `vector` 열에 저장·검색한다. 모델 이름·차원·내용 해시·데이터 버전을 구분하고 실제/가상 필터와 원본 locator를 반환한다. 원본은 파일로 보존하고, 그래프·초안·승인·실행 기록·벡터의 영속 저장은 PostgreSQL 한 곳에 둔다.
+`ontologics/retrieval.py`의 `EvidenceIndex`는 승인된 데이터 버전의 Evidence·SourceDocument·연결된 사실을 텍스트로 제공하고, 호스트가 만든 임베딩을 PostgreSQL `vector` 열에 저장·검색한다. 모델 이름·차원·내용 해시·데이터 버전을 구분하고 실제/가상 필터와 원본 locator를 반환한다. 원본은 파일로 보존하고, 그래프·초안·승인·실행 기록의 정본과 벡터는 PostgreSQL에 둔다. Neo4j는 선택적으로 동기화하는 조회용 저장소이며, 이를 선택해도 pgvector 검색은 PostgreSQL에서 실행한다.
 
 `python -m examples.cq_check`의 3차원 수치 벡터는 기존 SQL 검사다. 실제 의미 검색은 `OpenAIEmbeddings`의 고정 `text-embedding-3-small`/1536차원으로 문서와 질문을 변환한다. 기존 LLM과 목적이 다른 임베딩 모델이며 동적 라우팅은 없다. [공식 Embeddings API](https://developers.openai.com/api/reference/resources/embeddings/methods/create)를 따른다.
 
@@ -251,11 +306,11 @@ Sandbox는 네트워크 차단·non-root·읽기 전용 루트/입력·CPU/메�
 
 ## 저장소 공유 상태
 
-비공개 저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-10-29 확인한 main은 [`ca7c391a9e813b6ab9e6fddfb48ab639c09a764b`](https://github.com/Ontologics-2Zo/ontologics/commit/ca7c391a9e813b6ab9e6fddfb48ab639c09a764b)**다. PR #1~#3에 이어 공통 계약·한도·격리 파서 [PR #4](https://github.com/Ontologics-2Zo/ontologics/pull/4)와 실제 역할 패키지 분리 [PR #5](https://github.com/Ontologics-2Zo/ontologics/pull/5)가 모두 병합됐다. 이 기준 버전은 실제 인증·운영 백업·AWS·RDF/Neo4j 완료를 의미하지 않는다.
+저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-11-01 확인한 main은 PR #10 병합 `7d2db577d0b6bc99f435f53205ab5a1ba5f49980`**이다. PR #4·#5·#8·#9·#10 위에 `codex/ab-domain-graph`에서 공통 저장·그래프 후속 통합을 별도 검토한다. 사용자는 공개 저장소에 팀 코드 공유를 허용했으며, 개인 평가·경험 기록·환경 파일·비밀값은 제외한다. 이번 브랜치의 검증과 main 반영 상태는 [PROJECT_STATUS](PROJECT_STATUS.md)로 구분한다. 실제 인증·운영 백업·AWS 완료를 뜻하지 않는다.
 
 저장소 접근 권한이 있는 팀원은 위 기준 커밋을 포함하는 main에서 담당 브랜치를 만들어 기존 실행·역할별 테스트 순서를 따른다. 미커밋 작업은 먼저 보존한다. Harness·Sandbox 구현과 역할 폴더는 이미 공유돼 있으며 환경 설정 후 사용할 수 있다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 
-**과거 공유 이력:** 2026-10-27에는 main `7c5e2d9`에 PR #1~#3이 병합돼 있었고, `codex/harness-security-eval`은 Harness·계약·Sandbox 보완의 리뷰 브랜치였다. 당시의 공유 대기 안내는 위 현재 상태와 구분한다.
+**과거 공유 이력:** 2026-10-27에는 main `7c5e2d9`에 PR #1~#3이 병합돼 있었고, `codex/harness-security-eval`은 Harness·계약·Sandbox 보완의 리뷰 브랜치였다. 2026-10-29 확인 기준은 main `ca7c391`이었다. 당시의 공유 대기·기준 커밋 안내는 위 현재 상태와 구분한다.
 
 ## 개발 기준
 

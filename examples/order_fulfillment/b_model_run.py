@@ -430,7 +430,7 @@ def _check_case_cost(budget, starting_cost, cap):
 
 
 def run_campaign(*, database, output, plan, approval, review=None, emit=print,
-                 live_settings=None, live_opener=None):
+                 live_settings=None, live_opener=None, graph_settings=None):
     validate_plan(plan)
     validate_authorization(plan, approval)
     if not isinstance(database, DatabaseSettings):
@@ -462,7 +462,7 @@ def run_campaign(*, database, output, plan, approval, review=None, emit=print,
         if not seeded['ok']:
             raise ValueError('Catalog bootstrap failed')
         version = seeded['data_version']
-        host = connection.make_host(database, policy)
+        host = connection.make_host(database, policy, graph_settings=graph_settings)
         for index, case in enumerate(plan['cases']):
             active = case
             validate_plan(plan)

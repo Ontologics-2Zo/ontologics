@@ -1,6 +1,7 @@
 """Bounded complete batch reads reuse confirmed snapshots, permission and audit."""
 import copy
 import unittest
+from ontologics.graph_views import GraphSettings
 from unittest.mock import Mock, patch
 
 from ontologics.order_fulfillment.schema import LOOKUP_SCHEMA
@@ -19,6 +20,7 @@ class LookupManyContractTests(unittest.TestCase):
         self.nodes = [dict(id='node:' + kind, type=kind) for kind in LOOKUP_SCHEMA]
         self.nodes.append(dict(id='evidence:second', type='Evidence'))
         self.service = object.__new__(Service)
+        self.service.graph_settings = GraphSettings()
         self.service._nodes = Mock(return_value=self.nodes)
         self.service._run = Mock(side_effect=lambda actor, tool, args, action: action())
 

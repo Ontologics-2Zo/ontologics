@@ -106,7 +106,9 @@ def extension_lines(common_schema, extension_schema):
     """Compatibility helper for A's required scalar-reference declarations."""
     if set(common_schema) & set(extension_schema):
         raise ValueError('Duplicate ontology types')
-    common = Extension('common', common_schema)
+    common = (Extension('common', common_schema, model.OPTIONAL_FIELDS,
+                        model.OPTIONAL_REFERENCES, model.LIST_REFERENCES)
+              if common_schema is model.SCHEMA else Extension('common', common_schema))
     _, ranges = _combined(common, (Extension('extension', extension_schema),))
     _, common_ranges = _combined(common, ())
     return ([f'o:{kind} a owl:Class .' for kind in extension_schema]
@@ -121,7 +123,8 @@ def build_tbox(extensions=None):
     their business validators or persistence paths are interchangeable.
     """
     extensions = tuple(registered_extensions() if extensions is None else extensions)
-    common = Extension('common', model.SCHEMA, model.OPTIONAL_FIELDS)
+    common = Extension('common', model.SCHEMA, model.OPTIONAL_FIELDS,
+                       model.OPTIONAL_REFERENCES, model.LIST_REFERENCES)
     definitions, ranges = _combined(common, extensions)
     text = model.tbox_turtle()
     existing = {}

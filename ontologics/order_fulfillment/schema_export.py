@@ -1,7 +1,7 @@
-"""Compose B output fragments with the unchanged common exporters.
+"""Compatibility B output helpers over the shared registered schema.
 
 Inputs must already be validated. These helpers neither validate/approve the
-graph nor write files, and inherit the common ontology/version unchanged.
+graph nor write files, and use the current common ontology/version.
 The scoped common+B tbox_turtle() return value is not the shared file. Generate
 ontology/tbox.ttl with python -m ontologics.tbox to preserve all reviewed roles.
 """
@@ -22,32 +22,15 @@ def jsonld_context():
 
 
 def jsonld_node(node):
-    """Encode one B node using the existing entity URN representation."""
+    """Encode one B node through the shared relation/JSON mapping."""
     if node.get('type') not in SCHEMA:
         raise ValueError('B export requires a B graph type')
-    row = dict(node, id='urn:ontologics:entity:' + node['id'])
-    for key in SCHEMA[node['type']][1]:
-        if key in node:
-            row[key] = 'urn:ontologics:entity:' + node[key]
-    for key in LIST_REFERENCES.get(node['type'], {}):
-        row[key] = ['urn:ontologics:entity:' + value for value in node[key]]
-    row['evidence'] = ['urn:ontologics:entity:' + eid for eid in node.get('evidence', [])]
-    return row
+    return _common_graph_jsonld([node])['@graph'][0]
 
 
 def graph_jsonld(nodes):
-    """Encode mixed nodes without asking the common exporter to know B types."""
-    nodes = list(nodes)
-    common = _common_graph_jsonld([node for node in nodes if node['type'] not in SCHEMA])
-    context = dict(common['@context'])
-    for key, value in jsonld_context().items():
-        if key in context and context[key] != value:
-            raise ValueError('Conflicting common and B JSON-LD context: ' + key)
-        context[key] = value
-    common_rows = iter(common['@graph'])
-    graph = [jsonld_node(node) if node['type'] in SCHEMA else next(common_rows)
-             for node in nodes]
-    return {'@context': context, '@graph': graph}
+    """Encode the complete registered graph through the shared exporter."""
+    return _common_graph_jsonld(list(nodes))
 
 
 def tbox_terms():

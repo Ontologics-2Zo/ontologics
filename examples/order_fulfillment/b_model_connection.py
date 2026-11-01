@@ -90,14 +90,14 @@ def new_budget(policy, *, case_count=1, demo=False):
     return ExecutionBudget(limits, cost_policy=policy)
 
 
-def make_host(database, policy):
+def make_host(database, policy, *, graph_settings=None):
     if not isinstance(database, DatabaseSettings):
         raise ValueError('Pass explicit fresh development DatabaseSettings')
     if policy is not None and not isinstance(policy, CostPolicy):
         raise ValueError('Use the host-owned common CostPolicy')
     identities = DevelopmentIdentityProvider([
         UserIdentity(SUBJECT, frozenset({'read'}))], enabled=True)
-    return CommonHost(identities, database, cost_policy=policy,
+    return CommonHost(identities, database, cost_policy=policy, graph_settings=graph_settings,
         agent_registrations=tuple(AgentRegistration.from_spec(model_spec(module))
                                   for module, _, _ in ROLES))
 

@@ -567,3 +567,28 @@ class ContractLibraryTests(unittest.TestCase):
         app.dispatch('/api/tools/contracts/register',self.args)
         self.assertEqual(1,len(calls),'Read and request replay must not call the model again')
         self.assertEqual([],detail['review']['checks'])
+
+
+class LibraryEntrypointGraphTests(unittest.TestCase):
+    def test_environment_backend_reaches_the_actual_host(self):
+        from contextlib import ExitStack
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from ontologics.production_planning import contract_library_web as entry
+        server = Mock(origin='http://127.0.0.1:51171')
+        server.serve_forever.side_effect = KeyboardInterrupt
+        with ExitStack() as stack:
+            stack.enter_context(patch('sys.argv', ['contract_library_web']))
+            stack.enter_context(patch('ontologics.database.environment_values',
+                                      return_value={'ONTOLOGICS_GRAPH_BACKEND': 'rdf'}))
+            stack.enter_context(patch('ontologics.openai_provider.OpenAISettings.from_environment',
+                                      return_value=SimpleNamespace(model='test')))
+            stack.enter_context(patch('ontologics.paid_budget.cost_policy_from_environment', return_value=object()))
+            stack.enter_context(patch.object(entry.DatabaseSettings, 'from_environment', return_value=object()))
+            host = stack.enter_context(patch.object(entry, 'CommonHost'))
+            stack.enter_context(patch.object(entry, 'LibraryApplication'))
+            stack.enter_context(patch.object(entry, 'LibraryServer', return_value=server))
+            stack.enter_context(patch('builtins.print'))
+            entry.main()
+        self.assertEqual('rdf', host.call_args.kwargs['graph_settings'].backend)
+        server.server_close.assert_called_once_with()

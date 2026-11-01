@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from ontologics.identity import DevelopmentContext, UserIdentity
-from ontologics.production_planning.persistence import PlanningService as Service
+from ontologics.service import Service
 from tests.production_planning.test_documents import DocumentPostgresTests as _Setup
 
 

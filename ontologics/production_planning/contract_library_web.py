@@ -181,6 +181,7 @@ def main():
     parser.add_argument('--schema',default='a_contract_library')
     args=parser.parse_args()
     from ..database import environment_values
+    from ..graph_views import GraphSettings
     from ..openai_provider import OpenAISettings,OpenAIProvider
     from ..paid_budget import cost_policy_from_environment
     values=environment_values()
@@ -188,7 +189,8 @@ def main():
     policy=cost_policy_from_environment(values)
     if policy is None:raise ValueError('Explicit model cost policy required')
     settings=DatabaseSettings.from_environment(schema=args.schema)
-    host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),settings,agent_registrations=(REGISTRATION,),cost_policy=policy)
+    host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),settings,agent_registrations=(REGISTRATION,),cost_policy=policy,
+                    graph_settings=GraphSettings.from_environment(environ=values))
     app=LibraryApplication(host,DevelopmentContext('dev-alice'),lambda:OpenAIProvider(provider_settings,REGISTRATION.allowed_tools),provider_settings.model)
     server=LibraryServer(app,args.port)
     print(json.dumps(dict(url=server.origin,storage='persistent PostgreSQL',model_calls=True)),flush=True)

@@ -1,8 +1,8 @@
 # PROJECT_STATUS
 
-## 2026-11-01 — A/B 공유 T-box 통합 수정(로컬)
+## 2026-11-01 — A/B 공유 T-box 통합과 PR #10 갱신
 
-기준은 PR #9 병합 main `9ad50ae`와 PR #10 `32141fd`다. 별도 `codex/ab-shared-tbox` 브랜치에서 결합하며 기존 개발 worktree의 그래프·문서 변경은 보존한다. 원격 PR #10을 병합하거나 작성자 브랜치를 덮어쓰지 않았다. 저장소 공개 상태가 확인되어 이전 비공개 전환 후 공유 지시에 따라 push·PR 생성은 보류한다.
+기준은 PR #9 병합 main `9ad50ae`와 PR #10 `32141fd`다. 별도 `codex/ab-shared-tbox`에서 결합하고 공통 수정은 `edcc249`로 분리했다. 사용자가 공개 저장소 공유와 #10 브랜치 갱신을 승인했다. 기존 A 커밋과 최신 main을 모두 포함하는 일반 fast-forward push를 사용하며 강제 push·main 직접 push·PR 병합은 하지 않는다. 기존 개발 worktree의 그래프·문서 변경과 개인 자료는 이번 공유에 포함하지 않는다.
 
 공통 `ontologics.tbox`가 A/B 선언을 중복 없이 생성하고 같은 이름의 필드·참조 의미 충돌을 거부한다. A 기존 CLI와 공통 demo의 파일 출력도 이 경로를 사용한다. B의 부분 출력 API는 유지하되 공유 파일 전체 일치 검사를 공통 생성기로 연결했다. `.gitignore`의 양쪽 제외 규칙을 보존했다. 인계 그래프 재생성 시 기존 JSON-LD context가 지워지던 경로도 보존·충돌 검사로 보완했다.
 
@@ -12,7 +12,7 @@
 
 공통 demo의 실제 PostgreSQL S2/S1 실행은 v1→v2→v3, U104 보완 후 A 제외/B 포함이었다. 기존 로컬 RDF/Neo4j 코드와 결합한 별도 사본에서 RDF 8개와 실제 PostgreSQL·Neo4j·HTTP 3개가 통과했다. 이 중 통합 3개는 namespace 설정 누락으로 첫 실행되지 못해 설정 후 재검사했다. U106 추가 확인·근거·승인 버전을 유지했다. A/B 신규 타입의 공통 그래프 편입이나 실모델 품질 검증은 아니다. 유료 모델 호출은 없었다. 실행 근거는 Git 제외 artifacts/local/ab-verification/에 보존한다.
 
-다음: 공통 수정은 로컬 통합 기준 494ae1d 위의 별도 수정 커밋과 patch로 보존한다. 비공개 전환 확인 뒤 #10에 최신 main과 공통 수정을 반영하고 CI를 확인한다. A/B 공통 저장·조회 편입과 C 결합은 별도 후속 작업이다.
+공유 순서: 기존 #10의 feature/a-first-mvp에 최신 main과 공통 수정을 반영 → 해당 head의 GitHub Actions와 main 대비 최종 diff 확인 → 사용자 병합. 원격 CI 완료 여부는 PR의 최신 Checks를 기준으로 하며 위 로컬 실행 근거와 구분한다. A/B 공통 저장·조회 편입과 C 결합은 별도 후속 작업이다.
 
 A 생산계획 현재 흐름: [docs/PRODUCTION_PLANNING_FLOW.md](docs/PRODUCTION_PLANNING_FLOW.md). 앞으로 A 업무 흐름 변경 시 이 문서를 함께 갱신한다.
 

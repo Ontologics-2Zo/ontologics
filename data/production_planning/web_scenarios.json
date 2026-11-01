@@ -1,0 +1,459 @@
+{
+  "format_version": 1,
+  "origin": "synthetic",
+  "purpose": "Web acceptance scenario inputs; not operational data, an approved graph, or completed web tests",
+  "contract_sha256": "6e2057d140963a9584ea25e514971d81e00728a7dbaeac3b19dd9ba7c519a962",
+  "component_order": [
+    "component:olimex-L-wroom:32d420c6c802a2c2",
+    "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+    "component:olimex-L-wroom:7e7b047ff0528a6c"
+  ],
+  "date_policy": "Fixed reference dates, Asia/Seoul; not current inventory",
+  "web_execution_status": "blocked: A graph types not integrated; psycopg unavailable in system Python",
+  "usage": "Choose standard in the existing UI; copy contract_text, stock and production as JSON, and initial_quantity. Scenario IDs are not new UI options. Requires runtime integration first.",
+  "cases": [
+    {
+      "id": "S01",
+      "title": "예약된 재고를 제외한 부분 생산",
+      "server_scenario": "standard",
+      "contract_text": "개발·검증용 가정 계약 — 승인된 계약 또는 OLIMEX 운영 기록이 아님\n\n계약 항목 접수 참조: contract-item:planning:001 (공통 그래프 미등록)\n생산 회사: Planning Reference Company\n고객: Reference Customer (가정)\n제품 모델: OLIMEX ESP32-POE\n설계 개정 / 변형: L / WROOM\n구성 연결 후보: config:esp32-poe:L:WROOM\n주문 수량: 보드 100대 (unit=piece)\n기존 이행: 0대, 기존 배정: 0대\n이번 신규 생산 검토 대상: 100대\n고객 도착 납기: 2026-11-10 (개발용 가정, 날짜 정밀도)\n개정 변경·대체 부품 허용: 명시 없음, 사람 확인 필요\n\n수량·재고 기준 시각: 2026-10-26T09:00:00+09:00\n손실·불량·재작업 0, 중단 없음은 검증용 가정이다.\n이 본문은 자동 추출 결과가 아니다. request.json은 별도로 작성한 구조화 시험 입력이다.\n구성 후보·계약 조건에 대한 사람 확인은 아직 없다.\n실제 BOM·부품 정의는 data/catalog.json의 원본·Evidence를 참조한다.\n",
+      "initial_quantity": 70,
+      "stock": {
+        "origin": "synthetic",
+        "purpose": "Development reference input; not actual inventory or a registered graph snapshot",
+        "stock_scope": {
+          "company": "Planning Reference Company",
+          "location": "warehouse:reference",
+          "as_of": "2026-10-26T09:00:00+09:00"
+        },
+        "coverage": "Only three real L/WROOM BOM rows; all remaining component stocks are unconfirmed",
+        "stocks": [
+          {
+            "id": "stock:planning:001",
+            "lot_id": "lot:planning:lan8710:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+            "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+            "on_hand_quantity": 100,
+            "reserved_quantity": 30,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:002",
+            "lot_id": "lot:planning:2k2:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+            "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+            "on_hand_quantity": 600,
+            "reserved_quantity": 40,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:003",
+            "lot_id": "lot:planning:10k:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+            "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+            "on_hand_quantity": 1200,
+            "reserved_quantity": 100,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          }
+        ]
+      },
+      "production": {
+        "purpose": "Development reference conditions; not OLIMEX throughput, a work order or production performance",
+        "production_conditions": {
+          "origin": "synthetic",
+          "resource_ref": "resource:planning:001",
+          "available_at": "2026-10-26T10:00:00+09:00",
+          "setup_minutes": 60,
+          "boards_per_hour": 20,
+          "loss_quantity": 0,
+          "defect_quantity": 0,
+          "rework_quantity": 0,
+          "interruption_policy": "none_assumed"
+        }
+      },
+      "expected": {
+        "available": [
+          70,
+          560,
+          1100
+        ],
+        "shortage": [
+          30,
+          240,
+          0
+        ],
+        "conditional_upper_bound": 70,
+        "initial_quantity": 70,
+        "remaining_quantity": 30,
+        "initial_completion": "2026-10-26T14:30:00+09:00",
+        "whole_bom_material_limit": null
+      }
+    },
+    {
+      "id": "S02",
+      "title": "확인된 세 부품은 충분하지만 전체 BOM은 미확인",
+      "server_scenario": "standard",
+      "contract_text": "개발·검증용 가정 계약 — 승인된 계약 또는 OLIMEX 운영 기록이 아님\n\n계약 항목 접수 참조: contract-item:planning:001 (공통 그래프 미등록)\n생산 회사: Planning Reference Company\n고객: Reference Customer (가정)\n제품 모델: OLIMEX ESP32-POE\n설계 개정 / 변형: L / WROOM\n구성 연결 후보: config:esp32-poe:L:WROOM\n주문 수량: 보드 100대 (unit=piece)\n기존 이행: 0대, 기존 배정: 0대\n이번 신규 생산 검토 대상: 100대\n고객 도착 납기: 2026-11-10 (개발용 가정, 날짜 정밀도)\n개정 변경·대체 부품 허용: 명시 없음, 사람 확인 필요\n\n수량·재고 기준 시각: 2026-10-26T09:00:00+09:00\n손실·불량·재작업 0, 중단 없음은 검증용 가정이다.\n이 본문은 자동 추출 결과가 아니다. request.json은 별도로 작성한 구조화 시험 입력이다.\n구성 후보·계약 조건에 대한 사람 확인은 아직 없다.\n실제 BOM·부품 정의는 data/catalog.json의 원본·Evidence를 참조한다.\n",
+      "initial_quantity": 100,
+      "stock": {
+        "origin": "synthetic",
+        "purpose": "Development reference input; not actual inventory or a registered graph snapshot",
+        "stock_scope": {
+          "company": "Planning Reference Company",
+          "location": "warehouse:reference",
+          "as_of": "2026-10-26T09:00:00+09:00"
+        },
+        "coverage": "Only three real L/WROOM BOM rows; all remaining component stocks are unconfirmed",
+        "stocks": [
+          {
+            "id": "stock:planning:001",
+            "lot_id": "lot:planning:lan8710:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+            "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+            "on_hand_quantity": 130,
+            "reserved_quantity": 30,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:002",
+            "lot_id": "lot:planning:2k2:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+            "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+            "on_hand_quantity": 840,
+            "reserved_quantity": 40,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:003",
+            "lot_id": "lot:planning:10k:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+            "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+            "on_hand_quantity": 1200,
+            "reserved_quantity": 100,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          }
+        ]
+      },
+      "production": {
+        "purpose": "Development reference conditions; not OLIMEX throughput, a work order or production performance",
+        "production_conditions": {
+          "origin": "synthetic",
+          "resource_ref": "resource:planning:001",
+          "available_at": "2026-10-26T10:00:00+09:00",
+          "setup_minutes": 60,
+          "boards_per_hour": 20,
+          "loss_quantity": 0,
+          "defect_quantity": 0,
+          "rework_quantity": 0,
+          "interruption_policy": "none_assumed"
+        }
+      },
+      "expected": {
+        "available": [
+          100,
+          800,
+          1100
+        ],
+        "shortage": [
+          0,
+          0,
+          0
+        ],
+        "conditional_upper_bound": 100,
+        "initial_quantity": 100,
+        "remaining_quantity": 0,
+        "initial_completion": "2026-10-26T16:00:00+09:00",
+        "whole_bom_material_limit": null
+      }
+    },
+    {
+      "id": "S03",
+      "title": "핵심 IC가 전량 예약되어 생산 착수 불가",
+      "server_scenario": "standard",
+      "contract_text": "개발·검증용 가정 계약 — 승인된 계약 또는 OLIMEX 운영 기록이 아님\n\n계약 항목 접수 참조: contract-item:planning:001 (공통 그래프 미등록)\n생산 회사: Planning Reference Company\n고객: Reference Customer (가정)\n제품 모델: OLIMEX ESP32-POE\n설계 개정 / 변형: L / WROOM\n구성 연결 후보: config:esp32-poe:L:WROOM\n주문 수량: 보드 100대 (unit=piece)\n기존 이행: 0대, 기존 배정: 0대\n이번 신규 생산 검토 대상: 100대\n고객 도착 납기: 2026-11-10 (개발용 가정, 날짜 정밀도)\n개정 변경·대체 부품 허용: 명시 없음, 사람 확인 필요\n\n수량·재고 기준 시각: 2026-10-26T09:00:00+09:00\n손실·불량·재작업 0, 중단 없음은 검증용 가정이다.\n이 본문은 자동 추출 결과가 아니다. request.json은 별도로 작성한 구조화 시험 입력이다.\n구성 후보·계약 조건에 대한 사람 확인은 아직 없다.\n실제 BOM·부품 정의는 data/catalog.json의 원본·Evidence를 참조한다.\n",
+      "initial_quantity": 0,
+      "stock": {
+        "origin": "synthetic",
+        "purpose": "Development reference input; not actual inventory or a registered graph snapshot",
+        "stock_scope": {
+          "company": "Planning Reference Company",
+          "location": "warehouse:reference",
+          "as_of": "2026-10-26T09:00:00+09:00"
+        },
+        "coverage": "Only three real L/WROOM BOM rows; all remaining component stocks are unconfirmed",
+        "stocks": [
+          {
+            "id": "stock:planning:001",
+            "lot_id": "lot:planning:lan8710:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+            "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+            "on_hand_quantity": 30,
+            "reserved_quantity": 30,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:002",
+            "lot_id": "lot:planning:2k2:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+            "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+            "on_hand_quantity": 600,
+            "reserved_quantity": 40,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:003",
+            "lot_id": "lot:planning:10k:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+            "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+            "on_hand_quantity": 1200,
+            "reserved_quantity": 100,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          }
+        ]
+      },
+      "production": {
+        "purpose": "Development reference conditions; not OLIMEX throughput, a work order or production performance",
+        "production_conditions": {
+          "origin": "synthetic",
+          "resource_ref": "resource:planning:001",
+          "available_at": "2026-10-26T10:00:00+09:00",
+          "setup_minutes": 60,
+          "boards_per_hour": 20,
+          "loss_quantity": 0,
+          "defect_quantity": 0,
+          "rework_quantity": 0,
+          "interruption_policy": "none_assumed"
+        }
+      },
+      "expected": {
+        "available": [
+          0,
+          560,
+          1100
+        ],
+        "shortage": [
+          100,
+          240,
+          0
+        ],
+        "conditional_upper_bound": 0,
+        "initial_quantity": 0,
+        "remaining_quantity": 100,
+        "whole_bom_material_limit": null
+      }
+    },
+    {
+      "id": "S04",
+      "title": "자재 일부는 있지만 생산 라인이 납기 뒤에 열림",
+      "server_scenario": "standard",
+      "contract_text": "개발·검증용 가정 계약 — 승인된 계약 또는 OLIMEX 운영 기록이 아님\n\n계약 항목 접수 참조: contract-item:planning:001 (공통 그래프 미등록)\n생산 회사: Planning Reference Company\n고객: Reference Customer (가정)\n제품 모델: OLIMEX ESP32-POE\n설계 개정 / 변형: L / WROOM\n구성 연결 후보: config:esp32-poe:L:WROOM\n주문 수량: 보드 100대 (unit=piece)\n기존 이행: 0대, 기존 배정: 0대\n이번 신규 생산 검토 대상: 100대\n고객 도착 납기: 2026-11-10 (개발용 가정, 날짜 정밀도)\n개정 변경·대체 부품 허용: 명시 없음, 사람 확인 필요\n\n수량·재고 기준 시각: 2026-10-26T09:00:00+09:00\n손실·불량·재작업 0, 중단 없음은 검증용 가정이다.\n이 본문은 자동 추출 결과가 아니다. request.json은 별도로 작성한 구조화 시험 입력이다.\n구성 후보·계약 조건에 대한 사람 확인은 아직 없다.\n실제 BOM·부품 정의는 data/catalog.json의 원본·Evidence를 참조한다.\n",
+      "initial_quantity": 70,
+      "stock": {
+        "origin": "synthetic",
+        "purpose": "Development reference input; not actual inventory or a registered graph snapshot",
+        "stock_scope": {
+          "company": "Planning Reference Company",
+          "location": "warehouse:reference",
+          "as_of": "2026-10-26T09:00:00+09:00"
+        },
+        "coverage": "Only three real L/WROOM BOM rows; all remaining component stocks are unconfirmed",
+        "stocks": [
+          {
+            "id": "stock:planning:001",
+            "lot_id": "lot:planning:lan8710:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+            "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+            "on_hand_quantity": 100,
+            "reserved_quantity": 30,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:002",
+            "lot_id": "lot:planning:2k2:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+            "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+            "on_hand_quantity": 600,
+            "reserved_quantity": 40,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:003",
+            "lot_id": "lot:planning:10k:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+            "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+            "on_hand_quantity": 1200,
+            "reserved_quantity": 100,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          }
+        ]
+      },
+      "production": {
+        "purpose": "Development reference conditions; not OLIMEX throughput, a work order or production performance",
+        "production_conditions": {
+          "origin": "synthetic",
+          "resource_ref": "resource:planning:001",
+          "available_at": "2026-11-11T10:00:00+09:00",
+          "setup_minutes": 60,
+          "boards_per_hour": 20,
+          "loss_quantity": 0,
+          "defect_quantity": 0,
+          "rework_quantity": 0,
+          "interruption_policy": "none_assumed"
+        }
+      },
+      "expected": {
+        "available": [
+          70,
+          560,
+          1100
+        ],
+        "shortage": [
+          30,
+          240,
+          0
+        ],
+        "conditional_upper_bound": 70,
+        "initial_quantity": 70,
+        "remaining_quantity": 30,
+        "initial_completion": "2026-11-11T14:30:00+09:00",
+        "whole_bom_material_limit": null
+      }
+    },
+    {
+      "id": "S05",
+      "title": "IC 재고 실사 미완료",
+      "server_scenario": "standard",
+      "contract_text": "개발·검증용 가정 계약 — 승인된 계약 또는 OLIMEX 운영 기록이 아님\n\n계약 항목 접수 참조: contract-item:planning:001 (공통 그래프 미등록)\n생산 회사: Planning Reference Company\n고객: Reference Customer (가정)\n제품 모델: OLIMEX ESP32-POE\n설계 개정 / 변형: L / WROOM\n구성 연결 후보: config:esp32-poe:L:WROOM\n주문 수량: 보드 100대 (unit=piece)\n기존 이행: 0대, 기존 배정: 0대\n이번 신규 생산 검토 대상: 100대\n고객 도착 납기: 2026-11-10 (개발용 가정, 날짜 정밀도)\n개정 변경·대체 부품 허용: 명시 없음, 사람 확인 필요\n\n수량·재고 기준 시각: 2026-10-26T09:00:00+09:00\n손실·불량·재작업 0, 중단 없음은 검증용 가정이다.\n이 본문은 자동 추출 결과가 아니다. request.json은 별도로 작성한 구조화 시험 입력이다.\n구성 후보·계약 조건에 대한 사람 확인은 아직 없다.\n실제 BOM·부품 정의는 data/catalog.json의 원본·Evidence를 참조한다.\n",
+      "initial_quantity": 0,
+      "stock": {
+        "origin": "synthetic",
+        "purpose": "Development reference input; not actual inventory or a registered graph snapshot",
+        "stock_scope": {
+          "company": "Planning Reference Company",
+          "location": "warehouse:reference",
+          "as_of": "2026-10-26T09:00:00+09:00"
+        },
+        "coverage": "Only three real L/WROOM BOM rows; all remaining component stocks are unconfirmed",
+        "stocks": [
+          {
+            "id": "stock:planning:001",
+            "lot_id": "lot:planning:lan8710:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+            "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+            "on_hand_quantity": null,
+            "reserved_quantity": 30,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "unknown"
+          },
+          {
+            "id": "stock:planning:002",
+            "lot_id": "lot:planning:2k2:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+            "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+            "on_hand_quantity": 600,
+            "reserved_quantity": 40,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          },
+          {
+            "id": "stock:planning:003",
+            "lot_id": "lot:planning:10k:001",
+            "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+            "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+            "on_hand_quantity": 1200,
+            "reserved_quantity": 100,
+            "held_quantity": 0,
+            "unit": "piece",
+            "availability_basis": "on_hand_less_reserved_and_held",
+            "deductions_disjoint": true,
+            "quantity_state": "known"
+          }
+        ]
+      },
+      "production": {
+        "purpose": "Development reference conditions; not OLIMEX throughput, a work order or production performance",
+        "production_conditions": {
+          "origin": "synthetic",
+          "resource_ref": "resource:planning:001",
+          "available_at": "2026-10-26T10:00:00+09:00",
+          "setup_minutes": 60,
+          "boards_per_hour": 20,
+          "loss_quantity": 0,
+          "defect_quantity": 0,
+          "rework_quantity": 0,
+          "interruption_policy": "none_assumed"
+        }
+      },
+      "expected": {
+        "available": [
+          null,
+          560,
+          1100
+        ],
+        "shortage": [
+          null,
+          240,
+          0
+        ],
+        "conditional_upper_bound": 70,
+        "initial_quantity": 0,
+        "remaining_quantity": 100,
+        "whole_bom_material_limit": null
+      }
+    }
+  ]
+}

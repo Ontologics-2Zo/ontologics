@@ -4,7 +4,7 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 
 ## 그래프·저장·시간
 
-[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. [ontology/tbox.ttl](../ontology/tbox.ttl)은 여기서 생성한 OWL/RDFS 클래스·관계 정의이며 자동 추론 엔진이나 SHACL 구현은 아니다. [data/catalog.json](../data/catalog.json)은 실제 원본 정규화 노드, [data/initial_graph.jsonld](../data/initial_graph.jsonld)는 실제·가상 관계를 ID로 연결한 인계용 JSON-LD A-box(데모 버전 3)다. PostgreSQL의 `snapshots.nodes` JSONB에 정규화 노드 묶음을 불변 데이터 버전으로 저장한다. 작은 기준 데이터에 맞춘 저장이며 대규모 그래프 최적화·SPARQL 서버는 포함하지 않는다.
+[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. [ontology/tbox.ttl](../ontology/tbox.ttl)은 이 공통 정의와 A/B 역할 정의를 [공유 생성기](../ontologics/tbox.py)로 합성한 OWL/RDFS 클래스·관계 선언이다. 클래스 선언이 공통 검증·저장·승인·SHACL/Neo4j 지원을 뜻하지 않는다. [data/catalog.json](../data/catalog.json)은 실제 원본 정규화 노드, [data/initial_graph.jsonld](../data/initial_graph.jsonld)는 실제·가상 관계를 ID로 연결한 인계용 JSON-LD A-box(데모 버전 3)다. PostgreSQL의 `snapshots.nodes` JSONB에 정규화 노드 묶음을 불변 데이터 버전으로 저장한다. 작은 기준 데이터에 맞춘 저장이며 대규모 그래프 최적화·SPARQL 서버는 포함하지 않는다.
 
 모든 노드는 `id`, `type`, `origin`, `evidence`를 가진다. `origin`은 `real` 또는 `synthetic`이고 `evidence`는 Evidence ID 목록이다. SourceDocument/Evidence 외의 사실은 근거가 필수다.
 
@@ -40,6 +40,16 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 원본 파일·고정 커밋·해시·검증 기록은 [manifest](../data/sources/manifest.json), BOM 행 위치는 catalog의 Evidence `locator`에 있다. L/L1 WROOM ODS 전체의 구조·수량·위치는 검증했고 PDF는 표제/U6 모듈 식별 대조까지만 했다. 미확인 실장, 개정 간 품목 동일성, PDF 전체 148행 대조의 남은 범위는 [PROJECT_STATUS](../PROJECT_STATUS.md#남은-제한결정)에 모은다.
 
 Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답의 `data_version`은 서로 다른 기준이다. 현재 `compare_configurations`는 등록된 구성의 차이를, `component_usage`는 정확한 원본 범위 부품 ID의 사용처를 조회한다. 원격 Git 이력 자동 수집·임의 과거 커밋 복원·개정 간 품목 동일성 판정은 구현된 도구로 제공하지 않는다. 설계와 운영 이력의 업무상 구분은 [PRD](SERVICE_SPEC.md#설계-이력과-운영-이력을-연결할-때)를 따른다.
+
+### 공유 T-box 생성 계약
+
+`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.production_planning.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 기존 호출 호환용 공통+B 부분 출력이며 공유 파일에 직접 쓰지 않는다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
+
+`model.SCHEMA`가 공통 기준이고 `production_planning/schema.py`, `order_fulfillment/schema.py`를 명시적으로 합성한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
+
+공통 `graph-0.1`과 A의 기존 버전 주석을 보존한다. B `EXTRACTED_GRAPH_VERSION`은 추출 이력이며 공통 버전을 올리는 값이 아니다. 공통 저장·조회에 새 타입을 편입할 때에는 별도로 도메인·호환성·마이그레이션·RDF/Neo4j 검증을 수행한다. 생성물 변경만으로 저장된 초안이나 데이터 버전을 변경하지 않는다.
+
+검사: `python -m unittest tests.test_tbox tests.production_planning.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
 
 ### PostgreSQL 저장과 pgvector 검색
 

@@ -1,5 +1,7 @@
 # Order Fulfillment — B 도구 계약
 
+공유 `ontology/tbox.ttl`은 `python -m ontologics.tbox`로 공통+A+B를 생성하고 `--check`로 검사한다. B `schema_export.tbox_turtle()`의 기존 반환은 공통+B 부분 출력이므로 공유 파일에 직접 쓰지 않는다. 공통 저장·조회 타입 등록과는 별개이며 [공통 생성 계약](../TOOLS.md#공유-t-box-생성-계약)을 따른다.
+
 공통 문서 [docs/TOOLS.md](../TOOLS.md)의 메인 기준(`7c5e2d9`)과 비교해 B 개발 중 추가·변경된 내용을 분리했다. 공통 문서는 해당 메인 원본으로 복원했다.
 
 아래 테스트 수·실제 모델 실행·수락 여부는 원문에 기록된 당시 결과다. 현재 폴더 분리 이후의 전체 동작을 새로 검증했다는 뜻은 아니다. 실행 예제와 B 파일 경로는 현재 하위 폴더 위치로 표시한다. 이 문서의 과거 기록 이후 공통 Provider·Service·도구 정의를 B 하위 폴더로 분리했다. 현재 검증 상태와 남은 모델 연결 문제는 [B 작업 기록](PROJECT_STATUS.md)을 따른다.

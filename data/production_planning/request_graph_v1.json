@@ -1,0 +1,91 @@
+{
+  "contract_item": {
+    "id": "contract-item:planning:001",
+    "configuration_id": "config:esp32-poe:L:WROOM",
+    "ordered_quantity": 100,
+    "fulfilled_quantity": 0,
+    "allocated_quantity": 0,
+    "unit": "piece",
+    "delivery_due": "2026-11-10",
+    "constraints_state": "unspecified"
+  },
+  "planned_input_quantity": 100,
+  "unit": "piece",
+  "data_version": 1,
+  "confirmation_ref": null,
+  "external_inputs": [
+    {
+      "source_ref": "input:planning:contract",
+      "sha256": "6e2057d140963a9584ea25e514971d81e00728a7dbaeac3b19dd9ba7c519a962"
+    },
+    {
+      "source_ref": "input:planning:stock",
+      "sha256": "789c8e35aa77e658aaa0ef3deec593a35dfb7e5363a7480f15e3fd65858e0f81"
+    },
+    {
+      "source_ref": "input:planning:production",
+      "sha256": "5973421783a94e122fa5f3b84fb544802cd304e07872506ea875268eee442498"
+    },
+    {
+      "source_ref": "input:planning:lots:v1",
+      "sha256": "bc8ec20a674ef505f2937592eb85300d66149540227e52546999e4488b8a6637"
+    }
+  ],
+  "stock_scope": {
+    "company": "Planning Reference Company",
+    "location": "warehouse:reference",
+    "as_of": "2026-10-26T09:00:00+09:00"
+  },
+  "stocks": [
+    {
+      "id": "stock:planning:001",
+      "lot_id": "lot:planning:lan8710:001",
+      "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+      "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+      "on_hand_quantity": 100,
+      "reserved_quantity": 30,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known"
+    },
+    {
+      "id": "stock:planning:002",
+      "lot_id": "lot:planning:2k2:001",
+      "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+      "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+      "on_hand_quantity": 600,
+      "reserved_quantity": 40,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known"
+    },
+    {
+      "id": "stock:planning:003",
+      "lot_id": "lot:planning:10k:001",
+      "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+      "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+      "on_hand_quantity": 1200,
+      "reserved_quantity": 100,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known"
+    }
+  ],
+  "production_conditions": {
+    "origin": "synthetic",
+    "resource_ref": "resource:planning:001",
+    "available_at": "2026-10-26T10:00:00+09:00",
+    "setup_minutes": 60,
+    "boards_per_hour": 20,
+    "loss_quantity": 0,
+    "defect_quantity": 0,
+    "rework_quantity": 0,
+    "interruption_policy": "none_assumed"
+  }
+}

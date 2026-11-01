@@ -25,6 +25,7 @@ ONTOLOGICS_DB_SCHEMA=ontologics
 ```bash
 docker compose --env-file .env.local up -d --wait
 # 전체 회귀는 아래 그래프 조회 절의 Neo4j·시험 환경변수도 준비한 뒤 실행한다.
+python -m pip install -e '.[test]'  # A PDF 접수 회귀용 pypdf 포함
 python -m unittest discover -v
 python -m ontologics.demo
 python -m examples.cq_check

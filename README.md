@@ -46,7 +46,7 @@ python -m examples.agent_tools
 - U106은 계속 `needs_confirmation`, 충분한 부재 근거가 있는 U107은 `excluded`.
 - 데이터 버전은 1(개발 시드) → 2(L1 승인 등록) → 3(U104 승인 보완).
 
-일반 실행 결과는 Git에서 제외된 `artifacts/local/demo_result.json`, CQ 결과는 `artifacts/local/cq_postgres.json`에 기록된다. 공유 검증은 [CQ 결과](artifacts/cq_postgres_verification.json)에서 확인한다. T-box와 인계 A-box를 의도적으로 갱신할 때만 `python -m ontologics.demo --export-graph`를 사용한다. 대상은 `ontology/tbox.ttl`과 `data/initial_graph.jsonld`다. 마지막 파일은 초기 인계용 그래프이며 시나리오 실행 후의 버전 3이다. 실행마다 ID·실행 시각은 달라질 수 있지만 업무 판정은 같다. 원본에서 `data/catalog.json`을 다시 만들려면 `python3 -m ontologics.ingest`를 실행한다.
+일반 실행 결과는 Git에서 제외된 `artifacts/local/demo_result.json`, CQ 결과는 `artifacts/local/cq_postgres.json`에 기록된다. 공유 검증은 [CQ 결과](artifacts/cq_postgres_verification.json)에서 확인한다. 공유 T-box는 `python -m ontologics.tbox`로 공통+A+B 정의에서 생성하고, `python -m ontologics.tbox --check`로 파일 일치를 확인한다. 인계 A-box까지 의도적으로 갱신할 때만 `python -m ontologics.demo --export-graph`를 사용한다. 이 명령도 같은 T-box 생성기를 사용하며 기존 JSON-LD 참조 context를 충돌 검사해 보존한다. 대상은 `ontology/tbox.ttl`과 `data/initial_graph.jsonld`다. 마지막 파일은 초기 인계용 그래프이며 시나리오 실행 후의 버전 3이다. 실행마다 ID·실행 시각은 달라질 수 있지만 업무 판정은 같다. 원본에서 `data/catalog.json`을 다시 만들려면 `python3 -m ontologics.ingest`를 실행한다.
 
 ## S1·S2 웹 통합 — 개발 신원으로 실행
 

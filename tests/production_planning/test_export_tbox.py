@@ -59,8 +59,9 @@ class ExportTboxTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / 'tbox.ttl'
             target.write_text('existing reviewed output')
-            with patch('ontologics.production_planning.export_tbox.extension_lines',
-                       side_effect=ValueError('Conflicting relationship ranges')):
+            # A conflicts with B's shared Contract, so neither may win by order.
+            conflicting = {**schema.SCHEMA, 'Contract': (['unexpected_field'], {})}
+            with patch.object(schema, 'SCHEMA', conflicting):
                 with self.assertRaises(ValueError):
                     main(['--output', str(target)])
             self.assertEqual(target.read_text(), 'existing reviewed output')

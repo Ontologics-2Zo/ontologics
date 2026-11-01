@@ -2,6 +2,8 @@
 
 Inputs must already be validated. These helpers neither validate/approve the
 graph nor write files, and inherit the common ontology/version unchanged.
+The scoped common+B tbox_turtle() return value is not the shared file. Generate
+ontology/tbox.ttl with python -m ontologics.tbox to preserve all reviewed roles.
 """
 from ..model import graph_jsonld as _common_graph_jsonld, tbox_turtle as _common_tbox_turtle
 from .schema import LIST_REFERENCES, SCHEMA

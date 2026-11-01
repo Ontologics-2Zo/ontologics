@@ -1,5 +1,6 @@
 """Pure B output composition, without graph validation, storage or file export."""
 import copy
+from ontologics.tbox import build_tbox
 import unittest
 from unittest.mock import patch
 
@@ -127,14 +128,13 @@ class BSchemaExportTests(unittest.TestCase):
 class BExtensionArtifactTests(unittest.TestCase):
     def test_stored_extension_matches_b_schema_declarations(self):
         stored = (model.ROOT / 'ontology/tbox.ttl').read_text()
-        common = model.tbox_turtle()
-        extension = stored.split('\n# B order fulfillment extension\n', 1)[1]
-        declarations = [line for line in extension.splitlines() if line.startswith('o:')]
+        # The artifact is shared: exact common+A+B equality and B preservation.
+        self.assertEqual(build_tbox(), stored)
+        declarations = [line for line in stored.splitlines() if ' a owl:Class ' in line]
         terms = schema_export.tbox_terms().splitlines()
-        self.assertEqual([term for term in terms if term not in common.splitlines()], declarations)
         self.assertEqual(len(declarations), len(set(declarations)))
-        self.assertEqual(set(schema.SCHEMA), {
-            line.split()[0][2:] for line in declarations if ' a owl:Class ' in line})
+        self.assertTrue(set(schema.SCHEMA) <= {
+            line.split()[0][2:] for line in declarations})
         for term in terms:
             self.assertEqual(1, stored.splitlines().count(term))
 
@@ -146,7 +146,8 @@ class BExtensionArtifactTests(unittest.TestCase):
             '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
             '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
         ], prefixes)
-        self.assertEqual(1, stored.count('owl:versionInfo'))
+        self.assertEqual([line for line in build_tbox().splitlines() if 'owl:versionInfo' in line],
+                         [line for line in stored.splitlines() if 'owl:versionInfo' in line])
         self.assertEqual(1, stored.count(' a owl:Ontology'))
         common = model.tbox_turtle()
         self.assertTrue(stored.startswith(common))
@@ -163,18 +164,15 @@ class CommonArtifactBoundaryTests(unittest.TestCase):
         with self.subTest(contract='types_fields_references'):
             self.assertEqual(expected.SCHEMA, model.SCHEMA)
 
-    def test_stored_tbox_preserves_main_and_matches_b_composed_export(self):
+    def test_stored_tbox_preserves_main_and_matches_shared_export(self):
         stored = (model.ROOT / 'ontology/tbox.ttl').read_text()
         common = model.tbox_turtle()
         with self.subTest(exporter='active_common'):
             self.assertTrue(stored.startswith(common))
         with self.subTest(exporter='pinned_main'):
             self.assertEqual(main_model().tbox_turtle(), common)
-        with self.subTest(exporter='common_plus_b'):
-            def statements(text):
-                return [line for line in text.splitlines()
-                        if line.strip() and not line.lstrip().startswith('#')]
-            self.assertEqual(statements(schema_export.tbox_turtle()), statements(stored))
+        with self.subTest(exporter='common_plus_a_plus_b'):
+            self.assertEqual(build_tbox(), stored)
 
 
 if __name__ == '__main__':

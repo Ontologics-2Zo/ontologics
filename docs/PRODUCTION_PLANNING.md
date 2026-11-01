@@ -2,33 +2,35 @@
 
 현재 전체 업무 흐름은 [A 생산계획 흐름](PRODUCTION_PLANNING_FLOW.md)을 기준으로 한다. 업무 단계·분기·저장 시점 변경 시 해당 문서도 함께 갱신한다.
 
-## 2026-10-30 현재: A 스키마 분리와 T-box 생성
+## 2026-11-01: A 스키마와 공유 T-box 생성
 
 후속 A 내부 연결: `graph_validation.py`가 호스트 제공 참조 그래프의 A 노드를 검증하고
 `contracts.py`가 이를 호출한다. 공통 노드·SourceDocument 원본 무결성은 기존 공통
 검증기에 위임하며, A 노드는 필수값·자료형·관계·근거·가상 출처·업무 규칙을 검사한다.
 알 수 없는 타입/잘못된 노드를 제거하지 않고 오류로 처리하며 전체 ID 중복도 검사한다.
 이 로컬 보고서는 공통 Service의 검증/승인/저장 영수증이 아니다. 공통 코드·전역 SCHEMA는
-변경하지 않았다. 관련 53개 통과, 일회용 PG/Docker 전체 622개 중 failures=128/errors=11,
-skip0이다. 공통187개는 통과했으며 A 공통 저장 연결과 웹 초기화 실패는 남아 있다.
+변경하지 않았다. 2026-10-30 분리 당시에는 관련 53개 통과, 전체 622개 중
+failures=128/errors=11, skip0을 기록했다. 이는 당시 이력이며 이후 A 전용 저장·웹
+연결 상태는 PROJECT_STATUS와 PRODUCTION_PLANNING_FLOW의 후속 기록을 따른다.
 
 `model.py`는 main 기준이며 A의 네 타입과 추가 규칙은
 `ontologics/production_planning/schema.py`에 있다. 저장소 루트에서 아래 명령을
-명시적으로 실행하면 공통 생성 결과와 A 정의를 합쳐 `ontology/tbox.ttl`을 다시 쓴다.
+명시적으로 실행하면 공통+A+B 정의를 함께 보존한 `ontology/tbox.ttl`을 다시 쓴다.
 
 ```bash
-python3 -m ontologics.production_planning.export_tbox
+python3 -m ontologics.tbox
+python3 -m ontologics.tbox --check
 ```
 
-다른 경로로 검토하려면 `--output /tmp/planning-tbox.ttl`을 지정한다. 기존 TTL을
-읽어 덧붙이지 않으므로 재실행 시 중복되지 않고 삭제된 A 정의도 제거된다.
-공통 클래스·관계·disjoint 선언을 보존하고, 타입 이름 중복·관계 대상 충돌·없는 대상은
-출력 파일을 쓰기 전에 거절한다. 공통과 A의 버전은 각각 `owl:versionInfo`로 남긴다.
-기존 공통 `demo --export-graph`는 A를 포함하지 않으므로 통합 T-box에는 위 명령을 쓴다.
-T-box 표현 범위는 기존과 같은 클래스·관계이며 필수 필드·선택 필드·검증 규칙을
-OWL/SHACL로 변환하지 않는다. `initial_graph.jsonld`·DB·공통 실행 등록은 변경하지 않는다.
-현재 A 타입의 공통 검증·승인·저장 연결은 미완료다. 아래 이전 통합 검증 기록은
-분리 전 결과이며 현재 실행 연결의 성공을 의미하지 않는다.
+기존 `python3 -m ontologics.production_planning.export_tbox`도 같은 공통 생성기로
+위임한다. 별도 출력은 `--output /tmp/planning-tbox.ttl`을 사용한다. 동일 계약 타입은
+필드·참조 메타데이터가 같을 때 한 번 선언하고, 불일치는 기존 출력 작성 전에 거부한다.
+`demo --export-graph`도 같은 T-box와 기존 인계 context 보존 경로를 사용한다.
+생성·검사 기준은 [공통 도구 계약](TOOLS.md#공유-t-box-생성-계약)을 따른다.
+
+A 고유 스키마·검증은 담당 폴더에 유지한다. 공유 파일 생성은 A/B 타입의 공통
+검증·승인·저장 또는 RDF/SHACL/Neo4j 편입이 아니다. 공통 runtime 버전과
+기존 승인·시간·원본 규칙은 변경하지 않는다.
 
 확인일: 2026-10-28, Asia/Seoul. 패키지: `ontologics.production_planning`.
 이 문서는 팀원이 호출할 인터페이스와 현재 상태의 기준이다. 학습 설명은

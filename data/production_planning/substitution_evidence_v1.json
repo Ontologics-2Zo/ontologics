@@ -1,0 +1,84 @@
+{
+  "source": {
+    "id": "source:olimex-revisions:task05",
+    "type": "SourceDocument",
+    "origin": "real",
+    "evidence": [],
+    "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/Revision-changes.txt",
+    "path": "data/sources/OLIMEX-Revision-changes-task05.txt",
+    "sha256": "c8ee91c74caa752e5ffdd8f5a18faef3dacc2c8339b1e6a7e49f4aa1939952db",
+    "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+    "license": "CC-BY-SA-3.0 (revision documentation; repository README lines 13-16); hardware Apache-2.0",
+    "collected_at": "2026-10-28T08:51:27.905275+09:00",
+    "kind": "hardware-revision-history"
+  },
+  "nodes": [
+    {
+      "id": "source:olimex-revisions:task05",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/Revision-changes.txt",
+      "path": "data/sources/OLIMEX-Revision-changes-task05.txt",
+      "sha256": "c8ee91c74caa752e5ffdd8f5a18faef3dacc2c8339b1e6a7e49f4aa1939952db",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "license": "CC-BY-SA-3.0 (revision documentation; repository README lines 13-16); hardware Apache-2.0",
+      "collected_at": "2026-10-28T08:51:27.905275+09:00",
+      "kind": "hardware-revision-history"
+    },
+    {
+      "id": "evidence:olimex-revisions:task05:L1",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:olimex-revisions:task05",
+      "locator": "Hardware revision L1; lines 25-34",
+      "description": "L1 revision history records R6 charge-current change and U2 with related R50/R51 changes; not standalone substitution approval."
+    },
+    {
+      "id": "evidence:olimex-revisions:task05:L",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:olimex-revisions:task05",
+      "locator": "Hardware revision L; lines 38-47",
+      "description": "L revision history records U2 package change; distinguish from L1 changes."
+    }
+  ],
+  "license_basis": [
+    {
+      "path": "data/sources/OLIMEX-README.md",
+      "sha256": "420a6bcdddc0b7ef5fcb0f3bd6b60e15e184175c49d92e1c2dbc76ed3bdfee6c",
+      "locator": "lines 13-16"
+    },
+    {
+      "path": "data/sources/OLIMEX-LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "locator": "Apache License Version 2.0"
+    }
+  ],
+  "scope": {
+    "left": "config:esp32-poe:L:WROOM",
+    "right": "config:esp32-poe:L1:WROOM",
+    "position": "U2",
+    "component_id": "component:olimex-L-wroom:77be1300069a66c9",
+    "candidate_component_id": "component:olimex-L1-wroom:35335677b228a6d2",
+    "related_positions": [
+      "R6",
+      "R50",
+      "R51",
+      "U2"
+    ]
+  },
+  "sections": {
+    "L1": [
+      25,
+      34
+    ],
+    "L": [
+      38,
+      47
+    ]
+  },
+  "attribution": "OLIMEX Ltd.; source bytes unchanged. Metadata and review are derived; no electrical suitability or population correction asserted."
+}

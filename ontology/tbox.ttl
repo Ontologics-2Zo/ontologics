@@ -60,3 +60,5 @@ o:delivery_round_id a owl:ObjectProperty ; rdfs:range o:DeliveryRound .
 o:stock_id a owl:ObjectProperty ; rdfs:range o:FinishedGoodsStock .
 o:allocation_id a owl:ObjectProperty ; rdfs:range o:Allocation .
 o:round_ids a owl:ObjectProperty ; rdfs:range o:DeliveryRound .
+o:Ontology owl:versionInfo "graph-0.5-a-planning-1" .
+o:ComponentStockSnapshot a owl:Class .

@@ -26,6 +26,12 @@
     },
     "lot_id": {
       "@type": "@id"
+    },
+    "contract_id": {
+      "@type": "@id"
+    },
+    "contract_item_id": {
+      "@type": "@id"
     }
   },
   "@graph": [

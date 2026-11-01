@@ -1,0 +1,226 @@
+{
+  "origin": "synthetic",
+  "notice": "Unregistered partial proposal; date-only deadline and absent destination prevent full linkage. Not actual operations.",
+  "nodes": [
+    {
+      "id": "source:planning:contract:v1",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "path": "data/production_planning/contract.txt",
+      "sha256": "6e2057d140963a9584ea25e514971d81e00728a7dbaeac3b19dd9ba7c519a962",
+      "version": "6e2057d140963a9584ea25e514971d81e00728a7dbaeac3b19dd9ba7c519a962",
+      "url": "urn:ontologics:planning:contract:v1",
+      "license": "Project demonstration data",
+      "collected_at": "2026-10-27T17:22:18+09:00"
+    },
+    {
+      "id": "source:planning:stock:v1",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "path": "data/production_planning/stock.json",
+      "sha256": "789c8e35aa77e658aaa0ef3deec593a35dfb7e5363a7480f15e3fd65858e0f81",
+      "version": "789c8e35aa77e658aaa0ef3deec593a35dfb7e5363a7480f15e3fd65858e0f81",
+      "url": "urn:ontologics:planning:stock:v1",
+      "license": "Project demonstration data",
+      "collected_at": "2026-10-27T17:22:18+09:00"
+    },
+    {
+      "id": "source:planning:lots:v1",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "path": "data/production_planning/lot_reference_v1.json",
+      "sha256": "bc8ec20a674ef505f2937592eb85300d66149540227e52546999e4488b8a6637",
+      "version": "bc8ec20a674ef505f2937592eb85300d66149540227e52546999e4488b8a6637",
+      "url": "urn:ontologics:planning:lots:v1",
+      "license": "Project demonstration data",
+      "collected_at": "2026-10-27T17:22:18+09:00"
+    },
+    {
+      "id": "evidence:planning:contract:v1:parties",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:contract:v1",
+      "locator": "lines 4-5",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "evidence:planning:contract:v1:item-001",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:contract:v1",
+      "locator": "lines 3, 8-13",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "contract:planning:001",
+      "type": "Contract",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:contract:v1:parties"
+      ],
+      "company": "Planning Reference Company",
+      "customer_name": "Reference Customer (가정)"
+    },
+    {
+      "id": "contract-item:planning:001",
+      "type": "ContractItem",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:contract:v1:item-001"
+      ],
+      "contract_id": "contract:planning:001",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 100,
+      "unit": "piece"
+    },
+    {
+      "id": "evidence:planning:lots:v1:row-0",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:lots:v1",
+      "locator": "/lots/0",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "evidence:planning:stock:v1:row-0",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:stock:v1",
+      "locator": "/stocks/0, /stock_scope",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "lot:planning:lan8710:001",
+      "company": "Planning Reference Company",
+      "supplier": "Planning Demo Supplier",
+      "lot_code": "PP-LOT-001",
+      "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+      "type": "ComponentLot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:lots:v1:row-0"
+      ]
+    },
+    {
+      "id": "stock:planning:001",
+      "lot_id": "lot:planning:lan8710:001",
+      "on_hand_quantity": 100,
+      "reserved_quantity": 30,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known",
+      "type": "ComponentStockSnapshot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:stock:v1:row-0"
+      ],
+      "location": "warehouse:reference",
+      "as_of": "2026-10-26T09:00:00+09:00"
+    },
+    {
+      "id": "evidence:planning:lots:v1:row-1",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:lots:v1",
+      "locator": "/lots/1",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "evidence:planning:stock:v1:row-1",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:stock:v1",
+      "locator": "/stocks/1, /stock_scope",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "lot:planning:2k2:001",
+      "company": "Planning Reference Company",
+      "supplier": "Planning Demo Supplier",
+      "lot_code": "PP-LOT-002",
+      "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+      "type": "ComponentLot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:lots:v1:row-1"
+      ]
+    },
+    {
+      "id": "stock:planning:002",
+      "lot_id": "lot:planning:2k2:001",
+      "on_hand_quantity": 600,
+      "reserved_quantity": 40,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known",
+      "type": "ComponentStockSnapshot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:stock:v1:row-1"
+      ],
+      "location": "warehouse:reference",
+      "as_of": "2026-10-26T09:00:00+09:00"
+    },
+    {
+      "id": "evidence:planning:lots:v1:row-2",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:lots:v1",
+      "locator": "/lots/2",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "evidence:planning:stock:v1:row-2",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:planning:stock:v1",
+      "locator": "/stocks/2, /stock_scope",
+      "description": "Synthetic development reference; not operational approval"
+    },
+    {
+      "id": "lot:planning:10k:001",
+      "company": "Planning Reference Company",
+      "supplier": "Planning Demo Supplier",
+      "lot_code": "PP-LOT-003",
+      "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+      "type": "ComponentLot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:lots:v1:row-2"
+      ]
+    },
+    {
+      "id": "stock:planning:003",
+      "lot_id": "lot:planning:10k:001",
+      "on_hand_quantity": 1200,
+      "reserved_quantity": 100,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known",
+      "type": "ComponentStockSnapshot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:planning:stock:v1:row-2"
+      ],
+      "location": "warehouse:reference",
+      "as_of": "2026-10-26T09:00:00+09:00"
+    }
+  ]
+}

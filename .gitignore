@@ -15,5 +15,12 @@ artifacts/llm_runs/
 .pgdata/
 artifacts/local/
 
+# Personal documents (local only)
+/JunhwaDocs/
+/notebooks
+
 # User-submitted immutable evidence; back up separately from Git.
 data/receipts/
+
+# Local OMX files
+/.omx/

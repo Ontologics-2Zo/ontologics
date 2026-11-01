@@ -1,0 +1,35 @@
+{
+  "delivery_round_id": "delivery-round:demo:B-01:1",
+  "snapshot_id": "snapshot:demo:CQ02:10",
+  "as_of": "2026-10-27T10:00:00+09:00",
+  "quantity": 1000,
+  "unit": "piece",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "states": {
+    "delivered": 100,
+    "in_transit": 150,
+    "warehouse": 250,
+    "in_progress": 300,
+    "ready": 100,
+    "waiting": 100
+  },
+  "allocated_quantity": 1000,
+  "remaining_quantity": 900,
+  "unallocated_quantity": 0,
+  "source_stock_remaining": {
+    "stock:demo:CQ02:D": 0,
+    "stock:demo:CQ02:T": 0,
+    "stock:demo:CQ02:W": 350
+  },
+  "other_round_states": {
+    "delivered": 0,
+    "in_transit": 0,
+    "warehouse": 100,
+    "in_progress": 0,
+    "ready": 200,
+    "waiting": 0
+  },
+  "fulfillment_assessed": false,
+  "source_id": "source:demo:CQ02:fulfillment-v1",
+  "source_sha256": "2a74f77ce99d599227e97d8e85b681d54cfddc7e7076044110908954132f0622"
+}

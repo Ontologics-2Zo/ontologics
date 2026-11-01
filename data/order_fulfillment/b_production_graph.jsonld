@@ -1,0 +1,382 @@
+{
+  "@context": {
+    "@vocab": "urn:ontologics:",
+    "id": "@id",
+    "type": "@type",
+    "evidence": {
+      "@type": "@id"
+    },
+    "source_id": {
+      "@type": "@id"
+    },
+    "model_id": {
+      "@type": "@id"
+    },
+    "revision_id": {
+      "@type": "@id"
+    },
+    "configuration_id": {
+      "@type": "@id"
+    },
+    "component_id": {
+      "@type": "@id"
+    },
+    "unit_id": {
+      "@type": "@id"
+    },
+    "lot_id": {
+      "@type": "@id"
+    },
+    "contract_id": {
+      "@type": "@id"
+    },
+    "contract_item_id": {
+      "@type": "@id"
+    },
+    "snapshot_id": {
+      "@type": "@id"
+    },
+    "production_work_id": {
+      "@type": "@id"
+    },
+    "delivery_round_id": {
+      "@type": "@id"
+    },
+    "stock_id": {
+      "@type": "@id"
+    },
+    "allocation_id": {
+      "@type": "@id"
+    },
+    "round_ids": {
+      "@type": "@id"
+    }
+  },
+  "@graph": [
+    {
+      "id": "urn:ontologics:entity:source:olimex-L-wroom-pdf",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L/ESP32-PoE_Rev_L-BOM%28WROOM%29.pdf",
+      "path": "data/sources/ESP32-PoE_Rev_L-BOM-WROOM.pdf",
+      "sha256": "e268ebf562c5e6b36dab7bcd377922c7cb5883ad88ba024f8b949d0e9cae89d0",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "license": "Apache-2.0 (hardware BOM, repository README)",
+      "collected_at": "2026-10-21T15:00:45+00:00",
+      "kind": "bom-pdf",
+      "product": "ESP32-POE",
+      "revision": "L",
+      "variant": "WROOM",
+      "sheet_name": "ESP32-PoE_Rev_J-BOM(WROVER)",
+      "verification": "ODS content extracted; quantity/designator checks; PDF identity/header and representative rows cross-checked",
+      "metadata_warning": "ODS sheet name conflicts with filename; PDF header and U6 ESP32-WROOM-32E support WROOM mapping; sheet name retained verbatim.",
+      "git_blob_sha1": "3110f86a4ea4d978ca32019eeaa8478f53965dae"
+    },
+    {
+      "id": "urn:ontologics:entity:source:olimex-product-page",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware",
+      "path": "data/sources/ESP32-POE-product-page.html",
+      "sha256": "b36d1810d5866abe4a7724bedec84c30a5863dafe6725e2a2f3b30a7380f6ce3",
+      "version": "snapshot-2026-10-22",
+      "license": "OLIMEX website; retained as source evidence, no license assertion",
+      "collected_at": "2026-10-21T15:01:43+00:00",
+      "kind": "product-page"
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:olimex:product-family",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:olimex-product-page",
+      "locator": "h1 ESP32-POE; FEATURES; DOCUMENTS; HARDWARE",
+      "description": "Official product family page links the OLIMEX ESP32-POE hardware repository. Current page is not evidence of every historical revision's specifications."
+    },
+    {
+      "id": "urn:ontologics:entity:model:olimex:esp32-poe",
+      "type": "ProductModel",
+      "origin": "real",
+      "evidence": [
+        "urn:ontologics:entity:evidence:olimex:product-family"
+      ],
+      "name": "ESP32-POE",
+      "manufacturer": "OLIMEX",
+      "specifications": {
+        "scope": "current product-family page only; not automatically applied to historical revisions",
+        "ethernet_interface": "100Mb",
+        "pcb_dimensions_mm": [
+          80,
+          28
+        ],
+        "features": [
+          "WiFi",
+          "Bluetooth",
+          "LiPo battery charger",
+          "MicroSD card",
+          "UEXT connector"
+        ],
+        "evidence": [
+          "evidence:olimex:product-family"
+        ]
+      }
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:olimex-L-wroom:identity",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:olimex-L-wroom-pdf",
+      "locator": "pages 1-2 header; page 2 U6 row",
+      "description": "PDF header ESP32-PoE_Rev_L-BOM(WROOM); U6 designation ESP32-WROOM-32E. ODS sheet label differs and is retained as metadata_warning."
+    },
+    {
+      "id": "urn:ontologics:entity:revision:esp32-poe:L",
+      "type": "ProductRevision",
+      "origin": "real",
+      "evidence": [
+        "urn:ontologics:entity:evidence:olimex-L-wroom:identity"
+      ],
+      "model_id": "urn:ontologics:entity:model:olimex:esp32-poe",
+      "revision": "L"
+    },
+    {
+      "id": "urn:ontologics:entity:config:esp32-poe:L:WROOM",
+      "type": "Configuration",
+      "origin": "real",
+      "evidence": [
+        "urn:ontologics:entity:evidence:olimex-L-wroom:identity"
+      ],
+      "revision_id": "urn:ontologics:entity:revision:esp32-poe:L",
+      "variant": "WROOM",
+      "name": "ESP32-POE Rev L WROOM",
+      "identity_notes": "ODS sheet name conflicts with filename; PDF header and U6 ESP32-WROOM-32E support WROOM mapping; sheet name retained verbatim.",
+      "population_notes": "NA, NS and Opened raw labels are preserved as unknown; source legend/assembly-policy confirmation required before procurement calculations."
+    },
+    {
+      "id": "urn:ontologics:entity:source:demo:B-01:contract-v1",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:demo:contract:B-01:v1",
+      "path": "data/order_fulfillment/sources/b_demo_contract_01.md",
+      "sha256": "bbe0b4a2ad05bcb14e0eb477f90d9ae5f25c67a706a906e606b8e8023eda67ae",
+      "version": "B-01-v1",
+      "license": "Project synthetic development fixture; no actual transaction records. Newly authored for this project's development, tests and demonstrations; not OLIMEX material.",
+      "collected_at": "2026-10-26T16:21:44+09:00",
+      "kind": "synthetic_contract"
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:B-01:contract",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:B-01:contract-v1",
+      "locator": "계약 표 / 계약 번호, 우리 회사 식별, 고객사; lines 11-13",
+      "description": "Synthetic B-01 contract: company DEMO-B and customer 가상고객사 A are separate fields. This is not evidence of an OLIMEX transaction."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:B-01:item",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:B-01:contract-v1",
+      "locator": "계약 표 / 제품 모델, 설계 개정, 구성, 계약 항목 번호, 계약 수량, 수량 단위; lines 15-20",
+      "description": "Synthetic contract item 1 promises 1000 piece of ESP32-POE / L / WROOM. Existing real configuration identification remains a separate source."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:B-01:round",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:B-01:contract-v1",
+      "locator": "계약 표 / 납품 회차, 회차 약속 수량, 납품 기한, 기한 기준, 납품 장소; lines 21-25; 읽는 기준 / piece and customer-arrival deadline",
+      "description": "Synthetic round 1 promises 1000 piece at 가상고객사 A 수령창고 by 2026-10-27T15:00:00+09:00, customer arrival inclusive. No inventory, production or arrival fact is asserted."
+    },
+    {
+      "id": "urn:ontologics:entity:contract:demo:B-01",
+      "type": "Contract",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:B-01:contract"
+      ],
+      "company": "DEMO-B",
+      "customer_name": "가상고객사 A"
+    },
+    {
+      "id": "urn:ontologics:entity:contract-item:demo:B-01:1",
+      "type": "ContractItem",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:B-01:item"
+      ],
+      "contract_id": "urn:ontologics:entity:contract:demo:B-01",
+      "configuration_id": "urn:ontologics:entity:config:esp32-poe:L:WROOM",
+      "quantity": 1000,
+      "unit": "piece"
+    },
+    {
+      "id": "urn:ontologics:entity:delivery-round:demo:B-01:1",
+      "type": "DeliveryRound",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:B-01:round"
+      ],
+      "contract_item_id": "urn:ontologics:entity:contract-item:demo:B-01:1",
+      "quantity": 1000,
+      "unit": "piece",
+      "due_at": "2026-10-27T15:00:00+09:00",
+      "due_basis": "arrival",
+      "destination": "가상고객사 A 수령창고"
+    },
+    {
+      "id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:demo:production:CQ03:v1",
+      "sha256": "6b18f76917db81837a4a06891d9a8331b412c19d1d62f46d0e3a681bc442c810",
+      "path": "data/order_fulfillment/sources/b_demo_production_01.md",
+      "version": "B-CQ03-v1",
+      "license": "Project synthetic development fixture; no actual contract, production, inspection or operating records. Newly authored for project development and tests; not OLIMEX material.",
+      "collected_at": "2026-10-27T10:05:00+09:00"
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:CQ03:snapshot",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "locator": "Markdown lines 9-21, 27, 33-35; company, as_of, round and exact full-work allocation",
+      "description": "Synthetic DEMO-B snapshot at 10:00 for B-01 round1 and the single fully allocated production work. No stock/shipment event completeness asserted."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:CQ03:work",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "locator": "Markdown line 27; production work table; line 35 states same-time good quantity",
+      "description": "Synthetic work target1000, completed600, in_progress at10:00; actual start08:00."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:CQ03:allocation",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "locator": "Markdown lines 33-35; allocation table and full-target/no-split statement",
+      "description": "Synthetic full1000-piece allocation from the one work to the one round; no split across other rounds or multiple production work."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:CQ03:observation-09",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "locator": "Markdown line 41; production observation09; line44 defines cumulative counts",
+      "description": "Synthetic09:00 cumulative produced550, good510, defective40, unitpiece."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:CQ03:observation-10",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "locator": "Markdown line 42; production observation10; line44 defines cumulative counts",
+      "description": "Synthetic10:00 cumulative produced650, good600, defective50, unitpiece."
+    },
+    {
+      "id": "urn:ontologics:entity:evidence:demo:CQ03:assumptions",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "urn:ontologics:entity:source:demo:CQ03:production-v1",
+      "locator": "Markdown lines 48-53; continued recent trend, usable good units, observation anchor and limitations",
+      "description": "Development assumptions: recent interval trend continues without interruption, good units usable; no actual future quality/arrival assurance, no CQ02 scenario mixing."
+    },
+    {
+      "id": "urn:ontologics:entity:snapshot:demo:CQ03:10",
+      "type": "FulfillmentSnapshot",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:CQ03:snapshot",
+        "urn:ontologics:entity:evidence:demo:CQ03:allocation",
+        "urn:ontologics:entity:evidence:demo:CQ03:work"
+      ],
+      "company": "DEMO-B",
+      "as_of": "2026-10-27T10:00:00+09:00",
+      "round_ids": [
+        "urn:ontologics:entity:delivery-round:demo:B-01:1"
+      ],
+      "confirmations": {
+        "allocations_complete": true,
+        "source_allocations_complete": true,
+        "allocations_disjoint": true,
+        "production_state_complete": true,
+        "material_disjoint": true
+      }
+    },
+    {
+      "id": "urn:ontologics:entity:work:demo:CQ03:main",
+      "type": "ProductionWork",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:CQ03:work",
+        "urn:ontologics:entity:evidence:demo:CQ03:assumptions"
+      ],
+      "snapshot_id": "urn:ontologics:entity:snapshot:demo:CQ03:10",
+      "company": "DEMO-B",
+      "configuration_id": "urn:ontologics:entity:config:esp32-poe:L:WROOM",
+      "observed_at": "2026-10-27T10:00:00+09:00",
+      "target_quantity": 1000,
+      "completed_quantity": 600,
+      "unit": "piece",
+      "production_state": "in_progress",
+      "started_at": "2026-10-27T08:00:00+09:00"
+    },
+    {
+      "id": "urn:ontologics:entity:allocation:demo:CQ03:main",
+      "type": "Allocation",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:CQ03:allocation"
+      ],
+      "snapshot_id": "urn:ontologics:entity:snapshot:demo:CQ03:10",
+      "delivery_round_id": "urn:ontologics:entity:delivery-round:demo:B-01:1",
+      "quantity": 1000,
+      "unit": "piece",
+      "production_work_id": "urn:ontologics:entity:work:demo:CQ03:main"
+    },
+    {
+      "id": "urn:ontologics:entity:observation:demo:CQ03:09",
+      "type": "ProductionObservation",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:CQ03:observation-09"
+      ],
+      "production_work_id": "urn:ontologics:entity:work:demo:CQ03:main",
+      "observed_at": "2026-10-27T09:00:00+09:00",
+      "produced_quantity": 550,
+      "good_quantity": 510,
+      "defective_quantity": 40,
+      "unit": "piece"
+    },
+    {
+      "id": "urn:ontologics:entity:observation:demo:CQ03:10",
+      "type": "ProductionObservation",
+      "origin": "synthetic",
+      "evidence": [
+        "urn:ontologics:entity:evidence:demo:CQ03:observation-10"
+      ],
+      "production_work_id": "urn:ontologics:entity:work:demo:CQ03:main",
+      "observed_at": "2026-10-27T10:00:00+09:00",
+      "produced_quantity": 650,
+      "good_quantity": 600,
+      "defective_quantity": 50,
+      "unit": "piece"
+    }
+  ]
+}

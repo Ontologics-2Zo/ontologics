@@ -1,0 +1,183 @@
+{
+  "source_id": "source:demo:CQ04:delivery-v1",
+  "source_path": "data/order_fulfillment/sources/b_demo_delivery_01.md",
+  "source_sha256": "510c474c1a68ab1cc34d3b323d3a1760f8ccda977fd127df0700c2b66a3e2d74",
+  "assumptions_evidence": [
+    "evidence:demo:CQ04:base:assumptions"
+  ],
+  "nodes": [
+    {
+      "id": "source:demo:CQ04:delivery-v1",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:demo:delivery:CQ04:base:v1",
+      "path": "data/order_fulfillment/sources/b_demo_delivery_01.md",
+      "sha256": "510c474c1a68ab1cc34d3b323d3a1760f8ccda977fd127df0700c2b66a3e2d74",
+      "version": "B-CQ04-base-v1",
+      "license": "New project synthetic development fixture; no actual contract, production, inspection or shipment records; not OLIMEX material.",
+      "collected_at": "2026-10-27T10:05:00+09:00"
+    },
+    {
+      "id": "evidence:demo:CQ04:base:snapshot",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown lines 5-17; section A; Markdown lines 18-23; section B",
+      "description": "Synthetic snapshot at10:00; all9 coverage assertions, all-round source allocations, event completeness and physical disjointness."
+    },
+    {
+      "id": "evidence:demo:CQ04:base:work",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown lines 24-35; section C",
+      "description": "Synthetic work target1000/completed600"
+    },
+    {
+      "id": "evidence:demo:CQ04:base:allocations",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown lines 24-35; section C",
+      "description": "Synthetic distinct full-source allocations to the one promised round."
+    },
+    {
+      "id": "evidence:demo:CQ04:base:observation-09",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown line 40; table row observation:demo:CQ04:base:09",
+      "description": "Cumulative production observed at09:00, good excludes defective."
+    },
+    {
+      "id": "evidence:demo:CQ04:base:observation-10",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown line 41; table row observation:demo:CQ04:base:10",
+      "description": "Cumulative production observed at10:00, same-instant work count agrees."
+    },
+    {
+      "id": "evidence:demo:CQ04:base:condition",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown lines 45-52; section E",
+      "description": "Explicit preparation0sec/transport3600sec/split_available condition for newly dispatched parts at promised destination."
+    },
+    {
+      "id": "evidence:demo:CQ04:base:assumptions",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:demo:CQ04:delivery-v1",
+      "locator": "Markdown lines 53-60; section F",
+      "description": "Conditional recent normal trend, good-unit usability, sufficient split dispatch capacity; no operating-time, actual future arrival or approval claim."
+    },
+    {
+      "id": "snapshot:demo:CQ04:base:10",
+      "type": "FulfillmentSnapshot",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:demo:CQ04:base:snapshot",
+        "evidence:demo:CQ04:base:assumptions"
+      ],
+      "company": "DEMO-B",
+      "as_of": "2026-10-27T10:00:00+09:00",
+      "round_ids": [
+        "delivery-round:demo:B-01:1"
+      ],
+      "confirmations": {
+        "allocations_complete": true,
+        "source_allocations_complete": true,
+        "allocations_disjoint": true,
+        "stock_events_complete": true,
+        "stock_observations_before_departures": true,
+        "shipment_events_complete": true,
+        "production_state_complete": true,
+        "material_disjoint": true,
+        "no_reallocation": true
+      }
+    },
+    {
+      "id": "work:demo:CQ04:base",
+      "type": "ProductionWork",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:demo:CQ04:base:work",
+        "evidence:demo:CQ04:base:assumptions"
+      ],
+      "snapshot_id": "snapshot:demo:CQ04:base:10",
+      "company": "DEMO-B",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "observed_at": "2026-10-27T10:00:00+09:00",
+      "target_quantity": 1000,
+      "completed_quantity": 600,
+      "unit": "piece",
+      "production_state": "in_progress",
+      "started_at": "2026-10-27T08:00:00+09:00"
+    },
+    {
+      "id": "observation:demo:CQ04:base:09",
+      "type": "ProductionObservation",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:demo:CQ04:base:observation-09"
+      ],
+      "production_work_id": "work:demo:CQ04:base",
+      "observed_at": "2026-10-27T09:00:00+09:00",
+      "produced_quantity": 550,
+      "good_quantity": 510,
+      "defective_quantity": 40,
+      "unit": "piece"
+    },
+    {
+      "id": "observation:demo:CQ04:base:10",
+      "type": "ProductionObservation",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:demo:CQ04:base:observation-10"
+      ],
+      "production_work_id": "work:demo:CQ04:base",
+      "observed_at": "2026-10-27T10:00:00+09:00",
+      "produced_quantity": 650,
+      "good_quantity": 600,
+      "defective_quantity": 50,
+      "unit": "piece"
+    },
+    {
+      "id": "allocation:demo:CQ04:base",
+      "type": "Allocation",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:demo:CQ04:base:allocations"
+      ],
+      "snapshot_id": "snapshot:demo:CQ04:base:10",
+      "delivery_round_id": "delivery-round:demo:B-01:1",
+      "production_work_id": "work:demo:CQ04:base",
+      "quantity": 1000,
+      "unit": "piece"
+    },
+    {
+      "id": "condition:demo:CQ04:base",
+      "type": "DeliveryCondition",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:demo:CQ04:base:condition",
+        "evidence:demo:CQ04:base:assumptions"
+      ],
+      "snapshot_id": "snapshot:demo:CQ04:base:10",
+      "delivery_round_id": "delivery-round:demo:B-01:1",
+      "preparation_seconds": 0,
+      "transport_seconds": 3600,
+      "dispatch_mode": "split_available"
+    }
+  ]
+}

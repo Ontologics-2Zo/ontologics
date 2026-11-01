@@ -1,0 +1,519 @@
+{
+  "source_id": "source:demo:CQ06:recalculation-v1",
+  "source_path": "data/order_fulfillment/sources/b_demo_recalculation_01.md",
+  "source_sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+  "cases": {
+    "continued11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "nodes": [
+        {
+          "id": "source:demo:CQ06:recalculation-v1",
+          "type": "SourceDocument",
+          "origin": "synthetic",
+          "evidence": [],
+          "url": "urn:ontologics:demo:recalculation:CQ06:v1",
+          "path": "data/order_fulfillment/sources/b_demo_recalculation_01.md",
+          "sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+          "version": "B-CQ06-recalculation-v1",
+          "license": "New project synthetic development fixture; no actual production, transport, inspection, approval or customer records; not OLIMEX material.",
+          "collected_at": "2026-10-27T11:05:00+09:00"
+        },
+        {
+          "id": "evidence:demo:CQ06:update-assumptions",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 11-18; section B; Markdown lines 73-77; section H",
+          "description": "Synthetic continued recent trend, good-unit usability, split capacity and no execution; unchanged durations unless case says otherwise."
+        },
+        {
+          "id": "evidence:demo:CQ06:continued11:snapshot",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 19-30; section C",
+          "description": "Renewed synthetic11:00 completeness, disjointness and no-reallocation assertions for the unchanged whole-work allocation."
+        },
+        {
+          "id": "evidence:demo:CQ06:continued11:work",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 19-30; section C",
+          "description": "Synthetic same logical work at11:00, completed good count690, unchanged target1000 and started state."
+        },
+        {
+          "id": "evidence:demo:CQ06:continued11:observation-11",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 19-30; section C",
+          "description": "Synthetic11:00 cumulative produced750/good690/defective60; previous09:00/10:00 observations retained."
+        },
+        {
+          "id": "snapshot:demo:CQ04:base:10",
+          "type": "FulfillmentSnapshot",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:continued11:snapshot",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "company": "DEMO-B",
+          "as_of": "2026-10-27T11:00:00+09:00",
+          "round_ids": [
+            "delivery-round:demo:B-01:1"
+          ],
+          "confirmations": {
+            "allocations_complete": true,
+            "source_allocations_complete": true,
+            "allocations_disjoint": true,
+            "stock_events_complete": true,
+            "stock_observations_before_departures": true,
+            "shipment_events_complete": true,
+            "production_state_complete": true,
+            "material_disjoint": true,
+            "no_reallocation": true
+          }
+        },
+        {
+          "id": "work:demo:CQ04:base",
+          "type": "ProductionWork",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:continued11:work",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "snapshot_id": "snapshot:demo:CQ04:base:10",
+          "company": "DEMO-B",
+          "configuration_id": "config:esp32-poe:L:WROOM",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "target_quantity": 1000,
+          "completed_quantity": 690,
+          "unit": "piece",
+          "production_state": "in_progress",
+          "started_at": "2026-10-27T08:00:00+09:00"
+        },
+        {
+          "id": "observation:demo:CQ06:continued11:11",
+          "type": "ProductionObservation",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:continued11:observation-11"
+          ],
+          "production_work_id": "work:demo:CQ04:base",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "produced_quantity": 750,
+          "good_quantity": 690,
+          "defective_quantity": 60,
+          "unit": "piece"
+        }
+      ]
+    },
+    "defects11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "nodes": [
+        {
+          "id": "source:demo:CQ06:recalculation-v1",
+          "type": "SourceDocument",
+          "origin": "synthetic",
+          "evidence": [],
+          "url": "urn:ontologics:demo:recalculation:CQ06:v1",
+          "path": "data/order_fulfillment/sources/b_demo_recalculation_01.md",
+          "sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+          "version": "B-CQ06-recalculation-v1",
+          "license": "New project synthetic development fixture; no actual production, transport, inspection, approval or customer records; not OLIMEX material.",
+          "collected_at": "2026-10-27T11:05:00+09:00"
+        },
+        {
+          "id": "evidence:demo:CQ06:update-assumptions",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 11-18; section B; Markdown lines 73-77; section H",
+          "description": "Synthetic continued recent trend, good-unit usability, split capacity and no execution; unchanged durations unless case says otherwise."
+        },
+        {
+          "id": "evidence:demo:CQ06:defects11:snapshot",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 31-42; section D",
+          "description": "Renewed synthetic11:00 completeness, disjointness and no-reallocation assertions for the unchanged whole-work allocation."
+        },
+        {
+          "id": "evidence:demo:CQ06:defects11:work",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 31-42; section D",
+          "description": "Synthetic same logical work at11:00, completed good count680, unchanged target1000 and started state."
+        },
+        {
+          "id": "evidence:demo:CQ06:defects11:observation-11",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 31-42; section D",
+          "description": "Synthetic11:00 cumulative produced750/good680/defective70; previous09:00/10:00 observations retained."
+        },
+        {
+          "id": "snapshot:demo:CQ04:base:10",
+          "type": "FulfillmentSnapshot",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:defects11:snapshot",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "company": "DEMO-B",
+          "as_of": "2026-10-27T11:00:00+09:00",
+          "round_ids": [
+            "delivery-round:demo:B-01:1"
+          ],
+          "confirmations": {
+            "allocations_complete": true,
+            "source_allocations_complete": true,
+            "allocations_disjoint": true,
+            "stock_events_complete": true,
+            "stock_observations_before_departures": true,
+            "shipment_events_complete": true,
+            "production_state_complete": true,
+            "material_disjoint": true,
+            "no_reallocation": true
+          }
+        },
+        {
+          "id": "work:demo:CQ04:base",
+          "type": "ProductionWork",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:defects11:work",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "snapshot_id": "snapshot:demo:CQ04:base:10",
+          "company": "DEMO-B",
+          "configuration_id": "config:esp32-poe:L:WROOM",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "target_quantity": 1000,
+          "completed_quantity": 680,
+          "unit": "piece",
+          "production_state": "in_progress",
+          "started_at": "2026-10-27T08:00:00+09:00"
+        },
+        {
+          "id": "observation:demo:CQ06:defects11:11",
+          "type": "ProductionObservation",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:defects11:observation-11"
+          ],
+          "production_work_id": "work:demo:CQ04:base",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "produced_quantity": 750,
+          "good_quantity": 680,
+          "defective_quantity": 70,
+          "unit": "piece"
+        }
+      ]
+    },
+    "transport2h": {
+      "as_of": "2026-10-27T10:00:00+09:00",
+      "nodes": [
+        {
+          "id": "source:demo:CQ06:recalculation-v1",
+          "type": "SourceDocument",
+          "origin": "synthetic",
+          "evidence": [],
+          "url": "urn:ontologics:demo:recalculation:CQ06:v1",
+          "path": "data/order_fulfillment/sources/b_demo_recalculation_01.md",
+          "sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+          "version": "B-CQ06-recalculation-v1",
+          "license": "New project synthetic development fixture; no actual production, transport, inspection, approval or customer records; not OLIMEX material.",
+          "collected_at": "2026-10-27T11:05:00+09:00"
+        },
+        {
+          "id": "evidence:demo:CQ06:update-assumptions",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 11-18; section B; Markdown lines 73-77; section H",
+          "description": "Synthetic continued recent trend, good-unit usability, split capacity and no execution; unchanged durations unless case says otherwise."
+        },
+        {
+          "id": "evidence:demo:CQ06:transport2h:condition",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 43-48; section E",
+          "description": "Synthetic transport7200seconds, preparation0seconds and split_available condition; no actual dispatch/arrival."
+        },
+        {
+          "id": "condition:demo:CQ04:base",
+          "type": "DeliveryCondition",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:transport2h:condition",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "snapshot_id": "snapshot:demo:CQ04:base:10",
+          "delivery_round_id": "delivery-round:demo:B-01:1",
+          "preparation_seconds": 0,
+          "transport_seconds": 7200,
+          "dispatch_mode": "split_available"
+        }
+      ]
+    },
+    "combined11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "nodes": [
+        {
+          "id": "source:demo:CQ06:recalculation-v1",
+          "type": "SourceDocument",
+          "origin": "synthetic",
+          "evidence": [],
+          "url": "urn:ontologics:demo:recalculation:CQ06:v1",
+          "path": "data/order_fulfillment/sources/b_demo_recalculation_01.md",
+          "sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+          "version": "B-CQ06-recalculation-v1",
+          "license": "New project synthetic development fixture; no actual production, transport, inspection, approval or customer records; not OLIMEX material.",
+          "collected_at": "2026-10-27T11:05:00+09:00"
+        },
+        {
+          "id": "evidence:demo:CQ06:update-assumptions",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 11-18; section B; Markdown lines 73-77; section H",
+          "description": "Synthetic continued recent trend, good-unit usability, split capacity and no execution; unchanged durations unless case says otherwise."
+        },
+        {
+          "id": "evidence:demo:CQ06:combined11:snapshot",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 49-60; section F",
+          "description": "Renewed synthetic11:00 completeness, disjointness and no-reallocation assertions for the unchanged whole-work allocation."
+        },
+        {
+          "id": "evidence:demo:CQ06:combined11:work",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 49-60; section F",
+          "description": "Synthetic same logical work at11:00, completed good count680, unchanged target1000 and started state."
+        },
+        {
+          "id": "evidence:demo:CQ06:combined11:observation-11",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 49-60; section F",
+          "description": "Synthetic11:00 cumulative produced750/good680/defective70; previous09:00/10:00 observations retained."
+        },
+        {
+          "id": "snapshot:demo:CQ04:base:10",
+          "type": "FulfillmentSnapshot",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:combined11:snapshot",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "company": "DEMO-B",
+          "as_of": "2026-10-27T11:00:00+09:00",
+          "round_ids": [
+            "delivery-round:demo:B-01:1"
+          ],
+          "confirmations": {
+            "allocations_complete": true,
+            "source_allocations_complete": true,
+            "allocations_disjoint": true,
+            "stock_events_complete": true,
+            "stock_observations_before_departures": true,
+            "shipment_events_complete": true,
+            "production_state_complete": true,
+            "material_disjoint": true,
+            "no_reallocation": true
+          }
+        },
+        {
+          "id": "work:demo:CQ04:base",
+          "type": "ProductionWork",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:combined11:work",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "snapshot_id": "snapshot:demo:CQ04:base:10",
+          "company": "DEMO-B",
+          "configuration_id": "config:esp32-poe:L:WROOM",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "target_quantity": 1000,
+          "completed_quantity": 680,
+          "unit": "piece",
+          "production_state": "in_progress",
+          "started_at": "2026-10-27T08:00:00+09:00"
+        },
+        {
+          "id": "observation:demo:CQ06:combined11:11",
+          "type": "ProductionObservation",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:combined11:observation-11"
+          ],
+          "production_work_id": "work:demo:CQ04:base",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "produced_quantity": 750,
+          "good_quantity": 680,
+          "defective_quantity": 70,
+          "unit": "piece"
+        },
+        {
+          "id": "evidence:demo:CQ06:combined11:condition",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 49-60; section F",
+          "description": "Synthetic transport7200seconds, preparation0seconds and split_available condition; no actual dispatch/arrival."
+        },
+        {
+          "id": "condition:demo:CQ04:base",
+          "type": "DeliveryCondition",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:combined11:condition",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "snapshot_id": "snapshot:demo:CQ04:base:10",
+          "delivery_round_id": "delivery-round:demo:B-01:1",
+          "preparation_seconds": 0,
+          "transport_seconds": 7200,
+          "dispatch_mode": "split_available"
+        }
+      ]
+    },
+    "zero_rate11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "nodes": [
+        {
+          "id": "source:demo:CQ06:recalculation-v1",
+          "type": "SourceDocument",
+          "origin": "synthetic",
+          "evidence": [],
+          "url": "urn:ontologics:demo:recalculation:CQ06:v1",
+          "path": "data/order_fulfillment/sources/b_demo_recalculation_01.md",
+          "sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+          "version": "B-CQ06-recalculation-v1",
+          "license": "New project synthetic development fixture; no actual production, transport, inspection, approval or customer records; not OLIMEX material.",
+          "collected_at": "2026-10-27T11:05:00+09:00"
+        },
+        {
+          "id": "evidence:demo:CQ06:update-assumptions",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 11-18; section B; Markdown lines 73-77; section H",
+          "description": "Synthetic continued recent trend, good-unit usability, split capacity and no execution; unchanged durations unless case says otherwise."
+        },
+        {
+          "id": "evidence:demo:CQ06:zero_rate11:snapshot",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 61-72; section G",
+          "description": "Renewed synthetic11:00 completeness, disjointness and no-reallocation assertions for the unchanged whole-work allocation."
+        },
+        {
+          "id": "evidence:demo:CQ06:zero_rate11:work",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 5-10; section A; Markdown lines 11-18; section B; Markdown lines 61-72; section G",
+          "description": "Synthetic same logical work at11:00, completed good count600, unchanged target1000 and started state."
+        },
+        {
+          "id": "evidence:demo:CQ06:zero_rate11:observation-11",
+          "type": "Evidence",
+          "origin": "synthetic",
+          "evidence": [],
+          "source_id": "source:demo:CQ06:recalculation-v1",
+          "locator": "Markdown lines 61-72; section G",
+          "description": "Synthetic11:00 cumulative produced750/good600/defective150; previous09:00/10:00 observations retained."
+        },
+        {
+          "id": "snapshot:demo:CQ04:base:10",
+          "type": "FulfillmentSnapshot",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:zero_rate11:snapshot",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "company": "DEMO-B",
+          "as_of": "2026-10-27T11:00:00+09:00",
+          "round_ids": [
+            "delivery-round:demo:B-01:1"
+          ],
+          "confirmations": {
+            "allocations_complete": true,
+            "source_allocations_complete": true,
+            "allocations_disjoint": true,
+            "stock_events_complete": true,
+            "stock_observations_before_departures": true,
+            "shipment_events_complete": true,
+            "production_state_complete": true,
+            "material_disjoint": true,
+            "no_reallocation": true
+          }
+        },
+        {
+          "id": "work:demo:CQ04:base",
+          "type": "ProductionWork",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:zero_rate11:work",
+            "evidence:demo:CQ06:update-assumptions"
+          ],
+          "snapshot_id": "snapshot:demo:CQ04:base:10",
+          "company": "DEMO-B",
+          "configuration_id": "config:esp32-poe:L:WROOM",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "target_quantity": 1000,
+          "completed_quantity": 600,
+          "unit": "piece",
+          "production_state": "in_progress",
+          "started_at": "2026-10-27T08:00:00+09:00"
+        },
+        {
+          "id": "observation:demo:CQ06:zero_rate11:11",
+          "type": "ProductionObservation",
+          "origin": "synthetic",
+          "evidence": [
+            "evidence:demo:CQ06:zero_rate11:observation-11"
+          ],
+          "production_work_id": "work:demo:CQ04:base",
+          "observed_at": "2026-10-27T11:00:00+09:00",
+          "produced_quantity": 750,
+          "good_quantity": 600,
+          "defective_quantity": 150,
+          "unit": "piece"
+        }
+      ]
+    }
+  }
+}

@@ -114,7 +114,7 @@ class SharedDomainGraphTests(unittest.TestCase):
                 'from ontologics import model; '
                 'from ontologics.production_planning import schema as a; '
                 'from ontologics.order_fulfillment import schema as b; '
-                'assert len(model.SCHEMA)==23; '
+                'assert len(model.SCHEMA)==29; '  # 12 core + 11 A/B + 6 C
                 'a.SCHEMA["Contract"][0].append("private"); '
                 'assert "private" not in model.SCHEMA["Contract"][0]; '
                 'assert "private" not in b.SCHEMA["Contract"][0]', module],

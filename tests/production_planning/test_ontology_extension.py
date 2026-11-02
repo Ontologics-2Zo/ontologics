@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import unittest
 
-from ontologics import model
+from ontologics import domain_schema, model
 from ontologics.production_planning.graph_validation import validate_graph
 from ontologics.production_planning.graph_export import graph_jsonld
 from ontologics.production_planning.export_tbox import build_tbox
@@ -218,4 +218,4 @@ class OntologyExtensionTests(unittest.TestCase):
         self.assertEqual(model.SYNTHETIC - original_types, {
             'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
             'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
-            'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'})
+            'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'} | set(domain_schema.C_SCHEMA))

@@ -4,7 +4,7 @@ from ontologics.tbox import build_tbox
 import unittest
 from unittest.mock import patch
 
-from ontologics import model
+from ontologics import domain_schema, model
 from tests.order_fulfillment.model_oracle import legacy_model, main_model
 
 from ontologics.ingest import build_catalog
@@ -15,12 +15,16 @@ from ontologics.order_fulfillment.fulfillment import load_demo_fulfillment
 from ontologics.order_fulfillment.production import load_demo_production
 
 legacy = legacy_model()
+# PR #6 adds the C claim types to the common model; their reference keys join the common context.
+C_CONTEXT = {key: {'@type': '@id'} for kind in domain_schema.C_TYPES
+             for key in (*domain_schema.C_SCHEMA[kind][1], *domain_schema.LIST_REFERENCES.get(kind, {}))}
 
 
 def additive_export(nodes):
     """Keep historical nodes/relations, adding explicit JSON literal context."""
     expected = legacy.graph_jsonld(nodes)
     expected['@context'].update(specifications={'@type': '@json'}, confirmations={'@type': '@json'})
+    expected['@context'].update(C_CONTEXT)
     return expected
 
 
@@ -166,7 +170,8 @@ class CommonArtifactBoundaryTests(unittest.TestCase):
             self.assertLessEqual(set(expected.SCHEMA), set(model.SCHEMA))
             for kind, definition in expected.SCHEMA.items():
                 self.assertEqual(definition, model.SCHEMA[kind])
-            self.assertEqual(11, len(set(model.SCHEMA) - set(expected.SCHEMA)))
+            # 11 A/B types + the C claim types of PR #6
+            self.assertEqual(11 + len(domain_schema.C_SCHEMA), len(set(model.SCHEMA) - set(expected.SCHEMA)))
 
     def test_stored_tbox_preserves_main_and_matches_shared_export(self):
         stored = (model.ROOT / 'ontology/tbox.ttl').read_text()

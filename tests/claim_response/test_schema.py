@@ -1,4 +1,4 @@
-"""C 1st phase schema extension tests. Existing graph-0.1 types and tests are not modified."""
+"""C 1st phase schema extension tests. Existing types, A/B types and their tests are not modified."""
 import copy
 import hashlib
 import json
@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ontologics import domain_schema
 from ontologics.model import ALLOWED_FIELDS, C_TYPES, REAL, ROOT, SCHEMA, graph_jsonld, tbox_turtle, validate_graph
 
 
@@ -101,7 +102,10 @@ class CPhase1ValidationTests(unittest.TestCase):
     def test_existing_types_are_unchanged_and_c_types_are_additions(self):
         self.assertEqual({'SourceDocument', 'Evidence', 'ProductModel', 'ProductRevision', 'Configuration',
                           'ComponentModel', 'BOMItem', 'ProductUnit', 'ComponentLot', 'Installation',
-                          'HistoryCoverage', 'InventoryMovement'}, set(SCHEMA) - set(C_TYPES))
+                          'HistoryCoverage', 'InventoryMovement'}, set(SCHEMA) - set(C_TYPES) - set(domain_schema.SCHEMA))
+        # C definitions live beside the reviewed A/B set without changing it.
+        self.assertEqual(11, len(domain_schema.SCHEMA))
+        self.assertFalse(set(C_TYPES) & (domain_schema.A_TYPES | domain_schema.B_TYPES))
         self.assertEqual({'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}, REAL)
         self.assertEqual({'id', 'type', 'origin', 'evidence', 'serial', 'company', 'configuration_id'}, ALLOWED_FIELDS['ProductUnit'])
 
@@ -128,11 +132,20 @@ class CPhase1ValidationTests(unittest.TestCase):
     def test_optional_references_are_checked_only_when_present(self):
         record = self.index['production:test-C-D001']
         record['production_work_id'] = 'work:any'
-        # ProductionWork is a B proposal and is not a defined type yet.
-        self.assert_invalid('INVALID_REFERENCE')
+        # Unsupported link: any value is rejected until the B production-work contract (I02) is agreed.
+        result = self.assert_invalid('PRODUCTION_WORK_UNSUPPORTED')
+        self.assertIn('INVALID_REFERENCE', {e['code'] for e in result['errors']})
         del record['production_work_id']
         self.index['containment:test-shipment-hold']['production_line_id'] = 'unit:test-C-D001'
         self.assert_invalid('INVALID_REFERENCE')
+
+    def test_production_work_link_is_rejected_even_for_an_existing_work(self):
+        # The shared ProductionWork type exists now (B), but C has no agreed work link yet.
+        self.nodes.append({'id': 'work:test', 'type': 'ProductionWork', 'origin': 'synthetic', 'evidence': ['evidence:test-c']})
+        self.index['production:test-C-D001']['production_work_id'] = 'work:test'
+        codes = {(e['node_id'], e['code']) for e in validate_graph(self.nodes)['errors']}
+        self.assertIn(('production:test-C-D001', 'PRODUCTION_WORK_UNSUPPORTED'), codes)
+        self.assertNotIn(('production:test-C-D001', 'INVALID_REFERENCE'), codes)
 
     def test_value_lists_are_enforced(self):
         for nid, key in (('claim-intake:test', 'intake_state'), ('quality-scope:test-hold', 'scope_state'),
@@ -217,13 +230,14 @@ class CPhase1ValidationTests(unittest.TestCase):
         self.assertEqual('urn:ontologics:entity:production-line:test-C-01', stop['production_line_id'])
         self.assertNotIn('production_line_id', rows['urn:ontologics:entity:containment:test-shipment-hold'])
 
-    def test_tbox_adds_c_classes_and_properties_only_for_defined_targets(self):
+    def test_tbox_adds_c_classes_and_properties_with_shared_ranges(self):
         tbox = tbox_turtle()
         for kind in C_TYPES:
             self.assertIn(f'o:{kind} a owl:Class .', tbox)
         self.assertIn('o:unit_ids a owl:ObjectProperty ; rdfs:range o:ProductUnit .', tbox)
         self.assertIn('o:production_line_id a owl:ObjectProperty ; rdfs:range o:ProductionLine .', tbox)
-        self.assertNotIn('ProductionWork', tbox)
+        # production_work_id keeps the single range already declared by B (ProductionWork).
+        self.assertEqual(1, tbox.count('o:production_work_id a owl:ObjectProperty ; rdfs:range o:ProductionWork .'))
 
 
 if __name__ == '__main__':

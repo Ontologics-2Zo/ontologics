@@ -1,4 +1,4 @@
-"""Reviewed A/B graph metadata, independent of role imports and execution.
+"""Reviewed A/B/C graph metadata, independent of role imports and execution.
 
 The shared model composes these additive definitions with its original twelve
 types. Role schema modules re-export detached subsets for import compatibility;
@@ -50,6 +50,43 @@ STRUCTURED_FIELDS = {
     'DeliveryCondition': {'preparation_seconds', 'transport_seconds'},
 }
 
+
+# C claim response, 1st phase (PR #6). Kept in its own mapping so the reviewed
+# A/B set above (SCHEMA, A_TYPES, B_TYPES) is unchanged; model.py composes both.
+# All C records are synthetic demonstration operations, never OLIMEX facts.
+C_SCHEMA = {
+    'ProductionLine': (['company', 'line_code', 'name'], {}),
+    'UnitProductionRecord': (['unit_id', 'production_line_id', 'produced_at'],
+                             {'unit_id': 'ProductUnit', 'production_line_id': 'ProductionLine',
+                              # Unsupported link: declared for the shared range only; any value is rejected (C rule).
+                              'production_work_id': 'ProductionWork'}),
+    'ClaimIntake': (['external_claim_id', 'customer_name', 'reported_at', 'reported_symptom', 'claimed_quantity',
+                     'reported_serials', 'intake_state'], {}),
+    'QualityCase': (['intake_id', 'customer_name', 'reported_at', 'reported_symptom', 'unit_ids'],
+                    {'intake_id': 'ClaimIntake'}),
+    'QualityScope': (['case_id', 'production_line_id', 'as_of', 'unit_ids', 'scope_state'],
+                     {'case_id': 'QualityCase', 'production_line_id': 'ProductionLine'}),
+    'ContainmentRequest': (['case_id', 'scope_id', 'request_kind', 'prepared_at', 'document_ref'],
+                           {'case_id': 'QualityCase', 'scope_id': 'QualityScope', 'production_line_id': 'ProductionLine'}),
+}
+C_TYPES = tuple(C_SCHEMA)
+OPTIONAL_REFERENCES.update({'UnitProductionRecord': {'production_work_id'},
+                            'ContainmentRequest': {'production_line_id'}})
+LIST_REFERENCES.update({'QualityCase': {'unit_ids': 'ProductUnit'}, 'QualityScope': {'unit_ids': 'ProductUnit'}})
+OPTIONAL_FIELDS.update({
+    'UnitProductionRecord': {'production_work_id'},
+    'ClaimIntake': {'reported_conditions', 'requested_action', 'delivery_reference'},
+    'QualityScope': {'start', 'end'},
+    'ContainmentRequest': {'production_line_id', 'draft_id', 'draft_version'},
+})
+# claimed_quantity and draft_version are positive integers, reported_serials is a
+# unique text list; their exact checks are C rules (claim_response/schema.py).
+STRUCTURED_FIELDS.update({
+    'ClaimIntake': {'claimed_quantity', 'reported_serials'},
+    'QualityCase': {'unit_ids'},
+    'QualityScope': {'unit_ids'},
+    'ContainmentRequest': {'draft_version'},
+})
 
 def subset(mapping, kinds):
     """Return detached metadata without changing insertion order or ownership."""

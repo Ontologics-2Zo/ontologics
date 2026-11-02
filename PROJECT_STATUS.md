@@ -1,5 +1,17 @@
 # PROJECT_STATUS
 
+## 2026-11-02 — integration/a-b에 최신 main 문서 병합
+
+origin/main의 05d55c7(PR #13, A·B·C 공통 기반 안내)을 병합했다. PROJECT_STATUS 충돌은 양쪽 이력을 보존해 해결하고 신규 안내의 A 경로·클래스명을 materials/MaterialsHost로 맞췄다. 변경은 문서4개뿐이며 실행 코드·스키마·데이터는 바꾸지 않았다. 새 로컬 문서 링크 대상, 충돌 표식 제거, staged diff 공백을 검사했다. 문서 병합이므로 전체 실행 회귀는 반복하지 않았다.
+
+## 2026-11-02 — A·B·C 동료 개발의 공통 기반 기준 연결
+
+PR #12 병합 main `73179a3`의 기존 공통 코드를 대조했다. 식별·근거·graph-0.3/데이터 버전·Host 신원·사람 승인·공통 도구·누적 한도·RDF/Neo4j·격리 파서는 기존 구현을 재사용한다. 새 엔진·공개 API·DB schema·권한·역할 동작은 만들거나 바꾸지 않았다. README에 A/B/C의 실제 담당 경로와 시작 명령, TOOLS에 기존 확정 계약과 미합의 경계, AGENT_RUNTIME에 A 호환/B typed·읽기/C schema-only의 현재 지원 차이를 연결했다. 기본 네 Agent와 A/B/C 업무 구분을 혼동하지 않도록 했다.
+
+기존 #6·#12의 1541개 CI 성공 근거는 같은 애플리케이션 코드에 유효하다. 이번 문서 영향은 링크·실제 경로·명령/계약 대조 및 독립 검토로 확인한다. 전체 회귀·유료 평가·승인 데모를 반복하지 않는다. 신규 typed 역할은 기존 `extension_agent --typed`의 model/history 흐름과 계약 시험을 재사용한다. 추가 링크·앵커 17개, 실제 모듈 경로, 두 CLI의 help/import, 독립 검토를 확인했다. 기존 typed model/history 예제를 동일 데이터 v3에서 실행해 runtime.ok=true·agent-result-1·근거 1/2건을 확인했고 snapshots/drafts/review_events 해시를 보존했다. 두 예제는 모델 대역이며 유료 호출 0회다. B macOS 전용 실행기 및 --pg-bin/새 output 경로 조건을 명시했다. 실행 근거는 Git 제외 artifacts/local/common-baseline-20261102/에 있다.
+
+남은 공동 결정은 B·C I02 생산 작업 참조, I04 보드별 재고/출하 소속·목록 완전성·유효 시점이다. 기존 검증 거부를 임의 해제하지 않았다. A→B→C 자동 업무 인계·C Agent/UI·#7·실제 인증·운영 복구는 별도 남은 범위다. 공통 담당 기준 문서의 정리를 해당 기능 완료로 계산하지 않는다.
+
 ## 2026-11-02 — 현재 브랜치에 origin/main 업데이트 병합
 
 `refactor/reduce-manual-intervention`에 `origin/main`의 `73179a3`까지 반영했다. 작업 이력은 양쪽 내용을 보존하고 materials 테스트의 새 경로와 main의 domain_schema 참조를 함께 유지했다. 관련 스키마·그래프 테스트 39개 통과, 충돌 해결 파일의 diff 공백 검사 통과. 전체 병합 diff에는 main에서 들어온 참조 Markdown 문서 2개의 줄바꿈용 후행 공백 5곳이 보고되었으며 원문을 유지했다. 전체 discover는 884개 실행 중 실패 8·오류 210·skip 72로 통과하지 못했다. 현재 python3에서 psycopg 누락을 확인했으며 전체 오류 원인 분류는 미수행이다. 로그: `/private/tmp/main-merge-focused.log`, `/private/tmp/main-merge-full.log`. 다음 행동은 개발 의존성 환경에서 전체 회귀 재검증이다. 기존 미추적 요청 문서는 병합 커밋에서 제외했다.

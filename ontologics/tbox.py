@@ -26,7 +26,7 @@ class Extension:
 
 def registered_extensions():
     """Reviewed declaration sources, not a plugin or service schema registry."""
-    from .production_planning import schema as a
+    from .materials import schema as a
     from .order_fulfillment import schema as b
     return (
         Extension('A production planning', a.SCHEMA, a.OPTIONAL_FIELDS,

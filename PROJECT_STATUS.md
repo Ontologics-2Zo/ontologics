@@ -1,8 +1,16 @@
 # PROJECT_STATUS
 
+## 2026-11-02 — production_planning → materials 이름 변경
+
+사용자가 폴더·에이전트·클래스 이름 변경을 요청했다. ontologics/materials, tests/materials, data/materials와 examples/materials_*로 이동하고 import·실행 문서 참조를 변경했다. 에이전트 등록명은 materials/materials_review, 대표 클래스는 MaterialsHost/MaterialsService/MaterialsApplication/MaterialsHandler/MaterialsServer이며 제품 연결 검토는 LibraryProductReview다. 공통 model.py/tbox.py는 import 경로만 변경했다. 저장된 DB 테이블·근거 식별자·업무 API·생산계획 도메인 의미는 유지한다. data/production_planning은 기존 SourceDocument 경로 해석을 위한 상대 심볼릭 링크이며 원본 자료 바이트와 해시는 모두 이동 전과 일치한다. 상세: ontologics/materials/docs/2026-11-02-materials-rename.md.
+
+검증: 전체 discover 1562개 실행(331.337초), 실패18·오류30·skip10. 실행 중 이름 정리를 마치면서 이전에 로드된 모듈과 근거 경로 때문에 추가된 19건은 최종 코드의 별도 재검사로 확인했다. 웹·에이전트·근거 연결61개 중59개 통과, 기존 환경 오류2개(neo4j 누락, 명시적으로 동일한 disposable DB 환경 요구)만 남음. 그래프·자재 계산32개 모두 통과, Shapely 도면/이력 재현7개 모두 통과. 기존 전체 실패10·오류19 이외 추가 실패는 최종 재검사에서 남지 않았다. 공통 demo 성공(격리 demo 스키마), Python 구문 및 diff 공백 검사 통과. 전체 단일 실행 통과를 주장하지 않는다. 로그: /private/tmp/materials-rename-tests.log, materials-rename-focused.log, materials-rename-graph-tests.log, materials-geometry-tests.log, materials-demo-check.log. 다음 행동은 기존 환경 의존성 정렬 후 전체 재검증이다.
+
+웹서버를 새 패키지로 같은 포트51171/기존 스키마에서 재시작했다. 브라우저에서 계약24건 및 L/L1 BOM·공정 자재 조회가 유지됨을 확인했다. 이번 이름 변경은 아직 커밋·푸시하지 않았다.
+
 ## 2026-11-02 — BOM 외 공정 자재의 별도 근거 데이터
 
-사용자 요청으로 `data/production_planning/process_materials_v1.json`을 추가했다. 실제 제조사 자료에 있는 솔더 페이스트·실납·액상 플럭스·세정제·솔더 바 5종의 규격/수치와 L/L1 WROOM 구성 참조, KS 공개 메타데이터를 포함한다. 기존 BOM과 같은 고정 커밋의 PCB 원문, 제조사 자료, KS 페이지 총 11개를 `data/sources/process_materials_v1/`에 원본 그대로 보관하고 새 SourceDocument/Evidence ID와 SHA-256·URL·수집 시각·라이선스 확인 범위를 붙였다. 기존 catalog와 원본·운영 DB·공통 스키마·런타임 계산은 변경하지 않았다.
+사용자 요청으로 `data/materials/process_materials_v1.json`을 추가했다. 실제 제조사 자료에 있는 솔더 페이스트·실납·액상 플럭스·세정제·솔더 바 5종의 규격/수치와 L/L1 WROOM 구성 참조, KS 공개 메타데이터를 포함한다. 기존 BOM과 같은 고정 커밋의 PCB 원문, 제조사 자료, KS 페이지 총 11개를 `data/sources/process_materials_v1/`에 원본 그대로 보관하고 새 SourceDocument/Evidence ID와 SHA-256·URL·수집 시각·라이선스 확인 범위를 붙였다. 기존 catalog와 원본·운영 DB·공통 스키마·런타임 계산은 변경하지 않았다.
 
 수치는 난수가 아니다. PCB 외곽 면적 22.28331621 ㎠와 Kester 951의 고형분 도포 기준 120~240 µg/㎠·고형분 2%를 연결해, 웨이브 공정/한 면 전체 도포라는 조건부 참고량 0.13369989726~0.26739979452 g/대를 계산했다. 실제 구매량은 미정이다. 페이스트는 공식 계산법·품번별 금속 함량·합금 밀도를 연결한 참고 계수만 제공한다. 실제 스텐실 두께/개구부 합집합과 공정 손실은 미확인이고 U4 paste graphics·UEXT1 사다리꼴 패드가 있어 단순 패드 합계로 대당 수량을 확정하지 않았다. 기타 자재도 제조사 규격과 실제 대당 사용량을 구분한다. 모든 생산 승인 수량과 구매량은 null이며 국가인증·OLIMEX 실제 사용 사실을 주장하지 않는다.
 
@@ -34,7 +42,7 @@
 
 공유 순서: 기존 #10의 feature/a-first-mvp에 최신 main과 공통 수정을 반영 → 해당 head의 GitHub Actions와 main 대비 최종 diff 확인 → 사용자 병합. 원격 CI 완료 여부는 PR의 최신 Checks를 기준으로 하며 위 로컬 실행 근거와 구분한다. A/B 공통 저장·조회 편입과 C 결합은 별도 후속 작업이다.
 
-A 생산계획 현재 흐름: [docs/PRODUCTION_PLANNING_FLOW.md](docs/PRODUCTION_PLANNING_FLOW.md). 앞으로 A 업무 흐름 변경 시 이 문서를 함께 갱신한다.
+A 생산계획 현재 흐름: [docs/MATERIALS_FLOW.md](docs/MATERIALS_FLOW.md). 앞으로 A 업무 흐름 변경 시 이 문서를 함께 갱신한다.
 
 ## 2026-10-30 — A 웹 기준 입력 PostgreSQL 조회
 
@@ -89,9 +97,9 @@ A `graph_validation.py`와 `contracts.py` 호출 연결, 전용 테스트 5개�
 ## 2026-10-30 — 가상 자료 기반 생산계획 웹 시험 시나리오 준비
 
 입력 관리 화면 개발을 미루고 기존 웹으로 전체 흐름을 시험하기 위해
-`docs/PRODUCTION_PLANNING_WEB_SCENARIOS.md`에 업무 시나리오 6개와 예외 흐름을 정리했다.
+`docs/MATERIALS_WEB_SCENARIOS.md`에 업무 시나리오 6개와 예외 흐름을 정리했다.
 부분 생산·확인 항목 재고 충분·핵심 부품 가용 0·생산 라인 지연·재고 미확인의
-5개 가상 입력은 `data/production_planning/web_scenarios.json`에 보관한다.
+5개 가상 입력은 `data/materials/web_scenarios.json`에 보관한다.
 기존 원본·기준 입력과 실행 코드는 변경하지 않았다. 추가 대체 구성 사례는 아직 입력 준비 대상이다.
 일회성 오프라인 검증에서 5개 모두 입력 검사와 기존 자재/분할 계산의 기대 수량을 대조했다.
 완료 시각은 명시된 준비시간·처리율의 산술값을 대조했으며 웹 일정 경로 실행이 아니다.
@@ -119,7 +127,7 @@ A 기존 테스트는 공통 모델에 A가 등록된 상태를 전제로 한다
 
 ## 2026-10-30 — A 전용 T-box 생성 연결
 
-`python3 -m ontologics.production_planning.export_tbox`를 추가하고 실제 실행했다.
+`python3 -m ontologics.materials.export_tbox`를 추가하고 실제 실행했다.
 공통 `tbox_turtle()`의 현재 결과와 A 정의로 단일 `ontology/tbox.ttl`을 재생성한다.
 기존 TTL을 입력으로 쓰지 않는다. 공통 코드와 A 스키마, initial_graph는 그대로다.
 공통 결과 보존·16타입과 관계의 누락/중복·충돌 거절·명령 반복 실행 검사를 포함해
@@ -127,13 +135,13 @@ A 기존 테스트는 공통 모델에 A가 등록된 상태를 전제로 한다
 실패했다. 이전 단계의 A 실행 미연결 및 psycopg 미설치 제한이 남아 있다.
 DB 연결 환경변수를 비워 실행했으며 실제 API 호출은 없다. 전체 회귀 통과를 뜻하지 않는다.
 T-box 연결만 완료했고 공통 검증·승인·저장 연결은 후속이다. 사용법은
-`docs/PRODUCTION_PLANNING.md`의 2026-10-30 안내를 따른다.
+`docs/MATERIALS.md`의 2026-10-30 안내를 따른다.
 
 ## 2026-10-30 — A 스키마 분리 중간 단계 (feature/a-first-mvp)
 
 사용자 요청으로 `ontologics/model.py`를 origin/main `48d7c3b`와 동일하게 복원했다.
 A 추가 4타입·필수 필드·관계·선택/구조화 필드·가상 자료 제한·수량/납기/재고/회차 합계 규칙은
-`ontologics/production_planning/schema.py`로 옮겼다. 기존 규칙 본문과 정의의 보존을 대조했다.
+`ontologics/materials/schema.py`로 옮겼다. 기존 규칙 본문과 정의의 보존을 대조했다.
 이 파일은 A 전용 규칙만 담으며 전체 그래프 검증기를 대체하지 않는다. 공통 실행 연결과
 T-box 생성 연결은 아직 하지 않았다. 기존 A 호출부는 공통 검증기를 계속 사용하므로
 A 타입 검증·승인·저장 경로는 현재 미연결 상태다. 이전 통합 성공 기록과 구분한다.
@@ -593,13 +601,13 @@ A app.js/style.css에서 사용자 판단 중심으로 화면 재구성. 주문 
 - 계산은 저장된 재고를 읽고 기존 `available_stock` 및 `calculate_material_requirements`를 사용한다. 기존 결과는 보존하며 재고 변경 시 재계산 안내를 표시한다.
 - 120대 기준 ESP32-WROOM-32E 가용80/부족40, LAN8710A 가용100/부족20, TPS2376D 가용0/부족120. 나머지 확정 BOM 부품은 충분한 재고로 구성했다. 장착 미확인 11종의 필요 수량·부족량은 계속 미확인이다.
 - 격리 PostgreSQL 관련65개 통과. 전체631개: 실패128/오류12로 이전과 동일한 개수. 전체 통과 상태는 아니다.
-- 명시적 등록 명령: `python3 -m ontologics.production_planning.library_stock --schema a_contract_library --configuration config:esp32-poe:L:WROOM` (DB 환경 설정 필요). 기존 재고가 있으면 덮어쓰지 않고 종료한다. 화면 실행 중 자동 시드 삽입은 하지 않는다.
+- 명시적 등록 명령: `python3 -m ontologics.materials.library_stock --schema a_contract_library --configuration config:esp32-poe:L:WROOM` (DB 환경 설정 필요). 기존 재고가 있으면 덮어쓰지 않고 종료한다. 화면 실행 중 자동 시드 삽입은 하지 않는다.
 
 
 ## 2026-10-31 전체 실패 원인 조사 및 A 검증 호출 정정
 
 - 128 failures / 12 errors를 분류했다. A 스키마 테스트 35건(서브테스트 포함), 공통 seed 의존 102건, 공통 승인 통합3건이었다. 서로 독립적인140개 결함으로 해석하면 안 된다.
-- `tests/production_planning/test_ontology_extension.py`의 규칙 검증을 `model.validate_graph`에서 분리된 A `graph_validation.validate_graph`로 변경했다. 검증 규칙과 기대 오류는 유지했고 공통 validator/SCHEMA를 수정하지 않았다.
+- `tests/materials/test_ontology_extension.py`의 규칙 검증을 `model.validate_graph`에서 분리된 A `graph_validation.validate_graph`로 변경했다. 검증 규칙과 기대 오류는 유지했고 공통 validator/SCHEMA를 수정하지 않았다.
 - 관련18개 테스트:17통과, 공통 graph_jsonld가 Contract를 인식하지 못하는 오류1건 유지.
 - 최종 전체631개 재실행:94 failures / 12 errors. 34개 실패가 해소됐으나 전체 완료가 아니다.
 - 남은 실행 결함: 기존 A 업무 테스트·예제는 Contract/ContractItem/ComponentStockSnapshot을 공통 Service.bootstrap 또는 prepare_draft/review/apply로 저장하려 한다. 공통 스키마는 이를 지원하지 않으므로 검증 단계에서 거부한다. 단일 T-box 확장은 공통 실행 스키마를 확장하지 않는다.
@@ -610,13 +618,13 @@ A app.js/style.css에서 사용자 판단 중심으로 화면 재구성. 주문 
 ## 2026-10-31 A 전용 저장·조회 실행 연결 및 전체 실패 해소
 
 - 사용자 승인 범위: 공통 코드 무수정, 기존 A 기능의 실제 PostgreSQL 실행 연결, 테스트 삭제/검증 우회 금지.
-- 추가: `production_planning/persistence.py`의 PlanningService, `host.py`의 PlanningHost, `graph_export.py`의 A JSON-LD 변환. 공통 권한·트랜잭션·재실행·기록 엔진과 RequestSession을 재사용하고 스키마에 직접 묶인 저장/승인/검증 메서드만 A가 명시적으로 소유한다. 전역 SCHEMA 변경이나 런타임 패치는 없다.
+- 추가: `materials/persistence.py`의 MaterialsService, `host.py`의 MaterialsHost, `graph_export.py`의 A JSON-LD 변환. 공통 권한·트랜잭션·재실행·기록 엔진과 RequestSession을 재사용하고 스키마에 직접 묶인 저장/승인/검증 메서드만 A가 명시적으로 소유한다. 전역 SCHEMA 변경이나 런타임 패치는 없다.
 - 기존 A 예제·업무 테스트·수요 저장·계약 웹·재고 등록 진입점을 명시적 A 서비스/호스트로 연결했다. 기존 승인 전 차단, 자기 승인 금지, 승인자 권한 재확인, 버전/해시 고정, 재검증, 동시 수정/중복 요청 검사를 유지했다.
 - A 온톨로지 테스트는 A JSON-LD/T-box 생성기를 사용한다. 공통 스키마 유지 검사는 그대로다. 이전 UI 제목 Task10을 기대하던 테스트는 현재 제목 ‘계약 기반 생산계획’을 검사하도록 정정했으며 같은 테스트의 CSRF/Origin/Host/XSS 검사는 모두 실행했다.
 - 새 회귀 테스트 `test_persistence.py`: 공통 저장소가 A 타입을 거부함, A 저장소도 잘못된 수량을 거부함, 유효 A 사실의 실제 DB 재조회와 JSON-LD 관계 유지, 공통 SCHEMA 무변경, 미리보기 존재성 검사.
 - 최종 전체: 실제 격리 PostgreSQL/pgvector와 Docker 파서 환경에서 632 tests / OK (198.348초). 별도 관련86개 / OK, 공통 `python -m ontologics.demo` 성공(임시 컨테이너, 생성 결과 /tmp). 전체 실행 중 마지막 점검에서 수정한 미리보기 import는 관련86개 재실행으로 별도 검증했다.
 - 모델 대역을 사용하는 자동 테스트를 실제 LLM 호출로 주장하지 않는다. 이번 수정 검증에는 유료 API 호출을 하지 않았다.
-- 사용자 DB 읽기 검증: PlanningHost를 통해 계약3건, 기존 검토120대, 부족량20/40/120, 부족량 미확인11종을 그대로 조회했다. 기존 계약·재고·검토 결과와 그래프는 변경하지 않았다. 웹 서버는 최종 A 호스트로 재시작했다.
+- 사용자 DB 읽기 검증: MaterialsHost를 통해 계약3건, 기존 검토120대, 부족량20/40/120, 부족량 미확인11종을 그대로 조회했다. 기존 계약·재고·검토 결과와 그래프는 변경하지 않았다. 웹 서버는 최종 A 호스트로 재시작했다.
 - `git diff origin/main`에서 공통 model.py/service.py/host.py/database.py 차이 없음. 기존 미커밋 작업 보존, commit/push 없음.
 - 유지보수 제한: 공통 라이프사이클에 스키마 주입 접점이 없어 A가 소유한 명시적 메서드가 있다. 공통 승인/저장 절차가 향후 바뀌면 이 어댑터의 동등한 검사를 유지하도록 함께 검토해야 한다. 테스트 전체 통과는 사용자 웹에서 모든 후속 업무 화면을 완성했다는 뜻은 아니다.
 
@@ -676,7 +684,7 @@ A 전용 부품 정의 저장소와 가상 승인 시드 진입점을 추가했�
 
 ### 2026-10-31 A 생산계획 확인·자재 예약
 
-- 전체 업무 흐름 Mermaid 및 현재/후속 단계 문서화: `docs/PRODUCTION_PLANNING_FLOW.md`. 기존 개별 시나리오 문서와 연결, 흐름 변경 시 동시 갱신 규칙 명시.
+- 전체 업무 흐름 Mermaid 및 현재/후속 단계 문서화: `docs/MATERIALS_FLOW.md`. 기존 개별 시나리오 문서와 연결, 흐름 변경 시 동시 갱신 규칙 명시.
 - `library_reservations.py`: A 전용 예약 원장, 계약+품목당 활성 예약 한 건, 본문 해시, 해제자/시각 보존. 공통 호스트의 직렬화 트랜잭션·권한·감사·멱등성을 재사용한다.
 - 계획 확인에서는 선택안의 실제 필요량과 최신 가용재고, 대체품, 구매 초안 대상 부족량을 함께 표시한다. 알려진 보유분만 예약하며 부족/미확인은 유지한다. 구매 초안을 발주·입고로 표시하지 않는다.
 - A 계약 보관함의 재고/소요량/대체/구매 선택 경로에 타 계획 예약 차감을 반영한다. 예약 기준이 바뀌면 오래된 계산으로 저장하지 못한다. 자기 계획 예약은 중복 차감하지 않는다.
@@ -741,7 +749,7 @@ A 일정 검토 버튼을 ‘일정 초안 저장’으로 변경하고 흐름 �
 
 ### 2026-11-01 A 테스트의 Python 3.10 enterContext 호환 수정
 
-사용자 요청에 따라 CI 오류를 단계적으로 해결한다. tests/production_planning/test_reference_adapter.py의 enterContext 두 곳만 patch.start()/addCleanup(patch.stop)으로 변경했다. 공통 코드·CI·업무 검증 조건은 변경하지 않았다. 임시 Python3.10.21에서 수정 전 관련19개 중 오류13개를 재현했고, 수정 후 enterContext 오류는0개, 통과18개·실패1개다. 남은 실패는 test_adapter_rejects_submicrosecond_precision_while_candidate_still_accepts_it의 후보 시간 정밀도 기대값으로 다음 단계에서 조사한다. Python3.12 관련19개는 모두 통과. 이번에는 전체 회귀를 재실행하지 않았으며 CI 전체 통과를 주장하지 않는다.
+사용자 요청에 따라 CI 오류를 단계적으로 해결한다. tests/materials/test_reference_adapter.py의 enterContext 두 곳만 patch.start()/addCleanup(patch.stop)으로 변경했다. 공통 코드·CI·업무 검증 조건은 변경하지 않았다. 임시 Python3.10.21에서 수정 전 관련19개 중 오류13개를 재현했고, 수정 후 enterContext 오류는0개, 통과18개·실패1개다. 남은 실패는 test_adapter_rejects_submicrosecond_precision_while_candidate_still_accepts_it의 후보 시간 정밀도 기대값으로 다음 단계에서 조사한다. Python3.12 관련19개는 모두 통과. 이번에는 전체 회귀를 재실행하지 않았으며 CI 전체 통과를 주장하지 않는다.
 
 ### 2026-11-01 A CI 잔여 실패 두 건 수정
 

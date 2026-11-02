@@ -9,7 +9,7 @@ from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import load_demo_delivery
 from ontologics.order_fulfillment.fulfillment import load_demo_fulfillment
 from ontologics.order_fulfillment.production import load_demo_production
-from tests.production_planning.test_ontology_extension import catalog, planning_nodes
+from tests.materials.test_ontology_extension import catalog, planning_nodes
 
 
 class SharedDomainGraphTests(unittest.TestCase):
@@ -107,12 +107,12 @@ class SharedDomainGraphTests(unittest.TestCase):
         self.assertIn('o:round_ids a owl:ObjectProperty ; rdfs:range o:DeliveryRound .', model.tbox_turtle())
 
     def test_cold_imports_and_detached_role_metadata_do_not_mutate_shared_schema(self):
-        for module in ('ontologics.model', 'ontologics.production_planning.schema',
+        for module in ('ontologics.model', 'ontologics.materials.schema',
                        'ontologics.order_fulfillment.schema_validation'):
             result = subprocess.run([sys.executable, '-c',
                 'import importlib,sys; importlib.import_module(sys.argv[1]); '
                 'from ontologics import model; '
-                'from ontologics.production_planning import schema as a; '
+                'from ontologics.materials import schema as a; '
                 'from ontologics.order_fulfillment import schema as b; '
                 'assert len(model.SCHEMA)==23; '
                 'a.SCHEMA["Contract"][0].append("private"); '

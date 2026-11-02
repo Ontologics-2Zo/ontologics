@@ -43,20 +43,20 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 
 ### 공유 T-box 생성 계약
 
-`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.production_planning.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 현재 공통 정의를 사용하는 호환 출력이다. 역할별 provenance를 합치는 공유 파일은 공식 생성기로 작성한다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
+`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.materials.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 현재 공통 정의를 사용하는 호환 출력이다. 역할별 provenance를 합치는 공유 파일은 공식 생성기로 작성한다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
 
 `model.SCHEMA`가 공통 기준이다. A/B 메타데이터는 중립 `domain_schema.py`에서 한 번 정의하며 역할별 schema의 선언을 대조한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 생성기 호출 자체로 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
 
 공통 실행 버전은 `graph-0.2`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
 
-검사: `python -m unittest tests.test_tbox tests.production_planning.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
+검사: `python -m unittest tests.test_tbox tests.materials.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
 
 ### A/B 신규 업무 타입의 공통 저장·조회
 
 `Contract`, `ContractItem`, `DeliveryRound`, `ComponentStockSnapshot`, `FulfillmentSnapshot`, `FinishedGoodsStock`, `ProductionWork`, `ProductionObservation`, `Allocation`, `Shipment`, `DeliveryCondition`은 기존 `prepare_draft → validate_draft → 사람 review → 호스트 apply_approved` 경로로 저장한다. 신규 타입도 synthetic·원본 hash·Evidence·참조·업무 규칙 검증을 거친다. 업무 역할 A/B와 S1 시간 조건 A/B는 다른 구분이다.
 
 - 공통 스키마와 함께 사용하는 A `schema.validate_node_rules`의 재고 규칙, B `schema_validation`·`fulfillment_validation`·`production_validation`·`delivery_validation`의 사실 검증은 공개 도메인 계약이다. 이 규칙의 의미 변경은 역할 내부 지침 수정과 달리 공통 검토·회귀가 필요하다.
-- A `PlanningService/PlanningHost`는 공통 저장·승인을 상속한다. A/B 전체 그래프 검증과 JSON-LD는 공통 정의를 사용한다. B 7개 업무 조회는 `_read_nodes`를 사용하여 선택 backend와 승인 버전을 유지한다. B 계산 규칙 자체는 기존 역할 코드에 남긴다.
+- A `MaterialsService/MaterialsHost`는 공통 저장·승인을 상속한다. A/B 전체 그래프 검증과 JSON-LD는 공통 정의를 사용한다. B 7개 업무 조회는 `_read_nodes`를 사용하여 선택 backend와 승인 버전을 유지한다. B 계산 규칙 자체는 기존 역할 코드에 남긴다.
 - `Allocation.stock_id/production_work_id`는 키 생략 가능한 선택 관계이며 정확히 하나가 필요하다. 명시적 null은 오류다. `FulfillmentSnapshot.round_ids`는 순서를 보존하는 참조 목록, `confirmations`는 JSON 객체다. A 재고 unknown/null과 0을 구분한다.
 - S1 JSON 접수는 기존 보드·로트·장착·이력 범위·입출고 5종만 허용한다. 신규 업무 타입은 이력 접수로 우회하지 않는다. A의 별도 수요 확인/창고/일정 테이블·산출 문서는 자동으로 승인된 공통 사실이 되지 않는다.
 - `ProductionObservation`의 good/defective 수량은 가상 입력의 누계 기록이다. 저장 승인은 실제 검사·불량 원인·안전 판정이나 생산/출하 실행 승인이 아니다. Shipment만으로 Installation을 생성하지 않는다.

@@ -241,7 +241,7 @@ def validate_graph(nodes):
     # Generic shapes/references/evidence above and the overlapping contract rules
     # below run once against the full graph; adapters must not split its index.
     if any(n.get('type') == 'ComponentStockSnapshot' for n in index.values()):
-        from .production_planning.schema import validate_node_rules
+        from .materials.schema import validate_node_rules
         for n in index.values():
             if n.get('type') == 'ComponentStockSnapshot':
                 validate_node_rules(n, index, identities, error, warnings)

@@ -1,5 +1,13 @@
 # PROJECT_STATUS
 
+## 2026-11-02 — A·B·C 동료 개발의 공통 기반 기준 연결
+
+PR #12 병합 main `73179a3`의 기존 공통 코드를 대조했다. 식별·근거·graph-0.3/데이터 버전·Host 신원·사람 승인·공통 도구·누적 한도·RDF/Neo4j·격리 파서는 기존 구현을 재사용한다. 새 엔진·공개 API·DB schema·권한·역할 동작은 만들거나 바꾸지 않았다. README에 A/B/C의 실제 담당 경로와 시작 명령, TOOLS에 기존 확정 계약과 미합의 경계, AGENT_RUNTIME에 A 호환/B typed·읽기/C schema-only의 현재 지원 차이를 연결했다. 기본 네 Agent와 A/B/C 업무 구분을 혼동하지 않도록 했다.
+
+기존 #6·#12의 1541개 CI 성공 근거는 같은 애플리케이션 코드에 유효하다. 이번 문서 영향은 링크·실제 경로·명령/계약 대조 및 독립 검토로 확인한다. 전체 회귀·유료 평가·승인 데모를 반복하지 않는다. 신규 typed 역할은 기존 `extension_agent --typed`의 model/history 흐름과 계약 시험을 재사용한다. 추가 링크·앵커 17개, 실제 모듈 경로, 두 CLI의 help/import, 독립 검토를 확인했다. 기존 typed model/history 예제를 동일 데이터 v3에서 실행해 runtime.ok=true·agent-result-1·근거 1/2건을 확인했고 snapshots/drafts/review_events 해시를 보존했다. 두 예제는 모델 대역이며 유료 호출 0회다. B macOS 전용 실행기 및 --pg-bin/새 output 경로 조건을 명시했다. 실행 근거는 Git 제외 artifacts/local/common-baseline-20261102/에 있다.
+
+남은 공동 결정은 B·C I02 생산 작업 참조, I04 보드별 재고/출하 소속·목록 완전성·유효 시점이다. 기존 검증 거부를 임의 해제하지 않았다. A→B→C 자동 업무 인계·C Agent/UI·#7·실제 인증·운영 복구는 별도 남은 범위다. 공통 담당 기준 문서의 정리를 해당 기능 완료로 계산하지 않는다.
+
 ## 2026-11-02 — PR/main CI 중복 실행 정리
 
 main `160b7e2`에서 별도 `codex/ci-pr-main-once` 브랜치로 분리했다. `.github/workflows/tests.yml`의 push 대상만 main으로 제한하고 기존 pull_request 이벤트를 유지한다. PR에는 전체 회귀·CQ·공통 도구 예제를 한 번 실행하며 main에서는 병합 결과에 같은 검사를 적용한다. PR 대상 브랜치 제한·경로 필터·테스트 skip은 추가하지 않았다. 같은 PR의 오래된 실행만 취소하며 main은 커밋별 concurrency group으로 분리해 연속 병합 검사가 서로 취소되지 않게 한다.

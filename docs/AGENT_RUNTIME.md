@@ -35,6 +35,16 @@ Quality는 빠진 조건을 질문하고 사용자가 명시한 보드·로트·
 
 별도 신규 Agent가 필요한 경우의 확장 접점은 `host.AgentRegistration`과 `examples/extension_agent.py`다. 시스템 지침·허용 도구를 호스트에서 등록하고 기존 ModelRuntime으로 실행한다. 사용자와 승인 권한은 IdentityProvider·CommonHost가 정하므로 확장 지침으로 바꾸지 않는다. 모델 대역 계약 검증과 해당 역할의 실제 모델 사례 평가는 구분한다.
 
+## A·B·C 업무 패키지와 공통 실행 경계
+
+A/B/C 업무 분담은 기본 네 역할의 이름을 바꾸거나 새 Supervisor 권한을 만드는 규칙이 아니다. 현재 Supervisor가 A/B/C 전체를 자동 인계한다고 가정하지 않는다. 기본 네 역할은 `ontologics/agents/`에, A는 `ontologics/production_planning/`, B는 `ontologics/order_fulfillment/`와 `examples/order_fulfillment/`, C의 현재 고유 schema는 `ontologics/claim_response/`에 있다.
+
+- **A:** `PlanningHost(CommonHost)`로 공통 신원·승인·budget을 재사용한다. 현행 `run_agent`와 고유 출력 계약을 공통 typed `AgentResult` 완료로 표현하지 않는다. 기존 기능의 연결을 유지하며 새 typed 역할은 아래 기존 확장 예제를 참고한다.
+- **B:** 확정 그래프 조회는 B Host/Service 어댑터, 미등록 입력의 task 실행은 `b_run tasks` → `b_task_workflow.py` → 공통 `CommonHost/AgentRegistration/run_task` 경로다. 두 경로의 결과·자료 상태를 구분한다. task의 input_revision은 승인된 데이터 버전이 아니며 미등록 입력 후보를 확정 사실로 승격하지 않는다. 폐기된 저장그래프 캠페인 `b_host_agent.py`와 `b_run free/live`를 신규 연결 예제로 사용하지 않는다.
+- **C:** 1차 6종의 검증·초안·승인·그래프 조회까지 공통 경로가 준비됐다. C 업무 Agent·사용자 화면은 아직 없으며 필요하지 않은 빈 Agent 폴더를 추가하지 않는다. 담당자는 [공통 기준](TOOLS.md#abc-공통-기반-기준)과 C 정책의 허용 데이터 안에서 고유 기능을 개발한다.
+
+업무 간 전달도 공통 식별자·정확한 조회/승인 버전·원본 근거·미확인·자료 상태를 유지해야 한다. 실제 자동 인계 API·보드별 재고/출하 연결을 이 문서로 새로 확정하지 않는다. 현재 가능한 공통 호출과 담당 경로·시험 명령은 [README](../README.md#abc-동료-개발의-공통-시작점)를 따른다.
+
 ## 확장 Agent의 수정 경계
 
 | 위치·책임 | 동료가 변경할 내용 | 공통으로 유지할 내용 |

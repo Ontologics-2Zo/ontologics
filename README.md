@@ -151,6 +151,21 @@ python3 -m unittest tests.test_host -v
 
 동료는 [host.py](ontologics/host.py)의 `CommonHost.request()`로 요청 신원을 한 번 고정하고 `RequestSession.agent('product'/'quality'/'knowledge'/'supervisor')` 또는 `run_agent()`를 사용한다. `review()`는 사람의 호스트 동작, `apply_approved()`는 서버 워크플로 동작이며 Agent에 노출하지 않는다. 신원 공급자는 [identity.py](ontologics/identity.py)의 `resolve(context)`·`lookup(subject)` 접점으로 교체한다. 개발 사용자 선택은 명시적 개발 HTTP 경로에만 있으며 운영 인증으로 사용하지 않는다. 호출 예제·권한·오류 경계는 [TOOLS](docs/TOOLS.md#개발용-사용자-호스트)를 따른다.
 
+## A·B·C 동료 개발의 공통 시작점
+
+현재 팀 기준은 PR #6·#11·#12가 반영된 main `73179a3`의 `graph-0.3`이다. 아래 A/B/C는 업무 패키지 구분이며 시간 조회 A/B나 기본 네 Agent(Supervisor·Product·Knowledge·Quality)와 다르다. 공통 담당자는 [TOOLS의 공통 기반 기준](docs/TOOLS.md#abc-공통-기반-기준)을 관리하고, 동료는 맡은 업무의 지침·입력 해석·처리 흐름·고유 검증·회귀 사례를 개발한다. 구체적인 사람별 담당자는 여기서 지정하지 않는다.
+
+| 담당 | 실제 개발 위치와 재사용 경로 | 현재 시작점·검사 |
+| --- | --- | --- |
+| 공통 | `model.py`·`domain_schema.py`·`tbox.py`, `contracts.py`, `host.py`·`identity.py`, `service.py`·`temporal.py`, `harness.py`·`runtime.py`·`paid_budget.py`, `graph_*.py`·`sandbox.py` | [공통 계약](docs/TOOLS.md), [실행 지침](docs/AGENT_RUNTIME.md). 도메인 변경은 `tests.test_domain_graph`, `tests.test_ab_graph_integration`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` 중 영향 범위 검사 |
+| A 생산계획 | [production_planning/](ontologics/production_planning/). `PlanningHost`는 공통 Host를 상속하며 기존 `run_agent` 호환 경로와 고유 결과 계약을 사용 | [A 흐름](docs/PRODUCTION_PLANNING_FLOW.md), `tests.production_planning.test_agent`, `tests.production_planning.test_contract_library` |
+| B 계약·납품 | [order_fulfillment/](ontologics/order_fulfillment/), [B task 예제](examples/order_fulfillment/b_task_workflow.py). 공통 Task/Result 연결과 확정 그래프 읽기 어댑터를 구별 | [B 실행 안내](docs/order_fulfillment/README.md), `python -m examples.order_fulfillment.b_run tasks --output /absolute/new/run`. 현행 실행기는 macOS `sandbox-exec` 전용이며 Windows/WSL 지원은 미검증이다. PostgreSQL/pgvector 실행 파일 위치가 기본값과 다르면 `--pg-bin`을 지정하고, 기존 부모 아래 새 출력 경로를 사용한다. 모델 대역이며 현행 공통 스키마는 루트 TOOLS의 graph-0.3이 기준이다(B 문서의 구 PR 기록과 구별). 옛 `free/live`·`b_host_agent` 저장그래프 실행 경로는 폐기됨 |
+| C 클레임 대응 | [claim_response/schema.py](ontologics/claim_response/schema.py). 현재 6종 schema·공통 저장/승인·RDF/Neo4j 연결이며 업무 Agent·화면은 미구현 | [C 허용 데이터](docs/claim_response/DATA_POLICY.md), `tests.claim_response.test_schema`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` |
+
+개발 순서는 **TOOLS의 식별·근거·버전·승인 경계 확인 → 담당 패키지와 실제 실행 경로 확인 → 기존 [typed 연결 예제](#동료의-확장-agent-연결)에서 고유 INPUT/OUTPUT·지침·흐름·검증기 참고 → 담당 기능 구현 → 변경 영향 검사**다. 새 Agent를 등록해야 할 때만 호스트 등록을 추가한다. 공통 모델/provider·도구·누적 한도·격리 파서는 재사용하며 별도 권한·예산·승인·확정 저장을 만들지 않는다.
+
+현재는 A→B→C 자동 업무 인계가 완성된 상태가 아니다. B의 미등록 입력 해석 결과나 A 계획 문서를 승인된 그래프 사실로 자동 등록하지 않는다. C의 생산 작업 ID·보드별 재고/출하 연결은 아래 공통 기준의 미합의 경계를 따른다. 개발 중에는 해당 역할·경계 검사만 실행하고 통합 마감의 전체 회귀는 위 CI 정책으로 확인한다.
+
 ## 실제 Agent 담당 폴더와 연결
 
 실제 네 Agent 구현은 `ontologics/agents/<역할>/`에 있다. 담당자는 해당 폴더의 `instructions.py`에서 지침, `workflow.py`에서 처리 순서, `schemas.py`에서 역할 payload, `agent.py`와 필요한 `validators.py`에서 결과 해석·검증을 수정한다. 공통 `RoleAgent`는 메시지 보존·필수 도구 호출 확인만 공유하고 역할의 해석은 각 구현에 위임한다. 모든 역할에 planner/critic 파일을 만들지 않았다.

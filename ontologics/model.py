@@ -5,8 +5,9 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
+from . import domain_schema
 
-SCHEMA_VERSION = 'graph-0.1'
+SCHEMA_VERSION = 'graph-0.2'
 ROOT = Path(__file__).resolve().parents[1]
 # Required fields and typed relationships. T-box is generated from these definitions.
 SCHEMA = {
@@ -22,21 +23,10 @@ SCHEMA = {
     'Installation': (['unit_id', 'lot_id', 'position', 'installed_at'], {'unit_id': 'ProductUnit', 'lot_id': 'ComponentLot'}),
     'HistoryCoverage': (['unit_id', 'start', 'end', 'complete'], {'unit_id': 'ProductUnit'}),
     'InventoryMovement': (['lot_id', 'quantity', 'occurred_at', 'movement'], {'lot_id': 'ComponentLot'}),
-        
-        # C 1st phase: claim intake, quality case, production-line trace and containment requests.
-    'ProductionLine': (['company', 'line_code', 'name'], {}),
-    'UnitProductionRecord': (['unit_id', 'production_line_id', 'produced_at'], {'unit_id': 'ProductUnit', 'production_line_id': 'ProductionLine'}),
-    'ClaimIntake': (['external_claim_id', 'customer_name', 'reported_at', 'reported_symptom', 'claimed_quantity', 'reported_serials', 'intake_state'], {}),
-    'QualityCase': (['intake_id', 'customer_name', 'reported_at', 'reported_symptom', 'unit_ids'], {'intake_id': 'ClaimIntake'}),
-    'QualityScope': (['case_id', 'production_line_id', 'as_of', 'unit_ids', 'scope_state'], {'case_id': 'QualityCase', 'production_line_id': 'ProductionLine'}),
-    'ContainmentRequest': (['case_id', 'scope_id', 'request_kind', 'prepared_at', 'document_ref'], {'case_id': 'QualityCase', 'scope_id': 'QualityScope'}),
 }
-
+SCHEMA.update(domain_schema.subset(domain_schema.SCHEMA, domain_schema.SCHEMA))
 REAL = {'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}
-SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'}
-# C 1st phase records are synthetic demonstration operations only.
-SYNTHETIC |= {'ProductionLine', 'UnitProductionRecord', 'ClaimIntake', 'QualityCase', 'QualityScope', 'ContainmentRequest'}
-
+SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'} | set(domain_schema.SCHEMA)
 COMMON_FIELDS = {'id', 'type', 'origin', 'evidence'}
 OPTIONAL_FIELDS = {
     'SourceDocument': {'kind', 'product', 'revision', 'variant', 'sheet_name', 'verification',
@@ -45,32 +35,16 @@ OPTIONAL_FIELDS = {
     'Configuration': {'identity_notes', 'population_notes'},
     'ComponentModel': {'package', 'identity_scope'},
     'Installation': {'removed_at', 'confirmed_until', 'conflict'},
-    'UnitProductionRecord': {'production_work_id'},
-    'ClaimIntake': {'reported_conditions', 'requested_action', 'delivery_reference'},
-    'QualityScope': {'start', 'end'},
-    'ContainmentRequest': {'production_line_id', 'draft_id', 'draft_version'},
 }
+OPTIONAL_FIELDS.update(domain_schema.subset(domain_schema.OPTIONAL_FIELDS, SCHEMA))
+OPTIONAL_REFERENCES = domain_schema.subset(domain_schema.OPTIONAL_REFERENCES, SCHEMA)
+LIST_REFERENCES = domain_schema.subset(domain_schema.LIST_REFERENCES, SCHEMA)
+JSON_FIELDS = {'ProductModel': {'specifications'}, **domain_schema.subset(domain_schema.JSON_FIELDS, SCHEMA)}
 # Only explicit contract fields are accepted: operational examples cannot grow
 # fault causes, inspection results or operating-time claims through free fields.
 ALLOWED_FIELDS = {kind: COMMON_FIELDS | set(required) | OPTIONAL_FIELDS.get(kind, set())
                   for kind, (required, _) in SCHEMA.items()}
 SPECIFICATION_FIELDS = {'scope', 'ethernet_interface', 'pcb_dimensions_mm', 'features', 'evidence'}
-# C 1st-phase contract details that the generic single-reference/text checks cannot express.
-# reported_symptom is the customer's reported wording only; it never asserts a confirmed fault.
-# Tests, dispositions and reproduction quantities (C 2nd phase) are intentionally not accepted.
-C_TYPES = ('ProductionLine', 'UnitProductionRecord', 'ClaimIntake', 'QualityCase', 'QualityScope', 'ContainmentRequest')
-C_LIST_REFS = {'QualityCase': {'unit_ids': 'ProductUnit'}, 'QualityScope': {'unit_ids': 'ProductUnit'}}
-# ProductionWork is a B proposal and not yet a defined type, so production_work_id cannot resolve yet.
-C_OPTIONAL_REFS = {'UnitProductionRecord': {'production_work_id': 'ProductionWork'},
-                   'ContainmentRequest': {'production_line_id': 'ProductionLine'}}
-C_ENUMS = {'ClaimIntake': {'intake_state': ('needs_review', 'confirmed', 'rejected')},
-           'QualityScope': {'scope_state': ('hold', 'candidate')},
-           'ContainmentRequest': {'request_kind': ('production_stop', 'shipment_hold')}}
-C_TIMES = {'UnitProductionRecord': ('produced_at',), 'ClaimIntake': ('reported_at',), 'QualityCase': ('reported_at',),
-           'QualityScope': ('as_of', 'start', 'end'), 'ContainmentRequest': ('prepared_at',)}
-# One production record per board in this MVP; reproduction/rework records are not modelled yet.
-C_IDENTITIES = {'ProductionLine': ('company', 'line_code'), 'ClaimIntake': ('customer_name', 'external_claim_id'),
-                'UnitProductionRecord': ('unit_id',)}
 
 
 def _text(value):
@@ -81,10 +55,6 @@ def _positive_number(value):
     # Avoid converting arbitrarily large JSON integers to floats.
     return (isinstance(value, int) and not isinstance(value, bool) and value > 0) or (
         isinstance(value, float) and math.isfinite(value) and value > 0)
-
-
-def _positive_int(value):
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _string_list(value, *, allow_empty=False):
@@ -104,64 +74,6 @@ def instant(value):
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError('Timezone offset is required')
     return parsed
-
-
-def _validate_c_nodes(index, error, warnings):
-    """C 1st-phase checks: list/optional references, values, times, counts, identities and paths."""
-    identities = {}
-    for nid, n in index.items():
-        kind = n.get('type')
-        if kind not in C_TYPES:
-            continue
-        for key, target_type in C_LIST_REFS.get(kind, {}).items():
-            ids = n.get(key)
-            if not _string_list(ids):
-                error(nid, 'INVALID_REFERENCE', key + ' must be a nonempty list of unique IDs'); continue
-            for ref in ids:
-                if index.get(ref, {}).get('type') != target_type:
-                    error(nid, 'INVALID_REFERENCE', f'{key} -> {target_type}: {ref}')
-        for key, target_type in C_OPTIONAL_REFS.get(kind, {}).items():
-            if key in n:
-                target = index.get(n[key]) if isinstance(n[key], str) else None
-                if target is None or target.get('type') != target_type:
-                    error(nid, 'INVALID_REFERENCE', key + ' -> ' + target_type)
-        for key, allowed in C_ENUMS.get(kind, {}).items():
-            if n.get(key) not in allowed:
-                error(nid, 'INVALID_ENUM', key + ' must be one of ' + ', '.join(allowed))
-        times = {}
-        for key in C_TIMES.get(kind, ()):
-            if key in n:
-                try: times[key] = instant(n[key])
-                except (ValueError, TypeError) as exc: error(nid, 'INVALID_TIME', f'{key}: {exc}')
-        if 'start' in times and 'end' in times and times['start'] >= times['end']:
-            error(nid, 'INVALID_INTERVAL', 'start must precede end')
-        if kind == 'ClaimIntake':
-            serials = n.get('reported_serials')
-            if not _string_list(serials):
-                error(nid, 'INVALID_FIELD_TYPE', 'reported_serials must be unique nonempty text values'); serials = None
-            qty = n.get('claimed_quantity')
-            if not _positive_int(qty):
-                error(nid, 'INVALID_QUANTITY', 'claimed_quantity must be a positive integer piece count')
-            elif serials is not None and qty != len(serials):
-                # Customer counts and serial lists can disagree; a person resolves it, the graph keeps both.
-                warnings.append({'node_id': nid, 'code': 'CLAIM_QUANTITY_SERIAL_MISMATCH'})
-        if kind == 'QualityCase':
-            intake = index.get(n.get('intake_id')) if isinstance(n.get('intake_id'), str) else None
-            if intake and intake.get('type') == 'ClaimIntake' and intake.get('intake_state') != 'confirmed':
-                error(nid, 'INTAKE_NOT_CONFIRMED', 'Quality cases start only from a human-confirmed claim intake')
-        if kind == 'ContainmentRequest':
-            if 'draft_version' in n and not _positive_int(n['draft_version']):
-                error(nid, 'INVALID_FIELD_TYPE', 'draft_version must be a positive integer')
-            if n.get('request_kind') == 'production_stop' and 'production_line_id' not in n:
-                error(nid, 'PRODUCTION_LINE_REQUIRED', 'Production stop requests name the production line')
-            scope = index.get(n.get('scope_id')) if isinstance(n.get('scope_id'), str) else None
-            if scope and scope.get('type') == 'QualityScope' and scope.get('case_id') != n.get('case_id'):
-                error(nid, 'CASE_MISMATCH', 'case_id must match the case of scope_id')
-        keys = C_IDENTITIES.get(kind)
-        if keys and all(_text(n.get(key)) for key in keys):
-            identity = (kind, *(n[key] for key in keys))
-            if identity in identities: error(nid, 'DUPLICATE_IDENTITY', identities[identity])
-            identities[identity] = nid
 
 def validate_graph(nodes):
     errors, warnings = [], []
@@ -198,16 +110,24 @@ def validate_graph(nodes):
         # Required and optional scalar fields are strings unless explicitly typed
         # below. Checking shape before lookup/set operations makes validation total
         # for malformed JSON values instead of raising TypeError midway through it.
-        structured = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications'}
-        # C 1st phase numeric/list fields; their shapes are checked in _validate_c_nodes().
-        structured |= {'claimed_quantity', 'reported_serials', 'unit_ids', 'draft_version'}
+        structured = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications'} | domain_schema.STRUCTURED_FIELDS.get(kind, set())
         for key in ALLOWED_FIELDS[kind] - structured:
             if key in n and not (key in ('removed_at', 'confirmed_until') and n[key] is None) and not _text(n[key]):
                 error(nid, 'INVALID_FIELD_TYPE', key + ' must be nonempty text')
         for key, target_type in refs.items():
+            if key in OPTIONAL_REFERENCES.get(kind, set()) and key not in n:
+                continue
             target = index.get(n.get(key)) if isinstance(n.get(key), str) else None
             if target is None or target.get('type') != target_type:
                 error(nid, 'INVALID_REFERENCE', key + ' -> ' + target_type)
+        for key, target_type in LIST_REFERENCES.get(kind, {}).items():
+            values = n.get(key)
+            if not _string_list(values):
+                error(nid, 'INVALID_REFERENCE', key + ' must be a unique nonempty reference list')
+            else:
+                for value in values:
+                    if index.get(value, {}).get('type') != target_type:
+                        error(nid, 'INVALID_REFERENCE', key + ' -> ' + target_type)
         evidence = n.get('evidence', [])
         if not _string_list(evidence, allow_empty=True):
             error(nid, 'INVALID_EVIDENCE', 'evidence must be a list of unique nonempty IDs'); evidence = []
@@ -317,7 +237,23 @@ def validate_graph(nodes):
                     error(nid, 'INVALID_QUANTITY', 'Positive movement quantity required')
                 if n.get('movement') not in ('receipt', 'issue'):
                     error(nid, 'INVALID_MOVEMENT', 'receipt or issue; issue never implies installation')
-    _validate_c_nodes(index, error, warnings)
+    # Load role-owned business rules after the shared contract is initialized.
+    # Generic shapes/references/evidence above and the overlapping contract rules
+    # below run once against the full graph; adapters must not split its index.
+    if any(n.get('type') == 'ComponentStockSnapshot' for n in index.values()):
+        from .production_planning.schema import validate_node_rules
+        for n in index.values():
+            if n.get('type') == 'ComponentStockSnapshot':
+                validate_node_rules(n, index, identities, error, warnings)
+    if any(isinstance(n.get('type'), str) and n['type'] in domain_schema.B_TYPES for n in index.values()):
+        from .order_fulfillment.schema_validation import validate_contracts
+        from .order_fulfillment.fulfillment_validation import validate_fulfillment
+        from .order_fulfillment.production_validation import validate_production_observations
+        from .order_fulfillment.delivery_validation import validate_delivery_conditions
+        validate_contracts(index, error)
+        validate_fulfillment(index, error)
+        validate_production_observations(index, error)
+        validate_delivery_conditions(index, error)
     # Two populated BOM lines cannot assign different parts to one physical position.
     positions = {}
     for n in index.values():
@@ -334,16 +270,18 @@ def graph_jsonld(nodes):
     context = {'@vocab': 'urn:ontologics:', 'id': '@id', 'type': '@type', 'evidence': {'@type': '@id'}}
     for _, refs in SCHEMA.values():
         for key in refs: context[key] = {'@type': '@id'}
-    for refs in (*C_LIST_REFS.values(), *C_OPTIONAL_REFS.values()):
+    for refs in LIST_REFERENCES.values():
         for key in refs: context[key] = {'@type': '@id'}
+    for fields in JSON_FIELDS.values():
+        for key in fields: context[key] = {'@type': '@json'}
     # IDs use stable URNs rather than accidental JSON-LD prefixes.
     graph = []
     for n in nodes:
         row = dict(n, id='urn:ontologics:entity:' + n['id'])
-        for key in SCHEMA[n['type']][1]: row[key] = 'urn:ontologics:entity:' + n[key]
-        for key in C_LIST_REFS.get(n['type'], {}): row[key] = ['urn:ontologics:entity:' + ref for ref in n[key]]
-        for key in C_OPTIONAL_REFS.get(n['type'], {}):
+        for key in SCHEMA[n['type']][1]:
             if key in n: row[key] = 'urn:ontologics:entity:' + n[key]
+        for key in LIST_REFERENCES.get(n['type'], {}):
+            row[key] = ['urn:ontologics:entity:' + value for value in n[key]]
         row['evidence'] = ['urn:ontologics:entity:' + e for e in n.get('evidence', [])]
         graph.append(row)
     return {'@context': context, '@graph': graph}
@@ -356,10 +294,8 @@ def tbox_turtle():
     refs = {}
     for kind, (_, relations) in SCHEMA.items():
         for prop, target in relations.items(): refs.setdefault(prop, set()).add(target)
-    # C list/optional references; targets that are not defined classes yet (B proposals) are skipped.
-    for relations in (*C_LIST_REFS.values(), *C_OPTIONAL_REFS.values()):
-        for prop, target in relations.items():
-            if target in SCHEMA: refs.setdefault(prop, set()).add(target)
+    for relations in LIST_REFERENCES.values():
+        for prop, target in relations.items(): refs.setdefault(prop, set()).add(target)
     for prop, targets in refs.items():
         if len(targets) == 1:
             lines.append(f'o:{prop} a owl:ObjectProperty ; rdfs:range o:{next(iter(targets))} .')

@@ -23,9 +23,9 @@
 | Quality | 요청에서 A/B·대상 집합 해석 → investigate → 누락·충돌 설명 → Product에 필요한 보완 정리 → 승인 후 compare_investigation | 조사 조건·전후 변화·미확인·추가 근거를 설명. 부정확한 안전·원인 판정 금지 |
 | Supervisor | 요청을 S1/S2와 현재 상태에 연결 → 필요한 역할·도구 선택 → 진행 결과 종합 | 완료·보완 필요·검토 대기·실패 중 하나를 설명하고 불필요한 모델 반복 종료 |
 
-기본 네 역할과 화면·공통 기반은 프로젝트 담당자가 개발하며, 동료는 이후 확장 Agent를 연결한다. 역할별 별도 모델이나 별도 서버가 필요하다는 뜻은 아니다. 확장 Agent도 공통 ID·시간·검증·승인 코드를 재구현하지 않는다. 평가 사례는 `tests/`와 `ontologics/demo.py`의 기대 결과를 재사용한다. 현재 계약에 없는 규격 필드·변형·품목 병합이 필요하면 근거와 영향이 있는 공통 변경으로 제안한다.
+공통 담당자는 Harness·신원·권한·도구·승인·도메인 계약을 관리한다. 동료는 기존 Supervisor·Product·Knowledge·Quality 중 맡은 역할의 고유 지침·스키마·처리 흐름·검증을 해당 역할 폴더에서 개발·개선한다. 별도 신규 Agent 추가는 필수 요구가 아니며 필요성이 확인된 경우 확장 접점을 사용한다. 역할별 별도 모델이나 서버를 요구하지 않고 공통 ID·시간·검증·승인 코드를 재구현하지 않는다. 평가 사례는 `tests/`와 `ontologics/demo.py`의 기대 결과를 재사용한다. 현재 계약에 없는 규격 필드·변형·품목 병합이 필요하면 근거와 영향이 있는 공통 변경으로 제안한다.
 
-실모델 시작점은 [examples/llm_agents.py](../examples/llm_agents.py)의 Product/Quality 프롬프트·task builder·평가 함수다. `python3 -m examples.llm_agents --role product` 또는 `--role quality`로 실행한다. 설정과 기대 결과는 [README](../README.md#실제-llm-실행과-동료-개발-시작), 도구 입출력과 근거 연결은 [TOOLS](TOOLS.md#실모델-예제의-입출력)를 따른다. 이 최소 예제의 성공은 위 역할 전체나 S1/S2의 모든 대화·추출 업무가 구현됐다는 뜻이 아니다.
+실모델 CLI 실행 진입점은 [examples/llm_agents.py](../examples/llm_agents.py)다. 실제 예제 지침·task builder·검증 정의는 [product/sample_cli.py](../ontologics/agents/product/sample_cli.py)와 [quality/sample_cli.py](../ontologics/agents/quality/sample_cli.py)에 있으며 진입점이 이를 재사용한다. `python3 -m examples.llm_agents --role product` 또는 `--role quality`로 실행한다. 설정과 기대 결과는 [README](../README.md#실제-llm-실행과-동료-개발-시작), 도구 입출력과 근거 연결은 [TOOLS](TOOLS.md#실모델-예제의-입출력)를 따른다. 이 최소 예제의 성공은 위 역할 전체나 S1/S2의 모든 대화·추출 업무가 구현됐다는 뜻이 아니다.
 
 실제 네 역할의 고유 schema와 응답 변환은 `ontologics/agents/{supervisor,product,knowledge,quality}/`의 `schemas.py`·`agent.py`와 필요한 `validators.py`에 있다. `registry.py`가 고정 역할과 실제 구현을 연결하며 `builtin_agents.py`는 이전 import 호환 export다. 공통 `run_task`가 도구·근거·오류 계약을 적용하고 기존 HTTP 반환에는 `agent_result`를 추가한다. 자유 설명은 `meaning_validation=free_text_unverified`, 접수/초안은 미반영 후보로 구분한다.
 
@@ -33,7 +33,7 @@
 
 Quality는 빠진 조건을 질문하고 사용자가 명시한 보드·로트·ISO 시각만 조건 제안으로 반환한다. 사용자 확인 전 조사로 계산하지 않는다. Knowledge의 semantic_search는 승인 버전·실제/가상 구분·색인 범위의 근거 후보다. 의미 검색에서 모델은 정수 data_version·answerable·반환 후보 내 selected_evidence_ids만 제출하고 서버가 원본 필드로 표시한다. source.version의 Git 커밋을 서비스 데이터 버전으로 바꾸거나 BOM populated를 임의로 미확인 처리하지 않는다. 근거 없음·부분 색인을 부재·안전·품목 동일성으로 설명하지 않는다. Supervisor는 명확한 등록·장착 조사 표현의 공통 역할 제한을 지켜 한 요청을 한 전문 역할로 인계하고 그 역할의 결과·질문·실패 상태를 유지한다. 임의 다중 업무 자동 실행이나 지속 대화 저장의 구현을 뜻하지 않는다.
 
-동료의 확장 접점은 `host.AgentRegistration`과 `examples/extension_agent.py`다. 시스템 지침·허용 도구를 호스트에서 등록하고 기존 ModelRuntime으로 실행한다. 사용자와 승인 권한은 IdentityProvider·CommonHost가 정하므로 확장 지침으로 바꾸지 않는다. 모델 대역 계약 검증과 해당 역할의 실제 모델 사례 평가는 구분한다.
+별도 신규 Agent가 필요한 경우의 확장 접점은 `host.AgentRegistration`과 `examples/extension_agent.py`다. 시스템 지침·허용 도구를 호스트에서 등록하고 기존 ModelRuntime으로 실행한다. 사용자와 승인 권한은 IdentityProvider·CommonHost가 정하므로 확장 지침으로 바꾸지 않는다. 모델 대역 계약 검증과 해당 역할의 실제 모델 사례 평가는 구분한다.
 
 ## 확장 Agent의 수정 경계
 

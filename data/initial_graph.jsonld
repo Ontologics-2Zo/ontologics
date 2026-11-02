@@ -27,22 +27,10 @@
     "lot_id": {
       "@type": "@id"
     },
-    "production_line_id": {
+    "contract_id": {
       "@type": "@id"
     },
-    "intake_id": {
-      "@type": "@id"
-    },
-    "case_id": {
-      "@type": "@id"
-    },
-    "scope_id": {
-      "@type": "@id"
-    },
-    "unit_ids": {
-      "@type": "@id"
-    },
-    "production_work_id": {
+    "contract_item_id": {
       "@type": "@id"
     }
   },

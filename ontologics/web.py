@@ -113,9 +113,11 @@ def http_status(result):
     if code in {'NOT_FOUND', 'DRAFT_NOT_FOUND', 'VERSION_NOT_FOUND', 'ROUTE_NOT_FOUND'}:
         return 404
     if code in {'STALE_BASE', 'SUPERSEDED_DRAFT', 'DRAFT_CLOSED', 'INVALID_STATE',
-                'APPROVAL_REQUIRED', 'NO_CHANGES', 'IDEMPOTENCY_CONFLICT', 'STALE_RECEIPT'}:
+                'APPROVAL_REQUIRED', 'NO_CHANGES', 'IDEMPOTENCY_CONFLICT', 'STALE_RECEIPT', 'GRAPH_VERSION_CONFLICT'}:
         return 409
     if code in {'STORAGE_ERROR', 'IDENTITY_PROVIDER_UNAVAILABLE', 'AI_NOT_CONFIGURED', 'AI_BUSY', 'EMBEDDINGS_NOT_CONFIGURED', 'EVIDENCE_INDEX_NOT_READY', 'SOURCE_STORAGE_ERROR', 'DEVELOPMENT_SESSION_LIMIT'}:
+        return 503
+    if code in {'GRAPH_NOT_READY', 'GRAPH_UNAVAILABLE', 'GRAPH_INTEGRITY', 'GRAPH_VALIDATION_FAILED'}:
         return 503
     if code in {'COST_POLICY_REQUIRED', 'COST_CONFIG_INVALID', 'MODEL_PRICE_REQUIRED', 'COST_RESERVATION_CONFIG_INVALID'}:
         return 503
@@ -180,10 +182,11 @@ class WebApplication:
                 exact_keys(body, ('receipt_id', 'left_id'))
                 return request.source_compare(**body)
             if path == '/api/context':
-                result = request.call('lookup', {'kind': 'ProductUnit'})
+                result = request.context_status()
                 if result['ok']:
                     result['data'] = {'identity': request.context, 'csrf_token': self.csrf_token,
                         'database_schema': self.host._database.schema,
+                        'graph_backend': self.host._graph_settings.backend if self.host._graph_settings else 'postgres',
                         'default_queries': example_queries(), 'http_contract': HTTP_CONTRACT,
                         'model': {'configured': self.provider_factory is not None, 'model': self.model,
                                   'cost_policy_configured': self.host._cost_policy is not None},
@@ -473,6 +476,9 @@ def main():
     parser.add_argument('--env-file', help='Database settings file; never commit secrets')
     parser.add_argument('--model-env-file', help='Model settings file; defaults to .env/.env.local then process env')
     parser.add_argument('--sandbox-socket', help='Trusted local parser controller socket; configured failures never fall back to host parsing')
+    parser.add_argument('--graph-backend', choices=('postgres', 'rdf', 'neo4j'),
+                        help='Trusted read projection; approval authority always remains PostgreSQL')
+    parser.add_argument('--graph-env-file', help='Neo4j connection settings; local secrets only')
     parser.add_argument('--user', choices=('alice', 'bob', 'reader'), help='Initial development user for a new browser; selector can switch presets')
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--reserve-l1', action='store_true', help='Seed only L configuration; register L1 through S2')
@@ -500,8 +506,12 @@ def main():
         if args.sandbox_socket:
             from .sandbox import SandboxClient
             sandbox_client = SandboxClient(args.sandbox_socket)
+        from .graph_views import GraphSettings
+        graph_settings = GraphSettings.from_environment(
+            env_file=args.graph_env_file or args.env_file, backend=args.graph_backend)
         app = WebApplication(CommonHost(identities, database, embedding_provider=embeddings,
-                                       sandbox_client=sandbox_client, cost_policy=cost_policy), DevelopmentContext('dev-' + args.user),
+                                       sandbox_client=sandbox_client, cost_policy=cost_policy,
+                                       graph_settings=graph_settings), DevelopmentContext('dev-' + args.user),
                              provider_factory=factory, model=model)
         # Fail startup clearly for missing DB, without exposing its URL.
         context = app.dispatch('/api/context')
@@ -511,6 +521,7 @@ def main():
         server = WebServer(app, args.port)
         print(canonical({'url': server.origin, 'identity': 'dev-' + args.user, 'schema': database.schema,
                          'mode': 'development', 'model_configured': factory is not None,
+                         'graph_backend': graph_settings.backend,
                          'cost_policy_configured': cost_policy is not None}), flush=True)
         try:
             server.serve_forever()
@@ -523,7 +534,7 @@ def main():
         print(canonical({'ok': False, 'error': exc.code,
                          'message': '공통 실행 정책 설정을 확인하세요. 비밀값은 로그에 기록하지 않습니다.'}))
         return 1
-    except (DatabaseError, IdentityError, ProviderError, OSError):
+    except (DatabaseError, IdentityError, ProviderError, OSError, ValueError):
         print(canonical({'ok': False, 'error': '시작하지 못했습니다. DB·모델 설정·포트·파일 접근을 확인하세요.'}))
         return 1
 

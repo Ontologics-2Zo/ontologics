@@ -39,17 +39,22 @@ class Service:
     Principals are supplied by the host's authentication adapter. Demo identities do
     not constitute production authentication. AgentGateway exposes no review/apply.
     """
-    def __init__(self, database=None, *, principals, schema=None):
+    def __init__(self, database=None, *, principals, schema=None, graph_settings=None):
+        from .graph_views import GraphSettings, GraphViews
         self.principals = json.loads(json.dumps(principals))
         settings = (database if isinstance(database, DatabaseSettings) else
                     DatabaseSettings(database, schema or 'ontologics') if database is not None else
                     DatabaseSettings.from_environment(schema=schema))
         self.schema = settings.schema
         self.db = connect(settings)
+        self.graph_settings = graph_settings or GraphSettings()
+        self.graph_views = GraphViews(self, self.graph_settings)
 
     @staticmethod
     def now(): return datetime.now(timezone.utc).isoformat()
-    def close(self): self.db.close()
+    def close(self):
+        try: self.graph_views.close()
+        finally: self.db.close()
     def _version(self): return self.db.execute('SELECT MAX(version) FROM snapshots').fetchone()['max']
     def _nodes(self, version=None):
         version = self._version() if version is None else version
@@ -58,6 +63,10 @@ class Service:
         row = self.db.execute('SELECT nodes FROM snapshots WHERE version=%s', (version,)).fetchone()
         if row is None: raise DomainError('VERSION_NOT_FOUND', 'Unknown data version')
         return row['nodes']
+    def _read_nodes(self, version=None, *, temporal=False):
+        if self.graph_settings.backend == 'postgres':
+            return self._nodes(version)
+        return self.graph_views.query(version, 'temporal_nodes' if temporal else 'nodes')
     def _require(self, actor, permission):
         principal = self.principals.get(actor, {})
         roles = principal.get('roles', [])
@@ -164,14 +173,20 @@ class Service:
 
     def lookup(self, actor, *, node_id=None, kind=None, version=None):
         def act():
-            nodes = self._nodes(version)
-            found = [n for n in nodes if (node_id is None or n['id'] == node_id) and (kind is None or n['type'] == kind)]
+            if self.graph_settings.backend == 'postgres':
+                nodes = self._nodes(version)
+                found = [n for n in nodes if (node_id is None or n['id'] == node_id) and (kind is None or n['type'] == kind)]
+            else:
+                found = self.graph_views.query(version, 'lookup', node_id=node_id, kind=kind)
             if node_id and not found: raise DomainError('NOT_FOUND', 'Unknown node ID')
             return self._envelope(ok=True, data=found, version=version)
         return self._run(actor, 'lookup', {'node_id': node_id, 'kind': kind, 'version': version}, act)
 
     def configuration(self, actor, configuration_id, *, version=None):
         def act():
+            if self.graph_settings.backend != 'postgres':
+                return self._envelope(ok=True,
+                    data=self.graph_views.query(version, 'configuration', configuration_id), version=version)
             nodes = self._nodes(version); idx = {n['id']: n for n in nodes}
             config = idx.get(configuration_id)
             if not config or config['type'] != 'Configuration': raise DomainError('NOT_FOUND', 'Unknown configuration')
@@ -193,7 +208,7 @@ class Service:
                 if not report['valid']: raise DomainError('VALIDATION_FAILED', 'Invalid draft cannot be compared', report)
             else:
                 if draft_version is not None: raise DomainError('INVALID_INPUT', 'draft_id is required for draft comparison')
-                nodes = self._nodes(version)
+                nodes = self._read_nodes(version)
             changes = configuration_changes(nodes, left_id, right_id)
             return self._envelope(ok=True, data={'left': left_id, 'right': right_id, 'changes': changes,
                 'is_preview': draft_id is not None, 'draft_id': draft_id, 'draft_version': draft_version,
@@ -204,6 +219,9 @@ class Service:
 
     def component_usage(self, actor, component_id, *, version=None):
         def act():
+            if self.graph_settings.backend != 'postgres':
+                return self._envelope(ok=True,
+                    data=self.graph_views.query(version, 'component_usage', component_id), version=version)
             nodes = self._nodes(version)
             if not any(n['id'] == component_id and n['type'] == 'ComponentModel' for n in nodes):
                 raise DomainError('NOT_FOUND', 'Unknown source-scoped component')
@@ -215,7 +233,7 @@ class Service:
     def investigate(self, actor, query, *, version=None):
         from .temporal import investigate
         def act():
-            nodes = self._nodes(version)
+            nodes = self._read_nodes(version, temporal=True)
             def group(kind): return [n for n in nodes if n['type'] == kind]
             result = investigate(query, group('ProductUnit'), group('ComponentLot'), group('Installation'), group('HistoryCoverage'))
             return self._envelope(ok=True, data=result, version=version)
@@ -225,7 +243,7 @@ class Service:
         from .temporal import investigate
         def act():
             def evaluate(version):
-                nodes = self._nodes(version)
+                nodes = self._read_nodes(version, temporal=True)
                 return investigate(query, *[[n for n in nodes if n['type'] == k] for k in ('ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage')])
             before, after = evaluate(before_version), evaluate(after_version)
             return self._envelope(ok=True, data={'query': query, 'before_version': before_version,
@@ -234,7 +252,7 @@ class Service:
         return self._run(actor, 'compare_investigation', {'query': query, 'before': before_version, 'after': after_version}, act)
 
     def export_graph(self, actor, *, version=None):
-        return self._run(actor, 'export_graph', {'version': version}, lambda: self._envelope(ok=True, data=graph_jsonld(self._nodes(version)), version=version))
+        return self._run(actor, 'export_graph', {'version': version}, lambda: self._envelope(ok=True, data=graph_jsonld(self._read_nodes(version)), version=version))
 
     def _candidate(self, operations, base_version):
         if not isinstance(operations, list) or not operations or len(operations) > 2000:
@@ -390,7 +408,7 @@ class Service:
             if not isinstance(query, str) or not 1 <= len(query.strip()) <= 200 or origin not in {'all', 'real', 'synthetic'}:
                 raise DomainError('INVALID_INPUT', '검색어와 실제/가상 자료 구분을 확인하세요.')
             needle = query.strip().casefold()
-            nodes = [n for n in self._nodes(version) if (origin == 'all' or n['origin'] == origin)
+            nodes = [n for n in self._read_nodes(version) if (origin == 'all' or n['origin'] == origin)
                      and needle in canonical(n).casefold()]
             return self._envelope(ok=True, data={'matches': nodes[:60], 'total': len(nodes), 'limit': 60,
                 'query': query.strip(), 'origin': origin, 'mode': 'lexical', 'candidate_only': True}, version=version)

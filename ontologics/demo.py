@@ -6,8 +6,29 @@ import uuid
 from . import __version__
 from pathlib import Path
 from .ingest import build_catalog
-from .model import ROOT, tbox_turtle
+from .model import ROOT
+from .tbox import build_tbox as tbox_turtle
 from .service import Service, AgentGateway
+
+
+def export_artifacts(graph, root=ROOT):
+    """Regenerate the handoff without dropping previously reviewed ID contexts.
+
+    This file export does not extend the Service.export_graph runtime contract.
+    Definition/context conflicts are checked before either file is written.
+    """
+    target = root / 'data/initial_graph.jsonld'
+    context = json.loads(target.read_text())['@context'] if target.exists() else {}
+    if not isinstance(context, dict):
+        raise ValueError('Handoff context must be a local dictionary')
+    for key, value in graph['@context'].items():
+        if key in context and context[key] != value:
+            raise ValueError('Conflicting handoff JSON-LD context: ' + key)
+        context[key] = value
+    content = tbox_turtle()
+    exported = json.dumps(dict(graph, **{'@context': context}), ensure_ascii=False, indent=2) + '\n'
+    (root / 'ontology/tbox.ttl').write_text(content, encoding='utf-8')
+    target.write_text(exported, encoding='utf-8')
 
 PRINCIPALS = {
     'seed-admin': {'kind': 'human', 'roles': ['read', 'seed', 'audit']},
@@ -127,8 +148,7 @@ def main():
     output = Path(args.output); output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n')
     if args.export_graph:
-        (ROOT / 'ontology/tbox.ttl').write_text(tbox_turtle())
-        (ROOT / 'data/initial_graph.jsonld').write_text(json.dumps(graph, ensure_ascii=False, indent=2) + '\n')
+        export_artifacts(graph)
     print(json.dumps({'schema': summary['database_schema'], 'output': str(output), 'versions': [summary[k] for k in ('seed_version', 'registered_version', 'supplemented_version')],
         'U104': {phase: {m: summary[phase][m]['data']['results'][0]['status'] for m in ('A', 'B')} for phase in ('before', 'after')},
         'changed_positions': [c['position'] for c in summary['configuration_differences']['changes']]}, ensure_ascii=False, indent=2))

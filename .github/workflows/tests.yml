@@ -1,5 +1,12 @@
 name: PostgreSQL common contract
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches: [main]
+# Keep the latest run per PR; retain each distinct main commit's verification.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:

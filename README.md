@@ -32,6 +32,8 @@ python -m examples.cq_check
 python -m examples.agent_tools
 ```
 
+[공통 CI](.github/workflows/tests.yml)는 PR 생성·재개·새 커밋에서 전체 회귀·CQ·도구 예제를 한 번 실행하고, main push에서는 병합된 결과를 같은 검사로 확인한다. PR 대상 브랜치는 제한하지 않으며, feature branch push·tag push의 중복 실행은 만들지 않는다. 같은 PR의 새 실행은 이전 실행을 취소하고, 서로 다른 PR과 main 커밋별 검사는 분리한다. 검사 단계·서비스·권한·실패 판정은 유지한다.
+
 테스트·데모·CQ 확인에는 모델 키가 필요 없다. PostgreSQL 테스트는 `test_<UUID>` 스키마만 만들고 정리한다. 필요하면 `TEST_DATABASE_URL`로 별도 시험 DB를 지정한다. 전체 회귀에는 실제 PostgreSQL과 아래 Neo4j 시험 설정이 필요하며, 미설정 상태를 성공으로 건너뛰지 않는다. 기본 PostgreSQL 데모·웹은 Neo4j 없이 실행할 수 있다.
 
 데모는 **실제 ODS 파싱 → L1 등록 초안 → 개발용 사람 역할 검토 → 승인 반영 → 조사 → 보완 요청·수정 → 재승인 → 같은 조건 재조회**를 실행한다. 승인은 시험용 신원으로 실행되며 실제 운영 승인 이력이 아니다.

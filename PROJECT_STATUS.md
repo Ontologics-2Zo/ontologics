@@ -1,5 +1,17 @@
 # PROJECT_STATUS
 
+## 2026-11-02 — PR #6 C 1차 RDF·SHACL·Neo4j 공통 통합
+
+기준 main `13b9af6`과 동료의 #6 최종 수정 `601413d`를 보존하고 공통 표현·검증을 보완했다. C 6종을 포함한 총 29종의 공개 그래프 계약은 `graph-0.3`이다. C 업무 규칙, S1/S2·A/B 계산, 신원·승인·확정 저장 코드는 바꾸지 않았다. #7의 시험 결과·재생산 타입은 포함하지 않는다.
+
+**보완:** `claimed_quantity`와 선택 `draft_version`을 SHACL의 1 이상 정수로, `reported_serials`를 다중 문자열로 검사한다. 참조 목록·문자열 목록·배열 순서·근거·실제/가상 구분을 보존한다. C 6종의 Neo4j label/caption과 Browser 색상을 추가했고 T-box를 재생성했다. 인계 JSON-LD는 공통 생성기의 context만 갱신했으며 기존 @graph 사실은 동일하다. Neo4j 직렬화 형식은 `neo4j-projection-2`를 유지한다.
+
+**실행 근거:** C 전용 실제 RDF 검사 3개와 실제 PG/RDF/Neo4j 승인·호환 통합 2개를 추가했다. C 초안의 자기 승인·구 버전·미승인 반영 차단, Bob의 정확 버전 승인, 멱등 반영, 3 backend 전체 내용·근거 일치, 표시 metadata, C/A/B 혼합 상태의 U104 보완 후 A 제외/B 포함·U106 미확인을 확인했다. 이전 graph-0.2 승인 초안의 operations/hash/author/review_history와 이전 namespace를 보존한 채 새 namespace로 재투영하고 정확 승인 반영하는 경로도 통과했다. 기존 읽기 체크포인트의 스키마 불일치 차단을 유지한다.
+
+전체 회귀는 1541개 실행(skip 0)으로 1540개 통과, 기존 A 오류 응답 검사의 금지어 `private`가 검토 사본 경로 `/private/tmp`에 걸린 1개 실패가 있었다. 동일 코드·동일 검사를 일반 작업 경로에서 재실행해 통과했다. 검사 삭제·skip·완화나 A 코드 수정은 하지 않았고 단일 로컬 전체 실행 성공으로 표현하지 않는다. 공통 demo CLI도 v1→v2→v3, U104 A 제외/B 포함을 확인했다. T-box·diff·문서 파일 링크 검사와 독립 변경 검토를 통과했다. 최종 원격 전체 회귀·CQ·도구 예제 결과는 #6 최신 커밋의 CI Checks를 따른다. 실제 모델 호출은 0회다.
+
+**보존/다음:** 기존 사용자 DB와 실행 중인 웹 namespace는 바꾸지 않았다. 새 스키마로 서비스 전환 시 기존 namespace를 덮어쓰지 말고 새 namespace에 필요한 승인 버전을 명시적으로 동기화한 뒤 status·조회 일치를 확인한다. DB 초안·승인 원장은 재작성하지 않는다. 시험은 UUID schema와 전용 namespace에서 진행하고 해당 시험 자원만 정리한다. C 화면·Supervisor 연결·실제 중단 실행·#7·실제 인증·운영 복구·AWS는 이번 완료 범위가 아니다. PR 병합은 사용자가 판단한다.
+
 ## 2026-11-01 — PR #10 이후 A/B 공통 저장·RDF·Neo4j 통합
 
 기준 main은 PR #10 병합 커밋 `7d2db577d0b6bc99f435f53205ab5a1ba5f49980`이다. `codex/ab-domain-graph`에서 진행하며 기존 `codex/neo4j-auto-display`의 미커밋 파일·사용자 DB는 보존했다. main에 없던 로컬 RDF/Neo4j 구현을 필요한 선행 변경으로 재사용하고 자동 종류 표시를 함께 연결했다. 아래 과거의 미등록·그래프 미공유 기록은 당시 상태이며 현재 지원 범위는 이 절을 기준으로 한다.

@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from . import domain_schema
 
-SCHEMA_VERSION = 'graph-0.2'
+SCHEMA_VERSION = 'graph-0.3'
 ROOT = Path(__file__).resolve().parents[1]
 # Required fields and typed relationships. T-box is generated from these definitions.
 SCHEMA = {

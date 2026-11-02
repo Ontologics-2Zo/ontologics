@@ -4,7 +4,7 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 
 ## 그래프·저장·시간
 
-[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. 기존 12종과 [domain_schema.py](../ontologics/domain_schema.py)의 A 생산계획/B 계약·납품 신규 11종을 `graph-0.2`로 관리한다. 역할 schema 모듈은 같은 정의의 호환 사본을 제공한다. [공유 생성기](../ontologics/tbox.py)가 [T-box](../ontology/tbox.ttl)를 생성하며 [graph_rdf.py](../ontologics/graph_rdf.py)는 같은 메타데이터로 RDF·SHACL·SPARQL을 연결한다. [catalog.json](../data/catalog.json)은 실제 원본 정규화, [initial_graph.jsonld](../data/initial_graph.jsonld)는 기존 S1/S2 인계용 A-box(데모 버전 3)이며 신규 업무 사실을 자동 추가하지 않는다. PostgreSQL `snapshots.nodes` JSONB가 승인 버전의 정본이고 RDF/Neo4j는 그 조회 표현이다.
+[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. 기존 12종과 [domain_schema.py](../ontologics/domain_schema.py)의 A 생산계획/B 계약·납품 신규 11종과 C 클레임 1차 6종(총 29종)을 `graph-0.3`으로 관리한다. 역할 schema 모듈은 같은 정의의 호환 사본을 제공한다. [공유 생성기](../ontologics/tbox.py)가 [T-box](../ontology/tbox.ttl)를 생성하며 [graph_rdf.py](../ontologics/graph_rdf.py)는 같은 메타데이터로 RDF·SHACL·SPARQL을 연결한다. [catalog.json](../data/catalog.json)은 실제 원본 정규화, [initial_graph.jsonld](../data/initial_graph.jsonld)는 기존 S1/S2 인계용 A-box(데모 버전 3)이며 신규 업무 사실을 자동 추가하지 않는다. PostgreSQL `snapshots.nodes` JSONB가 승인 버전의 정본이고 RDF/Neo4j는 그 조회 표현이다.
 
 모든 노드는 `id`, `type`, `origin`, `evidence`를 가진다. `origin`은 `real` 또는 `synthetic`이고 `evidence`는 Evidence ID 목록이다. SourceDocument/Evidence 외의 사실은 근거가 필수다.
 
@@ -57,6 +57,8 @@ C 관계·숫자·목록 필드의 의미 (RDF·SHACL·Neo4j 매핑 참고):
 
 C 추적 경로: `ClaimIntake.reported_serials → ProductUnit.serial`(사람 확인 후 `QualityCase.unit_ids`), `UnitProductionRecord.unit_id → ProductUnit`, `UnitProductionRecord.production_line_id → ProductionLine`, `QualityScope.case_id → QualityCase`, `ContainmentRequest.scope_id → QualityScope`.
 
+C 1차 6종은 공통 승인·정확 버전의 RDF/SPARQL/Neo4j 조회를 지원한다. `claimed_quantity`와 선택 `draft_version`은 SHACL에서 1 이상의 정수, `reported_serials`는 비어 있지 않은 문자열의 다중 값으로 검사한다. 목록 순서는 정본 payload로 보존하고 `unit_ids` 관계 목록과 구분한다. 관계·근거·실제/가상 경계와 C 업무 검증을 모두 적용하며 Browser에는 29종 label·이름·색상을 제공한다. 현재 업무 스키마는 `graph-0.3`, Neo4j 저장 형식은 기존 `neo4j-projection-2`다. 구 버전 namespace를 재사용하지 말고 새 namespace에 필요한 승인 버전을 동기화해야 한다. 기존 초안의 operations/hash/승인 기록을 보존하고, 구 스키마 읽기 체크포인트는 재개를 거부한다. 검증은 `tests.test_c_graph_rdf`, `tests.test_c_graph_integration`이며 #7의 시험·재생산 타입은 포함하지 않는다.
+
 시간은 `2026-09-20T10:00:00+09:00`처럼 명시적 시각·UTC offset이 필요하다. 날짜만 있는 원본은 이 필드에 임의로 넣지 않고 보완 대상으로 둔다. 구간은 `[start,end)`다. `confirmed_until`은 그 시각 이전까지 장착을 확인했다는 유한한 근거이며 제거 시각이 아니다. 조회의 이력 완전성은 사건 목록만 있는 상태를 뜻하지 않는다.
 
 대표 CQ의 실제 조회 경로는 다음과 같다. 화살표는 필드 참조 방향이며 역방향은 노드 검색이다. [SERVICE_SPEC의 CQ 표](SERVICE_SPEC.md#cq와-원본검증-연결)에서 원본·미확인·업무 기대 결과를 함께 확인한다.
@@ -79,7 +81,7 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 
 `model.SCHEMA`가 공통 기준이다. A/B 메타데이터는 중립 `domain_schema.py`에서 한 번 정의하며 역할별 schema의 선언을 대조한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 생성기 호출 자체로 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
 
-공통 실행 버전은 `graph-0.2`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
+공통 실행 버전은 `graph-0.3`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
 
 검사: `python -m unittest tests.test_tbox tests.production_planning.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
 
@@ -93,13 +95,13 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 - S1 JSON 접수는 기존 보드·로트·장착·이력 범위·입출고 5종만 허용한다. 신규 업무 타입은 이력 접수로 우회하지 않는다. A의 별도 수요 확인/창고/일정 테이블·산출 문서는 자동으로 승인된 공통 사실이 되지 않는다.
 - `ProductionObservation`의 good/defective 수량은 가상 입력의 누계 기록이다. 저장 승인은 실제 검사·불량 원인·안전 판정이나 생산/출하 실행 승인이 아니다. Shipment만으로 Installation을 생성하지 않는다.
 - Neo4j 매핑은 `neo4j-projection-2`다. 이전 namespace의 투영은 재사용하거나 덮어쓰지 않는다. **새 `ONTOLOGICS_GRAPH_NAMESPACE`**를 정하고 기존 승인 버전을 `graph_projection sync`로 재투영한 뒤 `status`로 확인한다. PostgreSQL 초안·승인 원장은 재작성하지 않는다. 준비 전 조회는 실패하며 과거 버전/다른 backend로 대체하지 않는다.
-- 생성되는 모든 노드에 타입 label·`browser_caption`을 붙인다. Browser에 [neo4j-browser.grass](../ontology/neo4j-browser.grass)를 한 번 적용하면 이후 승인·동기화된 23종도 같은 스타일을 사용한다. Browser 스타일은 DB 권한·데이터 의미를 바꾸지 않는다.
+- 생성되는 모든 노드에 타입 label·`browser_caption`을 붙인다. Browser에 [neo4j-browser.grass](../ontology/neo4j-browser.grass)를 한 번 적용하면 이후 승인·동기화된 29종도 같은 스타일을 사용한다. Browser 스타일은 DB 권한·데이터 의미를 바꾸지 않는다.
 
 실행: `python -m examples.ab_graph_check --schema test_ab_team_001`. 아래 그래프 환경변수와 **비어 있는 시험 schema**를 사용한다. 기존 출처 있는 fixture를 재사용하며 저장·승인·읽기 3 backend와 S1 전후 결과를 검사한다. 실제 사람 인증·실모델 품질 평가가 아니다.
 
 ### PostgreSQL 저장과 pgvector 검색
 
-현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.2`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
+현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.3`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
 
 `database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors와 Neo4j 공개 버전 메타데이터 graph_projections다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
 
@@ -172,7 +174,7 @@ AWS 완료 검증은 실제 환경의 S1/S2 전체 업무, 인증·권한, 영�
   "data": {},
   "evidence": ["evidence:..."],
   "data_version": 3,
-  "schema_version": "graph-0.2",
+  "schema_version": "graph-0.3",
   "rule_version": "temporal-0.1",
   "contract_version": "0.3.0",
   "warnings": [],
@@ -236,7 +238,7 @@ B query: `{mode:'B', lot_id, unit_ids:[...], start, end, period_meaning:'install
 | 책임·코드 | 추가 계약 | 유지되는 경계 |
 | --- | --- | --- |
 | `harness.py` / `ExecutionBudget` | 요청과 하위 Agent의 모델/도구/repair 한도·deadline·비용 원장 공유, 호스트 취소. 다른 새 예산으로 교체 불가 | provider timeout을 잔여 시간으로 제한. 호출 중 강제 중단·계정 전체 과금 통제는 아님 |
-| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. ontology `graph-0.2`, context 형식 `context-1` 구분 |
+| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. 기존 DTO의 ontology_version 표식은 `graph-0.1`, context 형식은 `context-1`을 유지. 실제 조회 응답·읽기 체크포인트의 그래프 계약 `graph-0.3`과 구분 |
 | `build_context_messages` | 동일 고정 조건 + 비신뢰 자료. baseline은 전체 자료, structured는 명시된 Evidence ID만 선별하고 생략 ID 표시 | 새로운 사실 요약·검색 정답 발견 기능 아님. 원자료는 호출자가 보존 |
 | `contracts.py` | `AgentSpec`·`AgentTask`·`AgentResult`, 얕은 `PayloadSchema`와 역할 검증기를 합성. 신원/승인 필드는 계약 권한으로 사용하지 않음 | Task `agent-task-1`·Result `agent-result-1`·역할 버전과 확정/초안 버전은 별개. DB migration/OWL 상속 기능 아님 |
 | `host.py` / `run_task` | 서버에 등록한 Spec·구현의 messages·Task·provider를 공통 실행기로 전달. `agents/registry.py`에 등록한 역할 폴더의 실제 구현으로 네 화면 역할도 같은 경로 사용. 결과 data_version이 있으면 고정 정수 버전과 대조. 실제 도구 결과의 Evidence만 확정 원본 정보로 연결하고 역할 결과 검증기 실행 | 기존 `AgentRegistration`/`run_agent` 호환. 웹 응답의 `data.agent_result`에 공통 DTO 추가; 자유 설명은 `free_text_unverified`로 구분 |

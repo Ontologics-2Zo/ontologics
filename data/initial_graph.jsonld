@@ -32,6 +32,45 @@
     },
     "contract_item_id": {
       "@type": "@id"
+    },
+    "snapshot_id": {
+      "@type": "@id"
+    },
+    "production_work_id": {
+      "@type": "@id"
+    },
+    "delivery_round_id": {
+      "@type": "@id"
+    },
+    "stock_id": {
+      "@type": "@id"
+    },
+    "allocation_id": {
+      "@type": "@id"
+    },
+    "production_line_id": {
+      "@type": "@id"
+    },
+    "intake_id": {
+      "@type": "@id"
+    },
+    "case_id": {
+      "@type": "@id"
+    },
+    "scope_id": {
+      "@type": "@id"
+    },
+    "round_ids": {
+      "@type": "@id"
+    },
+    "unit_ids": {
+      "@type": "@id"
+    },
+    "specifications": {
+      "@type": "@json"
+    },
+    "confirmations": {
+      "@type": "@json"
     }
   },
   "@graph": [

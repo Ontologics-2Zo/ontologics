@@ -37,7 +37,7 @@ class SharedDomainGraphTests(unittest.TestCase):
                 observed.update(n['type'] for n in nodes)
         self.assertEqual(set(domain_schema.SCHEMA), observed & set(domain_schema.SCHEMA))
         self.assertEqual(len(domain_schema.SCHEMA), 11)
-        self.assertEqual(model.SCHEMA_VERSION, 'graph-0.2')
+        self.assertEqual(model.SCHEMA_VERSION, 'graph-0.3')
 
     def test_shared_contract_rules_run_once_and_reject_bool_quantities(self):
         nodes = self.mixed([])

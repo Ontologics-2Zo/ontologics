@@ -27,6 +27,8 @@ TEMPORAL_TYPES = ('ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverag
 # RDF datatype/cardinality checks mirror the common validators. They do not
 # replace cross-record business rules or infer quantities from missing facts.
 INTEGER_MINIMUMS = {
+    'ClaimIntake': {'claimed_quantity': 1},
+    'ContainmentRequest': {'draft_version': 1},
     'ContractItem': {'quantity': 1}, 'DeliveryRound': {'quantity': 1},
     'FinishedGoodsStock': {'quantity': 0},
     'ProductionWork': {'target_quantity': 1, 'completed_quantity': 0},
@@ -36,6 +38,7 @@ INTEGER_MINIMUMS = {
     'ComponentStockSnapshot': {field: 0 for field in (
         'on_hand_quantity', 'reserved_quantity', 'held_quantity', 'available_quantity')},
 }
+TEXT_LIST_FIELDS = {'BOMItem': {'positions'}, 'ClaimIntake': {'reported_serials'}}
 
 
 def _check_budget():
@@ -187,7 +190,8 @@ def shacl_shapes():
                 prop(shape, O[field], minimum=minimum, datatype=RDF.JSON)
             else:
                 p = prop(shape, O[field], minimum=minimum,
-                         maximum=None if field == 'positions' else 1, datatype=XSD.string)
+                         maximum=None if field in TEXT_LIST_FIELDS.get(kind, ()) else 1,
+                         datatype=XSD.string)
                 shapes.add((p, SH.minLength, Literal(1)))
                 if field == 'population':
                     shapes.add((p, SH['in'], values([Literal(x) for x in ('populated', 'not_populated', 'unknown')])))

@@ -218,4 +218,5 @@ class OntologyExtensionTests(unittest.TestCase):
         self.assertEqual(model.SYNTHETIC - original_types, {
             'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
             'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
-            'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition'} | set(domain_schema.C_SCHEMA))
+            'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition',
+            'AdditionalMaterialReviewRequest'} | set(domain_schema.C_SCHEMA))

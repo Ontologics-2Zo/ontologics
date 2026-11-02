@@ -12,6 +12,14 @@ from ontologics.order_fulfillment.production import load_demo_production
 from tests.materials.test_ontology_extension import catalog, planning_nodes
 
 
+LEGACY_AB_TYPES = {
+    'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot',
+    'FulfillmentSnapshot', 'FinishedGoodsStock', 'ProductionWork',
+    'ProductionObservation', 'Allocation', 'Shipment', 'DeliveryCondition',
+}
+REQUEST_TYPE = 'AdditionalMaterialReviewRequest'
+
+
 class SharedDomainGraphTests(unittest.TestCase):
     def mixed(self, extra=None):
         return catalog() + planning_nodes() + load_demo_contract() + (
@@ -35,9 +43,10 @@ class SharedDomainGraphTests(unittest.TestCase):
                 self.assertTrue(report['valid'], report)
                 self.assertEqual(nodes, original)
                 observed.update(n['type'] for n in nodes)
-        self.assertEqual(set(domain_schema.SCHEMA), observed & set(domain_schema.SCHEMA))
-        self.assertEqual(len(domain_schema.SCHEMA), 11)
-        self.assertEqual(model.SCHEMA_VERSION, 'graph-0.3')
+        # Historical fixture coverage stays fixed; the new request has its own fixture.
+        self.assertEqual(LEGACY_AB_TYPES, observed & set(domain_schema.SCHEMA))
+        self.assertEqual(set(domain_schema.SCHEMA), LEGACY_AB_TYPES | {REQUEST_TYPE})
+        self.assertEqual(model.SCHEMA_VERSION, 'graph-0.4')
 
     def test_shared_contract_rules_run_once_and_reject_bool_quantities(self):
         nodes = self.mixed([])
@@ -114,7 +123,7 @@ class SharedDomainGraphTests(unittest.TestCase):
                 'from ontologics import model; '
                 'from ontologics.materials import schema as a; '
                 'from ontologics.order_fulfillment import schema as b; '
-                'assert len(model.SCHEMA)==29; '  # 12 core + 11 A/B + 6 C
+                'assert len(model.SCHEMA)==30; '  # 12 core + 12 A/B + 6 C
                 'a.SCHEMA["Contract"][0].append("private"); '
                 'assert "private" not in model.SCHEMA["Contract"][0]; '
                 'assert "private" not in b.SCHEMA["Contract"][0]', module],

@@ -48,6 +48,18 @@ class _RequestGateway(AgentGateway):
 class RequestSession(CommonRequestSession):
     """Select B gateways while inheriting all person-bound host operations."""
 
+    def material_request_draft(self, request, *, expected_data_version,
+                               expected_request_revision, request_key,
+                               supporting_nodes=None, draft_id=None, expected_version=None):
+        """User-bound host action, intentionally absent from model tools."""
+        self._budget.consume('tool')
+        result = self._service.prepare_material_request(self._identity.actor, request,
+            expected_data_version=expected_data_version, expected_request_revision=expected_request_revision,
+            request_key=request_key, supporting_nodes=supporting_nodes,
+            draft_id=draft_id, expected_version=expected_version)
+        self._budget.check()
+        return result
+
     def call(self, tool, arguments):
         self._budget.consume('tool')
         result = AgentGateway(self._service, self._identity.actor).call(tool, arguments)

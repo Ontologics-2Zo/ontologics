@@ -1,6 +1,6 @@
 """Order fulfillment tools layered on the common service boundary.
 
-Only B reads and their public tool allowlist live here. Database transactions,
+Only B reads, a trusted request draft adapter and the public tool allowlist live here. Database transactions,
 identity checks, immutable drafts, review/apply and auditing remain inherited.
 """
 from ..service import AgentGateway as CommonAgentGateway, DomainError, Service as CommonService
@@ -12,7 +12,30 @@ B_TOOLS = frozenset({'lookup_many', 'delivery_round', 'fulfillment_status',
 
 
 class Service(CommonService):
-    """Add B queries while retaining the common permission/audit transaction."""
+    """Add B operations while retaining the common permission/audit transaction."""
+
+    def prepare_material_request(self, actor, request, *, supporting_nodes=None,
+                                 expected_data_version, expected_request_revision,
+                                 request_key, draft_id=None, expected_version=None):
+        """Trusted host entry point; prepare only, never review or apply."""
+        from .material_request import request_operations
+
+        def act():
+            if type(expected_data_version) is not int or expected_data_version < 0:
+                raise DomainError('INVALID_VERSION', 'Expected data version must be a nonnegative integer')
+            base = self._version()
+            if base != expected_data_version:
+                raise DomainError('STALE_BASE', 'Approved data changed; recheck references before submitting')
+            if (draft_id is None) != (expected_version is None):
+                raise DomainError('INVALID_INPUT', 'Draft revision needs both draft_id and expected_version')
+            operations = request_operations(request, supporting_nodes, self._nodes(base),
+                base_version=base, expected_request_revision=expected_request_revision)
+            return self._save_draft(actor, operations, draft_id, expected_version)
+
+        return self._run(actor, 'prepare_material_request', dict(request=request,
+            supporting_nodes=supporting_nodes, expected_data_version=expected_data_version,
+            expected_request_revision=expected_request_revision, draft_id=draft_id,
+            expected_version=expected_version), act, permission='draft', request_key=request_key)
 
     def lookup_many(self, actor, node_ids, kind, *, version=None):
         """Read one complete, bounded ID batch from one explicit confirmed version."""

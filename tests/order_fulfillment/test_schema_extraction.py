@@ -27,10 +27,16 @@ legacy = legacy_model()
 
 ITEM = 'contract-item:demo:B-01:1'
 ROUND = 'delivery-round:demo:B-01:1'
-B_TYPES = {
+LEGACY_B_TYPES = {
     'Contract', 'ContractItem', 'DeliveryRound', 'FulfillmentSnapshot',
     'FinishedGoodsStock', 'ProductionWork', 'ProductionObservation',
     'Allocation', 'Shipment', 'DeliveryCondition',
+}
+REQUEST_TYPE = 'AdditionalMaterialReviewRequest'
+CURRENT_B_TYPES = LEGACY_B_TYPES | {REQUEST_TYPE}
+REQUEST_REFERENCES = {
+    'configuration_id': 'Configuration', 'baseline_plan_evidence_id': 'Evidence',
+    'contract_item_id': 'ContractItem', 'delivery_round_id': 'DeliveryRound',
 }
 
 
@@ -114,7 +120,7 @@ class BSchemaReferenceTests(unittest.TestCase):
         self.assertIs(schema.SCHEMA, intake.B_SCHEMA)
         self.assertEqual([data], [json.loads(message['content']) for message in messages
                                  if message['role'] == 'user'])
-        self.assertFalse(B_TYPES & {node['type'] for node in data['catalog_nodes']})
+        self.assertFalse(CURRENT_B_TYPES & {node['type'] for node in data['catalog_nodes']})
         self.assertNotIn('extraction', data)
         self.assertNotIn('draft_id', data)
         self.assertEqual((), task.context.evidence_ids)
@@ -133,21 +139,21 @@ class LookupSchemaCompositionTests(unittest.TestCase):
         combined = schema.lookup_schema()
         expected = copy.deepcopy(model.SCHEMA)
         for kind, definition in legacy.SCHEMA.items():
-            if kind in B_TYPES:
+            if kind in LEGACY_B_TYPES:
                 expected.setdefault(kind, definition)
         self.assertEqual(expected, combined)
         self.assertEqual(list(expected), list(combined))
         self.assertEqual(combined, schema.LOOKUP_SCHEMA)
-        self.assertEqual(B_TYPES, set(schema.SCHEMA))
+        self.assertEqual(CURRENT_B_TYPES, set(schema.SCHEMA))
         self.assertIsNot(combined, model.SCHEMA)
         self.assertIsNot(combined, schema.LOOKUP_SCHEMA)
 
     def test_common_only_and_explicit_empty_inputs_do_not_depend_on_legacy_b_types(self):
-        common_only = {k: copy.deepcopy(v) for k, v in model.SCHEMA.items() if k not in B_TYPES}
+        common_only = {k: copy.deepcopy(v) for k, v in model.SCHEMA.items() if k not in CURRENT_B_TYPES}
         common_only['FutureCommonType'] = (['name'], {})
         before = copy.deepcopy(common_only)
         combined = schema.lookup_schema(common_only)
-        self.assertEqual(set(common_only) | B_TYPES, set(combined))
+        self.assertEqual(set(common_only) | CURRENT_B_TYPES, set(combined))
         for kind, definition in common_only.items():
             self.assertEqual(definition, combined[kind])
         self.assertEqual(before, common_only)
@@ -195,7 +201,7 @@ class SchemaExtractionTests(unittest.TestCase):
     def assert_reference_parity(self, nodes):
         """Compare B references separately from required-field/scalar checks."""
         before = copy.deepcopy(nodes)
-        b_ids = {node['id'] for node in nodes if node['type'] in B_TYPES}
+        b_ids = {node['id'] for node in nodes if node['type'] in LEGACY_B_TYPES}
         expected = sorted((e for e in legacy.validate_graph(nodes)['errors']
                            if e['code'] == 'INVALID_REFERENCE' and e['node_id'] in b_ids),
                           key=model.canonical)
@@ -204,20 +210,31 @@ class SchemaExtractionTests(unittest.TestCase):
         self.assertEqual(before, nodes, 'Reference validation must leave the full index unchanged')
         return actual
 
-    def test_only_the_ten_b_types_are_extracted_with_unchanged_fields(self):
-        self.assertEqual(B_TYPES, set(schema.SCHEMA))
-        for kind in B_TYPES:
+    def test_legacy_ten_b_types_keep_fields_and_new_request_is_additive(self):
+        self.assertEqual(CURRENT_B_TYPES, set(schema.SCHEMA))
+        for kind in LEGACY_B_TYPES:
             with self.subTest(kind=kind):
                 self.assertEqual(legacy.SCHEMA[kind], schema.SCHEMA[kind])
                 self.assertEqual(legacy.ALLOWED_FIELDS[kind], schema.ALLOWED_FIELDS[kind])
-        self.assertEqual(B_TYPES, schema.SYNTHETIC)
+        self.assertEqual(CURRENT_B_TYPES, schema.SYNTHETIC)
+        self.assertEqual([kind for kind in legacy.SCHEMA if kind in LEGACY_B_TYPES],
+                         [kind for kind in schema.SCHEMA if kind in LEGACY_B_TYPES])
+        self.assertEqual(REQUEST_REFERENCES, schema.SCHEMA[REQUEST_TYPE][1])
+        self.assertNotIn(REQUEST_TYPE, legacy.SCHEMA)
         self.assertEqual('graph-0.5', schema.EXTRACTED_GRAPH_VERSION)
 
     def test_optional_and_list_relationships_match_legacy_definitions(self):
-        self.assertEqual(legacy.OPTIONAL_REFERENCES, schema.OPTIONAL_REFERENCES)
+        self.assertEqual(legacy.OPTIONAL_REFERENCES,
+                         {k: v for k, v in schema.OPTIONAL_REFERENCES.items() if k in LEGACY_B_TYPES})
+        self.assertEqual(set(REQUEST_REFERENCES) - {'configuration_id'},
+                         schema.OPTIONAL_REFERENCES[REQUEST_TYPE])
         self.assertEqual(legacy.LIST_REFERENCES, schema.LIST_REFERENCES)
-        self.assertEqual({k: v for k, v in legacy.OPTIONAL_FIELDS.items() if k in B_TYPES},
-                         schema.OPTIONAL_FIELDS)
+        self.assertEqual({k: v for k, v in legacy.OPTIONAL_FIELDS.items() if k in LEGACY_B_TYPES},
+                         {k: v for k, v in schema.OPTIONAL_FIELDS.items() if k in LEGACY_B_TYPES})
+        self.assertEqual({'baseline_plan_evidence_id', 'contract_item_id', 'delivery_round_id',
+                          'need_basis', 'need_date', 'need_at', 'destination', 'conditions_note',
+                          'supplementation_reason', 'recipient_role'}, schema.OPTIONAL_FIELDS[REQUEST_TYPE])
+        self.assertNotIn('recipient_role', schema.SCHEMA[REQUEST_TYPE][0])
 
     def test_structured_field_additions_are_complete(self):
         tree = ast.parse(legacy_source())
@@ -225,7 +242,8 @@ class SchemaExtractionTests(unittest.TestCase):
                           if isinstance(node, ast.Assign)
                           and any(isinstance(t, ast.Name) and t.id == 'structured' for t in node.targets))
         common = {'evidence', 'quantity', 'positions', 'complete', 'conflict', 'specifications'}
-        self.assertEqual(structured - common, schema.STRUCTURED_FIELDS)
+        self.assertEqual((structured - common) | {'quantity', 'request_revision', 'reference_data_version'},
+                         schema.STRUCTURED_FIELDS)
 
     def test_imports_and_mutable_definitions_do_not_change_common_globals(self):
         names = ('SCHEMA', 'SCHEMA_VERSION', 'SYNTHETIC', 'OPTIONAL_FIELDS',
@@ -317,14 +335,18 @@ class SchemaExtractionTests(unittest.TestCase):
             exported = legacy.graph_jsonld(nodes)
             expected = {row['id']: row for row in exported['@graph']}
             for node in nodes:
-                if node['type'] in B_TYPES:
+                if node['type'] in LEGACY_B_TYPES:
                     seen.add(node['type'])
                     row = schema_export.jsonld_node(node)
                     self.assertEqual(expected[row['id']], row)
             for key, value in schema_export.jsonld_context().items():
-                self.assertEqual(exported['@context'][key], value)
+                if key in exported['@context']:
+                    self.assertEqual(exported['@context'][key], value)
+                else:
+                    self.assertIn(key, REQUEST_REFERENCES)
+                    self.assertEqual({'@type': '@id'}, value)
             self.assertEqual(before, nodes)
-        self.assertEqual(B_TYPES, seen)
+        self.assertEqual(LEGACY_B_TYPES, seen)
         with self.assertRaises(ValueError):
             schema_export.jsonld_node(self.base[0])
 
@@ -365,7 +387,7 @@ class SchemaExtractionTests(unittest.TestCase):
         for variant in self.variants:
             for original in variant:
                 kind = original['type']
-                if kind not in B_TYPES:
+                if kind not in LEGACY_B_TYPES:
                     continue
                 for field, target in schema.SCHEMA[kind][1].items():
                     if field in schema.OPTIONAL_REFERENCES.get(kind, set()) or (kind, field) in covered:
@@ -380,7 +402,7 @@ class SchemaExtractionTests(unittest.TestCase):
                             errors = self.assert_reference_parity(nodes)
                             self.assertIn(dict(node_id=original['id'], code='INVALID_REFERENCE',
                                                detail=field + ' -> ' + target), errors)
-        expected = {(kind, field) for kind, (_, refs) in schema.SCHEMA.items() for field in refs
+        expected = {(kind, field) for kind, (_, refs) in schema.SCHEMA.items() if kind in LEGACY_B_TYPES for field in refs
                     if field not in schema.OPTIONAL_REFERENCES.get(kind, set())}
         self.assertEqual(expected, covered)
 
@@ -422,8 +444,13 @@ class SchemaExtractionTests(unittest.TestCase):
     def test_tbox_fragment_preserves_b_terms_without_replacing_common_ontology(self):
         terms = schema_export.tbox_terms().splitlines()
         self.assertEqual(len(terms), len(set(terms)))
-        self.assertTrue(set(terms).issubset(set(legacy.tbox_turtle().splitlines())))
-        classes = {f'o:{kind} a owl:Class .' for kind in B_TYPES}
+        legacy_terms = set(legacy.tbox_turtle().splitlines())
+        historical_subjects = {'o:' + kind for kind in LEGACY_B_TYPES}
+        historical_subjects.update('o:' + field for kind in LEGACY_B_TYPES
+                                   for field in legacy.SCHEMA[kind][1])
+        historical_subjects.update('o:' + field for fields in legacy.LIST_REFERENCES.values() for field in fields)
+        self.assertTrue({line for line in terms if line.split()[0] in historical_subjects} <= legacy_terms)
+        classes = {f'o:{kind} a owl:Class .' for kind in CURRENT_B_TYPES}
         self.assertEqual(classes, {line for line in terms if ' a owl:Class ' in line})
         for context_key in schema_export.jsonld_context():
             self.assertTrue(any(line.startswith(f'o:{context_key} a owl:ObjectProperty ;') for line in terms))

@@ -256,7 +256,8 @@ class StorageBoundaryTests(unittest.TestCase):
             self.assertEqual(set(b_nodes), unknown)
             seen.update(b_nodes.values())
             self.assertEqual(before, nodes)
-        self.assertEqual(set(schema.SCHEMA), seen)
+        self.assertEqual(set(schema.SCHEMA) - {'AdditionalMaterialReviewRequest'}, seen)
+        self.assertEqual(10, len(seen))
 
     def test_b_domain_success_is_not_full_graph_validation(self):
         # Contract has no B-only business rule; structural/source checks are absent.
@@ -292,7 +293,8 @@ class StorageBoundaryTests(unittest.TestCase):
         model = self.main_model
         before = copy.deepcopy(model['SCHEMA'])
         combined = schema.lookup_schema(model['SCHEMA'])
-        self.assertEqual(22, len(combined))
+        self.assertEqual(23, len(combined))  # 12 pinned core + 10 legacy B + 1 B request
+        self.assertIn('AdditionalMaterialReviewRequest', combined)
         # Current JSON-LD uses the registered common schema. The pinned old
         # model remains an independent historical rejection oracle.
         with patch.object(schema_export, '_common_tbox_turtle', model['tbox_turtle']):

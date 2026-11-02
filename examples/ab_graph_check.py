@@ -1,4 +1,4 @@
-"""Approved A/B types through the common host and all three read backends.
+"""Original eleven A/B fixture types through the host and three read backends.
 
 Public originals and existing synthetic fixtures only; no external model calls.
 Requires an empty, explicitly named test_ PostgreSQL schema and a test namespace.
@@ -39,6 +39,9 @@ def verify(database, settings):
     identities = DevelopmentIdentityProvider(USERS, enabled=True)
     host = CommonHost(identities, database, graph_settings=settings)
     base, added = candidates()
+    # This historical fixture predates additional material requests. Preserve its
+    # coverage without claiming newly registered types have been approved here.
+    fixture_types = {node['type'] for node in added} & set(BUSINESS_SCHEMA)
     checks = {}
     with ExitStack() as stack:
         audit = stack.enter_context(_service(database))
@@ -79,7 +82,7 @@ def verify(database, settings):
             results['forecast'] = comparable(must(reader.delivery_forecast('fixture', ROUND, AS_OF, version=2)))
             if backend == 'postgres': expected = results
             else: checks[backend + '_same_nodes_relations_and_business_results'] = results == expected
-        checks['all_11_types_present'] = all(expected[k]['data'] for k in BUSINESS_SCHEMA)
+        checks['all_11_types_present'] = len(fixture_types) == 11 and all(expected[k]['data'] for k in fixture_types)
         checks['old_core_snapshot_unchanged'] = digest(audit._nodes(1)) == before_hash
         # A/B business records must not alter existing temporal A/B semantics.
         with host.request(DevelopmentContext('dev-alice')) as request:
@@ -97,7 +100,7 @@ def verify(database, settings):
             checks['U104_' + mode] = rows[0]['status'] == ('excluded' if mode == 'A' else 'included')
             checks['U106_' + mode] = rows[2]['status'] == 'needs_confirmation'
         return {'passed': all(checks.values()), 'checks': checks, 'schema_version': SCHEMA_VERSION,
-                'data_versions': [1, 2, 3], 'business_types': sorted(BUSINESS_SCHEMA),
+                'data_versions': [1, 2, 3], 'business_types': sorted(fixture_types),
                 'database_schema': database.schema, 'origin': 'public originals + synthetic fixtures',
                 'model_calls': 0}
 

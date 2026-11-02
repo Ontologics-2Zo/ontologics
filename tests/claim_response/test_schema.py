@@ -103,8 +103,8 @@ class CPhase1ValidationTests(unittest.TestCase):
         self.assertEqual({'SourceDocument', 'Evidence', 'ProductModel', 'ProductRevision', 'Configuration',
                           'ComponentModel', 'BOMItem', 'ProductUnit', 'ComponentLot', 'Installation',
                           'HistoryCoverage', 'InventoryMovement'}, set(SCHEMA) - set(C_TYPES) - set(domain_schema.SCHEMA))
-        # C definitions live beside the reviewed A/B set without changing it.
-        self.assertEqual(11, len(domain_schema.SCHEMA))
+        # C definitions remain separate from the A/B set and its B request addition.
+        self.assertEqual(12, len(domain_schema.SCHEMA))
         self.assertFalse(set(C_TYPES) & (domain_schema.A_TYPES | domain_schema.B_TYPES))
         self.assertEqual({'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}, REAL)
         self.assertEqual({'id', 'type', 'origin', 'evidence', 'serial', 'company', 'configuration_id'}, ALLOWED_FIELDS['ProductUnit'])

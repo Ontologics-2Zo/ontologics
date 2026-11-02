@@ -1,0 +1,158 @@
+{
+  "scope": "synthetic_b_candidate_only",
+  "note": "Revisions are alternative candidate states, not one graph. Version 0 is illustrative, not a queried DB version.",
+  "supporting_nodes": [
+    {
+      "id": "source:material-review:demo:baseline_plan",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:synthetic:material-review:baseline_plan",
+      "path": "data/sources/order_fulfillment/material_requests_demo/baseline_plan.txt",
+      "sha256": "9483c670cf9385d2de27173a23c8fda8c5049e14ac0ccd518295eb1106159a85",
+      "version": "synthetic-example-1",
+      "license": "Project-authored synthetic development fixture",
+      "collected_at": "2026-11-02T23:30:00+09:00"
+    },
+    {
+      "id": "evidence:material-review:demo:baseline_plan",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:material-review:demo:baseline_plan",
+      "locator": "Full document; synthetic development example",
+      "description": "Project-authored synthetic baseline_plan; not an approved A plan or real demand"
+    },
+    {
+      "id": "source:material-review:demo:request_30",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:synthetic:material-review:request_30",
+      "path": "data/sources/order_fulfillment/material_requests_demo/request_30.txt",
+      "sha256": "cd8fa25d7ae1c727f86df3c463740cae640614621e77754abddabed56ca2e991",
+      "version": "synthetic-example-1",
+      "license": "Project-authored synthetic development fixture",
+      "collected_at": "2026-11-02T23:30:00+09:00"
+    },
+    {
+      "id": "evidence:material-review:demo:request_30",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:material-review:demo:request_30",
+      "locator": "Full document; synthetic development example",
+      "description": "Project-authored synthetic request_30; not an approved A plan or real demand"
+    },
+    {
+      "id": "source:material-review:demo:request_40",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:synthetic:material-review:request_40",
+      "path": "data/sources/order_fulfillment/material_requests_demo/request_40.txt",
+      "sha256": "aa4998387cceb08453ef2b7651309045f595bdba34587e21380047b0368db04b",
+      "version": "synthetic-example-1",
+      "license": "Project-authored synthetic development fixture",
+      "collected_at": "2026-11-02T23:30:00+09:00"
+    },
+    {
+      "id": "evidence:material-review:demo:request_40",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:material-review:demo:request_40",
+      "locator": "Full document; synthetic development example",
+      "description": "Project-authored synthetic request_40; not an approved A plan or real demand"
+    },
+    {
+      "id": "source:material-review:demo:request_10_independent",
+      "type": "SourceDocument",
+      "origin": "synthetic",
+      "evidence": [],
+      "url": "urn:ontologics:synthetic:material-review:request_10_independent",
+      "path": "data/sources/order_fulfillment/material_requests_demo/request_10_independent.txt",
+      "sha256": "d8f20765e150fc9f4d9fd82441a2f0f91636447144cb8dc42837a988edd65c4c",
+      "version": "synthetic-example-1",
+      "license": "Project-authored synthetic development fixture",
+      "collected_at": "2026-11-02T23:30:00+09:00"
+    },
+    {
+      "id": "evidence:material-review:demo:request_10_independent",
+      "type": "Evidence",
+      "origin": "synthetic",
+      "evidence": [],
+      "source_id": "source:material-review:demo:request_10_independent",
+      "locator": "Full document; synthetic development example",
+      "description": "Project-authored synthetic request_10_independent; not an approved A plan or real demand"
+    }
+  ],
+  "requests": {
+    "new_30": {
+      "id": "material-review:demo:001",
+      "type": "AdditionalMaterialReviewRequest",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:material-review:demo:baseline_plan",
+        "evidence:material-review:demo:request_30"
+      ],
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 30,
+      "unit": "piece",
+      "recipient_role": "materials",
+      "request_revision": 1,
+      "reference_data_version": 0,
+      "reason": "기준 계획 외 정상 완제품 30대 추가 수요",
+      "need_mode": "explicit",
+      "need_basis": "production_complete",
+      "need_date": "2026-11-06",
+      "conditions_state": "unchanged",
+      "readiness": "ready",
+      "baseline_plan_evidence_id": "evidence:material-review:demo:baseline_plan"
+    },
+    "revised_40": {
+      "id": "material-review:demo:001",
+      "type": "AdditionalMaterialReviewRequest",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:material-review:demo:baseline_plan",
+        "evidence:material-review:demo:request_40"
+      ],
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 40,
+      "unit": "piece",
+      "recipient_role": "materials",
+      "request_revision": 2,
+      "reference_data_version": 0,
+      "reason": "기존 추가 수요 30대를 40대로 정정",
+      "need_mode": "explicit",
+      "need_basis": "production_complete",
+      "need_date": "2026-11-06",
+      "conditions_state": "unchanged",
+      "readiness": "ready",
+      "baseline_plan_evidence_id": "evidence:material-review:demo:baseline_plan"
+    },
+    "independent_10": {
+      "id": "material-review:demo:002",
+      "type": "AdditionalMaterialReviewRequest",
+      "origin": "synthetic",
+      "evidence": [
+        "evidence:material-review:demo:baseline_plan",
+        "evidence:material-review:demo:request_10_independent"
+      ],
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 10,
+      "unit": "piece",
+      "recipient_role": "materials",
+      "request_revision": 1,
+      "reference_data_version": 0,
+      "reason": "001과 독립된 시험용 정상 완제품 10대 추가 수요",
+      "need_mode": "explicit",
+      "need_basis": "production_complete",
+      "need_date": "2026-11-06",
+      "conditions_state": "unchanged",
+      "readiness": "ready",
+      "baseline_plan_evidence_id": "evidence:material-review:demo:baseline_plan"
+    }
+  }
+}

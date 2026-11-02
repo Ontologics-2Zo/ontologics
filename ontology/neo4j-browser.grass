@@ -152,6 +152,12 @@ node.ProductionLine {
   caption: "{browser_caption}";
 }
 
+node.AdditionalMaterialReviewRequest {
+  color: #475569;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
 node.UnitProductionRecord {
   color: #0284c7;
   diameter: 48px;

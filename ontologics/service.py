@@ -273,6 +273,11 @@ class Service:
                 raise DomainError('IMMUTABLE_SOURCE', 'New source or evidence versions need new IDs')
             if old != node: changed.append({'id': nid, 'before': old, 'after': node})
             index[nid] = node
+        if any(change['after'].get('type') == 'AdditionalMaterialReviewRequest' for change in changed):
+            from .order_fulfillment.material_request_validation import validate_request_changes
+            report = validate_request_changes(changed, base_version)
+            if not report['valid']:
+                raise DomainError('VALIDATION_FAILED', 'Invalid request revision or reference version', report)
         return list(index.values()), changed
 
     def _draft(self, draft_id, version, *, latest=True):

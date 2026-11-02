@@ -45,7 +45,7 @@ def legacy_selected_nodes(base, candidates):
 class RepresentativeGraphTests(unittest.TestCase):
     def assert_legacy_graph_preserved(self, nodes, actual):
         expected = legacy.graph_jsonld(nodes)
-        # Only explicit JSON literals are additive; order, payloads and every
+        # New context declarations are additive; order, payloads and every
         # historical relationship must remain byte-for-byte equal as values.
         expected['@context'].update(specifications={'@type': '@json'},
                                     confirmations={'@type': '@json'})
@@ -53,6 +53,9 @@ class RepresentativeGraphTests(unittest.TestCase):
         expected['@context'].update({key: {'@type': '@id'} for kind in domain_schema.C_TYPES
                                      for key in (*domain_schema.C_SCHEMA[kind][1],
                                                  *domain_schema.LIST_REFERENCES.get(kind, {}))})
+        # B request registration adds one relation key without changing the
+        # pinned historical nodes or any existing relationship declarations.
+        expected['@context']['baseline_plan_evidence_id'] = {'@type': '@id'}
         self.assertEqual(expected, actual)
 
     @classmethod

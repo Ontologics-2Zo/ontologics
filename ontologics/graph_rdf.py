@@ -18,6 +18,7 @@ from rdflib.plugins.sparql import prepareQuery
 
 from .model import (ALLOWED_FIELDS, JSON_FIELDS, LIST_REFERENCES, REAL, SCHEMA, SCHEMA_VERSION, SYNTHETIC,
                     canonical, digest, graph_jsonld, tbox_turtle, validate_graph)
+from . import domain_schema
 
 O = Namespace('urn:ontologics:')
 P = Namespace('urn:ontologics:projection:')
@@ -39,6 +40,7 @@ INTEGER_MINIMUMS = {
         'on_hand_quantity', 'reserved_quantity', 'held_quantity', 'available_quantity')},
 }
 TEXT_LIST_FIELDS = {'BOMItem': {'positions'}, 'ClaimIntake': {'reported_serials'}}
+INTEGER_MINIMUMS.update(domain_schema.subset(domain_schema.INTEGER_MINIMUMS, SCHEMA))
 
 
 def _check_budget():

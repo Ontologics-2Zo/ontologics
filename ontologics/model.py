@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from . import domain_schema
 
-SCHEMA_VERSION = 'graph-0.3'
+SCHEMA_VERSION = 'graph-0.4'
 ROOT = Path(__file__).resolve().parents[1]
 # Required fields and typed relationships. T-box is generated from these definitions.
 SCHEMA = {
@@ -252,10 +252,12 @@ def validate_graph(nodes):
         from .order_fulfillment.fulfillment_validation import validate_fulfillment
         from .order_fulfillment.production_validation import validate_production_observations
         from .order_fulfillment.delivery_validation import validate_delivery_conditions
+        from .order_fulfillment.material_request_validation import validate_material_requests
         validate_contracts(index, error)
         validate_fulfillment(index, error)
         validate_production_observations(index, error)
         validate_delivery_conditions(index, error)
+        validate_material_requests(index, error)
     if any(isinstance(n.get('type'), str) and n['type'] in domain_schema.C_TYPES for n in index.values()):
         from .claim_response.schema import validate_claim_nodes
         validate_claim_nodes(index, error, warnings)

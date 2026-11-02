@@ -152,7 +152,9 @@ class SharedBoundaryInheritanceTests(unittest.TestCase):
                        'bootstrap', 'prepare_draft', 'validate_draft', 'review', 'apply'):
             with self.subTest(method=method):
                 self.assertIs(getattr(CommonService, method), getattr(Service, method))
-        self.assertEqual(B_TOOLS, {name for name in Service.__dict__ if not name.startswith('__')})
+        self.assertEqual(B_TOOLS | {'prepare_material_request'},
+                         {name for name in Service.__dict__ if not name.startswith('__')})
+        self.assertNotIn('prepare_material_request', AgentGateway.ALLOWED)
 
     def test_gateway_dispatch_and_identity_checks_are_inherited(self):
         from ontologics.service import AgentGateway as CommonGateway

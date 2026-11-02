@@ -139,7 +139,7 @@ class InputValidationTests(unittest.TestCase):
                 from ontologics.order_fulfillment.response_comparison import compare_input_response_plan
                 from ontologics.order_fulfillment.recalculation_demo import load_demo_recalculation_input, AFTER_AS_OF
                 definitions = copy.deepcopy(common.SCHEMA)
-                assert common.SCHEMA_VERSION == 'graph-0.3'
+                assert common.SCHEMA_VERSION == 'graph-0.4'
                 assert historical.SCHEMA_VERSION == 'graph-0.1'
                 assert set(schema.SCHEMA) <= set(common.SCHEMA)
                 assert not (set(historical.SCHEMA) & set(schema.SCHEMA))

@@ -28,16 +28,29 @@ SCHEMA = {
                  {'snapshot_id': 'FulfillmentSnapshot', 'allocation_id': 'Allocation'}),
     'DeliveryCondition': (['snapshot_id', 'delivery_round_id', 'preparation_seconds', 'transport_seconds', 'dispatch_mode'],
                           {'snapshot_id': 'FulfillmentSnapshot', 'delivery_round_id': 'DeliveryRound'}),
+    'AdditionalMaterialReviewRequest': (
+        ['configuration_id', 'quantity', 'unit', 'request_revision',
+         'reference_data_version', 'reason', 'need_mode', 'conditions_state', 'readiness'],
+        {'configuration_id': 'Configuration', 'baseline_plan_evidence_id': 'Evidence',
+         'contract_item_id': 'ContractItem', 'delivery_round_id': 'DeliveryRound'},
+    ),
 }
 A_TYPES = frozenset({'Contract', 'ContractItem', 'DeliveryRound', 'ComponentStockSnapshot'})
 B_TYPES = frozenset(set(SCHEMA) - {'ComponentStockSnapshot'})
-OPTIONAL_REFERENCES = {'Allocation': {'stock_id', 'production_work_id'}}
+OPTIONAL_REFERENCES = {
+    'Allocation': {'stock_id', 'production_work_id'},
+    'AdditionalMaterialReviewRequest': {'baseline_plan_evidence_id', 'contract_item_id', 'delivery_round_id'},
+}
 LIST_REFERENCES = {'FulfillmentSnapshot': {'round_ids': 'DeliveryRound'}}
 OPTIONAL_FIELDS = {
     'ComponentStockSnapshot': {'available_quantity', 'deductions_disjoint', 'held_quantity', 'on_hand_quantity', 'reserved_quantity'},
     'ProductionWork': {'started_at', 'planned_start_at'},
     'Allocation': {'stock_id', 'production_work_id'},
     'Shipment': {'planned_departure_at', 'departed_at', 'expected_arrival_at', 'arrived_at'},
+    'AdditionalMaterialReviewRequest': {
+        'baseline_plan_evidence_id', 'contract_item_id', 'delivery_round_id', 'recipient_role',
+        'need_basis', 'need_date', 'need_at', 'destination', 'conditions_note', 'supplementation_reason',
+    },
 }
 JSON_FIELDS = {'FulfillmentSnapshot': {'confirmations'}}
 # Non-text fields receive their exact numeric/boolean/list/object validation in
@@ -48,6 +61,12 @@ STRUCTURED_FIELDS = {
     'ProductionWork': {'target_quantity', 'completed_quantity'},
     'ProductionObservation': {'produced_quantity', 'good_quantity', 'defective_quantity'},
     'DeliveryCondition': {'preparation_seconds', 'transport_seconds'},
+    'AdditionalMaterialReviewRequest': {'quantity', 'request_revision', 'reference_data_version'},
+}
+
+# Additive request integer constraints, shared with the B adapter and RDF shapes.
+INTEGER_MINIMUMS = {
+    'AdditionalMaterialReviewRequest': {'quantity': 1, 'request_revision': 1, 'reference_data_version': 0},
 }
 
 

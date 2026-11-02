@@ -16,6 +16,7 @@ DISPLAY_NAMES = {
     'FinishedGoodsStock': '완제품 재고 관측', 'ProductionWork': '생산 기록',
     'ProductionObservation': '생산 수량 관측', 'Allocation': '납품 배정',
     'Shipment': '출하 기록', 'DeliveryCondition': '납품 조건',
+    'AdditionalMaterialReviewRequest': '추가 부품 검토 요청',
     'ProductionLine': '생산라인', 'UnitProductionRecord': '보드 생산 기록',
     'ClaimIntake': '클레임 접수', 'QualityCase': '클레임 사건',
     'QualityScope': '영향 범위', 'ContainmentRequest': '중단 요청서',

@@ -15,6 +15,9 @@ from ontologics.order_fulfillment.fulfillment import load_demo_fulfillment
 from ontologics.order_fulfillment.production import load_demo_production
 
 legacy = legacy_model()
+REQUEST_TYPE = 'AdditionalMaterialReviewRequest'
+REQUEST_CONTEXT = {key: {'@type': '@id'} for key in (
+    'configuration_id', 'baseline_plan_evidence_id', 'contract_item_id', 'delivery_round_id')}
 # PR #6 adds the C claim types to the common model; their reference keys join the common context.
 C_CONTEXT = {key: {'@type': '@id'} for kind in domain_schema.C_TYPES
              for key in (*domain_schema.C_SCHEMA[kind][1], *domain_schema.LIST_REFERENCES.get(kind, {}))}
@@ -25,6 +28,7 @@ def additive_export(nodes):
     expected = legacy.graph_jsonld(nodes)
     expected['@context'].update(specifications={'@type': '@json'}, confirmations={'@type': '@json'})
     expected['@context'].update(C_CONTEXT)
+    expected['@context'].update(REQUEST_CONTEXT)
     return expected
 
 
@@ -36,7 +40,11 @@ class BSchemaExportTests(unittest.TestCase):
     def test_all_fixture_types_match_legacy_output_without_mutation(self):
         nodes = (build_catalog()['nodes'] + load_demo_contract() + load_demo_fulfillment()
                  + load_demo_production() + load_demo_delivery() + load_demo_delivery(mixed=True))
-        self.assertEqual(set(schema.SCHEMA), {n['type'] for n in nodes} & set(schema.SCHEMA))
+        self.assertEqual(set(schema.SCHEMA) - {REQUEST_TYPE},
+                         {n['type'] for n in nodes} & set(schema.SCHEMA))
+        self.assertIn(REQUEST_TYPE, schema.SCHEMA)
+        self.assertNotIn(REQUEST_TYPE, {n['type'] for n in nodes},
+                         'Historical fixtures must not gain invented request records')
         before = copy.deepcopy((nodes, model.SCHEMA, getattr(model, 'LIST_REFERENCES', {})))
         self.assertEqual(additive_export(nodes), schema_export.graph_jsonld(nodes))
         self.assertEqual(before, (nodes, model.SCHEMA, getattr(model, 'LIST_REFERENCES', {})))
@@ -98,6 +106,9 @@ class BSchemaExportTests(unittest.TestCase):
         self.assertIn('owl:versionInfo "' + model.SCHEMA_VERSION + '"', actual)
         b_names = set(schema.SCHEMA)
         for kind in tuple(b_names):
+            if kind not in legacy.SCHEMA:
+                self.assertEqual(REQUEST_TYPE, kind)
+                continue
             b_names.update(legacy.SCHEMA[kind][1])
             b_names.update(legacy.LIST_REFERENCES.get(kind, {}))
         historical_terms = [line for line in legacy.tbox_turtle().splitlines()
@@ -114,7 +125,8 @@ class BSchemaExportTests(unittest.TestCase):
         with patch.object(schema_export, '_common_tbox_turtle', return_value=common):
             actual = schema_export.tbox_turtle()
         self.assertTrue(actual.startswith(common))
-        self.assertEqual(common + ''.join(line + '\n' for line in terms if line in removed), actual)
+        self.assertEqual(common + ''.join(line + '\n' for line in terms
+                                         if line not in common.splitlines()), actual)
         for term in terms:
             self.assertEqual(1, actual.splitlines().count(term))
 
@@ -165,13 +177,16 @@ class CommonArtifactBoundaryTests(unittest.TestCase):
         expected = main_model()
         with self.subTest(contract='version'):
             self.assertEqual('graph-0.1', expected.SCHEMA_VERSION)
-            self.assertEqual('graph-0.3', model.SCHEMA_VERSION)
+            self.assertEqual('graph-0.4', model.SCHEMA_VERSION)
         with self.subTest(contract='types_fields_references'):
             self.assertLessEqual(set(expected.SCHEMA), set(model.SCHEMA))
             for kind, definition in expected.SCHEMA.items():
                 self.assertEqual(definition, model.SCHEMA[kind])
-            # 11 A/B types + the C claim types of PR #6
-            self.assertEqual(11 + len(domain_schema.C_SCHEMA), len(set(model.SCHEMA) - set(expected.SCHEMA)))
+            # Existing 11 A/B types + C claim types + one B request.
+            self.assertEqual(12 + len(domain_schema.C_SCHEMA),
+                             len(set(model.SCHEMA) - set(expected.SCHEMA)))
+            self.assertIn(REQUEST_TYPE, model.SCHEMA)
+            self.assertNotIn(REQUEST_TYPE, expected.SCHEMA)
 
     def test_stored_tbox_preserves_main_and_matches_shared_export(self):
         stored = (model.ROOT / 'ontology/tbox.ttl').read_text()

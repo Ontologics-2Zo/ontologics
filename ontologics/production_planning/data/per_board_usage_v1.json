@@ -1,0 +1,2168 @@
+{
+  "format": "process-per-board-basis/1.0",
+  "version": 1,
+  "reference_sha256": "9906490b2c16018048823f363b4db654c747255981d6c5e9fdf94df51ce0eecc",
+  "source_commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+  "sources": [
+    {
+      "id": "source:process-materials:v1:L",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L/ESP32-PoE_Rev_L.kicad_pcb",
+      "path": "data/sources/process_materials_v1/L.kicad_pcb",
+      "sha256": "78bce8140fe7829d7c46c04cf5523d83ac61a5e8bf046e14d38140b1b99e6410",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Apache-2.0 hardware; see existing data/sources/OLIMEX-LICENSE.txt"
+    },
+    {
+      "id": "source:process-materials:v1:L1",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L1/ESP32-PoE_Rev_L1.kicad_pcb",
+      "path": "data/sources/process_materials_v1/L1.kicad_pcb",
+      "sha256": "9262f8e997f68d80c9dc7736381497102c1add64b4ddecb21b2d841867d2f045",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Apache-2.0 hardware; see existing data/sources/OLIMEX-LICENSE.txt"
+    },
+    {
+      "id": "source:process-materials:v1:indium-paste-usage",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.indium.com/wp-content/uploads/2025/03/Calculating-Solder-Paste-Usage-APPNOTE-98807-R1-1.pdf",
+      "path": "data/sources/process_materials_v1/indium-paste-usage.pdf",
+      "sha256": "7e230c8f00a95bb05aeca6cb8e9bd5fcdce1c20fa828db5b3588ea0033ec4e7d",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-np560",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/products/product/np560-solder-paste",
+      "path": "data/sources/process_materials_v1/kester-np560.html",
+      "sha256": "82426407caa9345d8d36123252757dd8d8c25df62cc595eab56ee204922ea457",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-sac305",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/DesktopModules/Bring2mind/DMX/API/Entries/Download?Command=Core_Download&EntryId=61810&PortalId=0&TabId=96&language=en-US",
+      "path": "data/sources/process_materials_v1/kester-sac305.pdf",
+      "sha256": "15d2f4c3d2655a18d246219198aa961a68476d2037084bcfe952bca0ca683155",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-951",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/DesktopModules/Bring2mind/DMX/API/Entries/Download?Command=Core_Download&EntryId=61851&PortalId=0&TabId=96&language=en-US",
+      "path": "data/sources/process_materials_v1/kester-951.pdf",
+      "sha256": "67fb24df48c70077a0316880cc1db050136c3c289086664cdf675bf832e10049",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-275",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/products/product/275-flux-cored-wire",
+      "path": "data/sources/process_materials_v1/kester-275.html",
+      "sha256": "ed310e3c5b212097cfe2992a4b228e34310d0efbf855916ff1a0a96964d8f0cd",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-paste",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010135737",
+      "path": "data/sources/process_materials_v1/ks-paste.html",
+      "sha256": "c3f96a34161f6d0a0042e67b5c8ed834c3a30e2f66981179000492e5e3dff8be",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-solid",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010135736",
+      "path": "data/sources/process_materials_v1/ks-solid.html",
+      "sha256": "1ec71d533e9008238e1a99ff7ca519940c410cfd0cf205fa189fb30c97db4991",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-flux",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010133462",
+      "path": "data/sources/process_materials_v1/ks-flux.html",
+      "sha256": "3f09c494c8b264a80f2ff8cb943ed53b72653bf31d9e8e0a736f27532de3ac88",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:mg-824",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://mgchemicals.com/downloads/tds/tds-824-l.pdf",
+      "path": "data/sources/process_materials_v1/mg-824.pdf",
+      "sha256": "614c8660641e62cc00097d41ef83cabe95573bac26a67540ddbf2a53bd911f54",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    }
+  ],
+  "catalog": {
+    "path": "data/catalog.json",
+    "sha256": "9884378d9879aab8175512c8c6758360715552bb403e7fb86d88af074dd0775c",
+    "source_commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53"
+  },
+  "configurations": [
+    {
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "board": {
+        "width_mm": "28",
+        "length_mm": "80",
+        "thickness_mm": "1.6",
+        "area_mm2": "2228.331621",
+        "area_cm2": "22.28331621",
+        "source_id": "source:process-materials:v1:L"
+      },
+      "paste_geometry": {
+        "populated_area_mm2": 487.300130131,
+        "unknown_population_area_mm2": 13.343536,
+        "excluded_not_in_bom_area_mm2": 0.0,
+        "by_side": {
+          "F.Paste": {
+            "populated": 311.37668104320005,
+            "unknown": 3.7145120000000844,
+            "absent": 0.0
+          },
+          "B.Paste": {
+            "populated": 175.92344908807533,
+            "unknown": 9.629024000000069,
+            "absent": 0.0
+          }
+        },
+        "by_reference": [
+          {
+            "reference": "R50",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R43",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R42",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 10.625834908,
+            "primitive_count": 2
+          },
+          {
+            "reference": "L3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D7",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "TVS1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "TVS2",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D4",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "BUT1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.655116,
+            "primitive_count": 2
+          },
+          {
+            "reference": "RST1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.655116,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U7",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "C7",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "Q3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "Q2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "T1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "L5",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "FET3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "C22",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "L2",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 9.6,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U4",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 12.07210218,
+            "primitive_count": 104
+          },
+          {
+            "reference": "C11",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C6",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C16",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C13",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R22",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R17",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R16",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D6",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C19",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R9",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R4",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R6",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "R3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C10",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "LNK1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "ACT1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C14",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C18",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C15",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R46",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R44",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R40",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R39",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R36",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R35",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R31",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R30",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R29",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R26",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R25",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R5",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R15",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R14",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R13",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R12",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R11",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R10",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R8",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R24",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R19",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R18",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C8",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 8.255,
+            "primitive_count": 20
+          },
+          {
+            "reference": "L4",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 18.36,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D5",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 17.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D3",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 6.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 6.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.612896,
+            "primitive_count": 2
+          },
+          {
+            "reference": "MICRO_SD1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 14.701264,
+            "primitive_count": 13
+          },
+          {
+            "reference": "PWR1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C21",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "CHRG1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C17",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C9",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "USB-UART1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 7.091142163,
+            "primitive_count": 7
+          },
+          {
+            "reference": "RM1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.129024,
+            "primitive_count": 8
+          },
+          {
+            "reference": "RM2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.129024,
+            "primitive_count": 8
+          },
+          {
+            "reference": "FET2",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "FET1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "L1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R47",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R49",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R48",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C5",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R37",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R21",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R20",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D2",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "RM3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.129024,
+            "primitive_count": 8
+          },
+          {
+            "reference": "UEXT1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 93.87016,
+            "primitive_count": 10
+          },
+          {
+            "reference": "C4",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "Q1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 6.72,
+            "primitive_count": 4
+          },
+          {
+            "reference": "R32",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C20",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "TVS3",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C23",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D8",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 6.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R7",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R23",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R27",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R28",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 5.419344,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R33",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R34",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R38",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U5",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 15.82,
+            "primitive_count": 9
+          },
+          {
+            "reference": "D9",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C24",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C12",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R41",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C26",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U6",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 88.77516288,
+            "primitive_count": 56
+          },
+          {
+            "reference": "C28",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R45",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U8",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "R51",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 7.68,
+            "primitive_count": 8
+          }
+        ],
+        "paste_line_count": 72,
+        "zero_delta_trapezoids": 10,
+        "method": "Union per population and side, round-ended line strokes (64 segments/quadrant); pad margins applied. Unknown population excluded from base. PCB paste geometry is not a released stencil."
+      },
+      "geometry_evidence": {
+        "id": "evidence:process-usage:v1:L:paste-union",
+        "source_id": "source:process-materials:v1:L",
+        "origin": "derived",
+        "locator": "module pad layers F.Paste/B.Paste and fp_line paste graphics; see paste_geometry.by_reference",
+        "description": "BOM population-filtered PCB paste union; conditional stencil estimate, not measured consumption"
+      },
+      "materials": [
+        {
+          "material_id": "process-material:kester:np560:7048230910",
+          "name": "솔더 페이스트 Kester NP560 7048230910",
+          "unit": "g",
+          "status": "도면 기반 조건부 추정",
+          "base_per_board": "0.209070",
+          "production_approved": false,
+          "origin": "derived_conditional",
+          "formula": "PCB Paste 도형 합집합 × 0.1016 mm × 4.2227939196 g/cm³ ÷ 1000",
+          "basis": "BOM populated 위치만 포함. 앞·뒷면 합산. 두께 0.1016 mm는 Indium 공개 예제값이며 실제 스텐실 사양 미확인. 인쇄 손실·초기 비드 별도.",
+          "missing": [
+            "실제 스텐실 두께/개구부와 WROOM 적용 확인",
+            "초기 비드와 회수되지 않는 잔량"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:np560-offering",
+            "evidence:process-materials:v1:paste-method",
+            "evidence:process-materials:v1:sac305-density",
+            "evidence:process-materials:v1:board-outline-L"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:kester:275:2470687601",
+          "name": "실납 Kester 275 2470687601",
+          "unit": "g",
+          "status": "투입 길이 기준 필요",
+          "base_per_board": null,
+          "production_approved": false,
+          "origin": "incomplete",
+          "formula": "와이어 실제 계량 g/m × 대당 투입 길이 m",
+          "basis": "제조사 외경 0.8 mm, 코어 플럭스 2.2%. 외경과 합금 밀도만으로 코어 포함 선밀도를 확정하지 않음. SMT 열패드의 thru_hole을 수삽 접점으로 세지 않음.",
+          "missing": [
+            "수작업 접합 대상과 접점별 와이어 투입 길이/질량",
+            "재작업 발생률"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:275-offering",
+            "evidence:process-materials:v1:board-outline-L"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:kester:951",
+          "name": "액상 플럭스 Kester 951",
+          "unit": "g",
+          "status": "면적 기반 조건부 추정",
+          "base_per_board": "0.2674",
+          "production_approved": false,
+          "origin": "derived_conditional",
+          "formula": "22.28331621 cm² × 240 µg/cm² ÷ 1000000 ÷ 0.02",
+          "basis": "한 면 전체 웨이브 도포 시 제조사 범위 상단을 선택해 소수점 4자리 올림. 침착량이지 탱크 출고량은 아님. 실납 내부 플럭스와 다른 자재.",
+          "missing": [
+            "웨이브 공정 선택 여부",
+            "분사 전달 손실·증발·초기 충전량"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:951-deposition",
+            "evidence:process-materials:v1:board-outline-L"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:mgchemicals:824",
+          "name": "공정용 세정제 MG Chemicals 824 액상 IPA",
+          "unit": "mL",
+          "status": "세정 투입 기준 필요",
+          "base_per_board": null,
+          "production_approved": false,
+          "origin": "incomplete",
+          "formula": "회당 실측 투입 mL × 대당 세정 횟수 (회수량 별도)",
+          "basis": "한 면 22.28331621 cm², 양면 44.56663242 cm². 제조사 밀도 0.785–0.786 g/mL는 질량/부피 환산 근거이며 면적당 도포량 규격이 아님.",
+          "missing": [
+            "세정 필요 여부와 방식",
+            "와이프 흡수량·증발·회수량을 포함한 회당 투입량"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:824-density",
+            "evidence:process-materials:v1:board-outline-L"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:kester:sac305:bar",
+          "name": "솔더 바 Kester SAC305",
+          "unit": "g",
+          "status": "납조 보충 기준 필요",
+          "base_per_board": null,
+          "production_approved": false,
+          "origin": "incomplete",
+          "formula": "접합부 납 체적 mm³ × 7.37 g/cm³ ÷ 1000 + 대당 드로스 손실",
+          "basis": "PCB 두께 1.6 mm. 드릴 구멍 전체 체적에는 핀과 열패드 비아가 포함되므로 그대로 납 사용량으로 쓰지 않음. 수삽 접합을 실납/납조에 중복 배분하지 않음.",
+          "missing": [
+            "웨이브/선택납땜 공정 선택",
+            "핀 치수·필렛 형상·납조 잔량과 드로스 손실"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:sac305-density",
+            "evidence:process-materials:v1:board-outline-L"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        }
+      ]
+    },
+    {
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "board": {
+        "width_mm": "28",
+        "length_mm": "80",
+        "thickness_mm": "1.6",
+        "area_mm2": "2228.331621",
+        "area_cm2": "22.28331621",
+        "source_id": "source:process-materials:v1:L1"
+      },
+      "paste_geometry": {
+        "populated_area_mm2": 486.200130131,
+        "unknown_population_area_mm2": 14.443536,
+        "excluded_not_in_bom_area_mm2": 0.0,
+        "by_side": {
+          "F.Paste": {
+            "populated": 311.37668104320005,
+            "unknown": 3.7145120000000844,
+            "absent": 0.0
+          },
+          "B.Paste": {
+            "populated": 174.8234490880753,
+            "unknown": 10.729024000000091,
+            "absent": 0.0
+          }
+        },
+        "by_reference": [
+          {
+            "reference": "R50",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R43",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R42",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 10.625834908,
+            "primitive_count": 2
+          },
+          {
+            "reference": "L3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D7",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "TVS1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "TVS2",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D4",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "BUT1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.655116,
+            "primitive_count": 2
+          },
+          {
+            "reference": "RST1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.655116,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U7",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "C7",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "Q3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "Q2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "T1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "L5",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "FET3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "C22",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "L2",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 9.6,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U4",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 12.07210218,
+            "primitive_count": 104
+          },
+          {
+            "reference": "C11",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C6",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C16",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C13",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R22",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R17",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R16",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D6",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C19",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R9",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R4",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R6",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "R3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C10",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "LNK1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "ACT1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C14",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C18",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C15",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R46",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R44",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R40",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R39",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R36",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R35",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R31",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R30",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R29",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R26",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R25",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R5",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R15",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R14",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R13",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R12",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R11",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R10",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R8",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R24",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R19",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R18",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C8",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 8.255,
+            "primitive_count": 20
+          },
+          {
+            "reference": "L4",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 18.36,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D5",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 17.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D3",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 6.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 6.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.612896,
+            "primitive_count": 2
+          },
+          {
+            "reference": "MICRO_SD1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 14.701264,
+            "primitive_count": 13
+          },
+          {
+            "reference": "PWR1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C21",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "CHRG1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 1.28,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C17",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C9",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "USB-UART1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 7.091142163,
+            "primitive_count": 7
+          },
+          {
+            "reference": "RM1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.129024,
+            "primitive_count": 8
+          },
+          {
+            "reference": "RM2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.129024,
+            "primitive_count": 8
+          },
+          {
+            "reference": "FET2",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "FET1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "L1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 3.87096,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R47",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R49",
+            "population": "unknown",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R48",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C5",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R37",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R21",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R20",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D2",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 4.2,
+            "primitive_count": 3
+          },
+          {
+            "reference": "RM3",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 4.129024,
+            "primitive_count": 8
+          },
+          {
+            "reference": "UEXT1",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 93.87016,
+            "primitive_count": 10
+          },
+          {
+            "reference": "C4",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "Q1",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 6.72,
+            "primitive_count": 4
+          },
+          {
+            "reference": "R32",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C20",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "TVS3",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C23",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "D8",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 6.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R7",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R23",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R27",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R28",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 5.419344,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R33",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R34",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R38",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U5",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 15.82,
+            "primitive_count": 9
+          },
+          {
+            "reference": "D9",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 2.8,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C24",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C12",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R41",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "C26",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 2.064512,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U6",
+            "population": "populated",
+            "layer": "F.Paste",
+            "area_mm2": 88.77516288,
+            "primitive_count": 56
+          },
+          {
+            "reference": "C28",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "R45",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U8",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 3.3,
+            "primitive_count": 5
+          },
+          {
+            "reference": "R51",
+            "population": "unknown",
+            "layer": "B.Paste",
+            "area_mm2": 0.55,
+            "primitive_count": 2
+          },
+          {
+            "reference": "U2",
+            "population": "populated",
+            "layer": "B.Paste",
+            "area_mm2": 7.68,
+            "primitive_count": 8
+          }
+        ],
+        "paste_line_count": 72,
+        "zero_delta_trapezoids": 10,
+        "method": "Union per population and side, round-ended line strokes (64 segments/quadrant); pad margins applied. Unknown population excluded from base. PCB paste geometry is not a released stencil."
+      },
+      "geometry_evidence": {
+        "id": "evidence:process-usage:v1:L1:paste-union",
+        "source_id": "source:process-materials:v1:L1",
+        "origin": "derived",
+        "locator": "module pad layers F.Paste/B.Paste and fp_line paste graphics; see paste_geometry.by_reference",
+        "description": "BOM population-filtered PCB paste union; conditional stencil estimate, not measured consumption"
+      },
+      "materials": [
+        {
+          "material_id": "process-material:kester:np560:7048230910",
+          "name": "솔더 페이스트 Kester NP560 7048230910",
+          "unit": "g",
+          "status": "도면 기반 조건부 추정",
+          "base_per_board": "0.208598",
+          "production_approved": false,
+          "origin": "derived_conditional",
+          "formula": "PCB Paste 도형 합집합 × 0.1016 mm × 4.2227939196 g/cm³ ÷ 1000",
+          "basis": "BOM populated 위치만 포함. 앞·뒷면 합산. 두께 0.1016 mm는 Indium 공개 예제값이며 실제 스텐실 사양 미확인. 인쇄 손실·초기 비드 별도.",
+          "missing": [
+            "실제 스텐실 두께/개구부와 WROOM 적용 확인",
+            "초기 비드와 회수되지 않는 잔량"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:np560-offering",
+            "evidence:process-materials:v1:paste-method",
+            "evidence:process-materials:v1:sac305-density",
+            "evidence:process-materials:v1:board-outline-L1"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:kester:275:2470687601",
+          "name": "실납 Kester 275 2470687601",
+          "unit": "g",
+          "status": "투입 길이 기준 필요",
+          "base_per_board": null,
+          "production_approved": false,
+          "origin": "incomplete",
+          "formula": "와이어 실제 계량 g/m × 대당 투입 길이 m",
+          "basis": "제조사 외경 0.8 mm, 코어 플럭스 2.2%. 외경과 합금 밀도만으로 코어 포함 선밀도를 확정하지 않음. SMT 열패드의 thru_hole을 수삽 접점으로 세지 않음.",
+          "missing": [
+            "수작업 접합 대상과 접점별 와이어 투입 길이/질량",
+            "재작업 발생률"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:275-offering",
+            "evidence:process-materials:v1:board-outline-L1"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:kester:951",
+          "name": "액상 플럭스 Kester 951",
+          "unit": "g",
+          "status": "면적 기반 조건부 추정",
+          "base_per_board": "0.2674",
+          "production_approved": false,
+          "origin": "derived_conditional",
+          "formula": "22.28331621 cm² × 240 µg/cm² ÷ 1000000 ÷ 0.02",
+          "basis": "한 면 전체 웨이브 도포 시 제조사 범위 상단을 선택해 소수점 4자리 올림. 침착량이지 탱크 출고량은 아님. 실납 내부 플럭스와 다른 자재.",
+          "missing": [
+            "웨이브 공정 선택 여부",
+            "분사 전달 손실·증발·초기 충전량"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:951-deposition",
+            "evidence:process-materials:v1:board-outline-L1"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:mgchemicals:824",
+          "name": "공정용 세정제 MG Chemicals 824 액상 IPA",
+          "unit": "mL",
+          "status": "세정 투입 기준 필요",
+          "base_per_board": null,
+          "production_approved": false,
+          "origin": "incomplete",
+          "formula": "회당 실측 투입 mL × 대당 세정 횟수 (회수량 별도)",
+          "basis": "한 면 22.28331621 cm², 양면 44.56663242 cm². 제조사 밀도 0.785–0.786 g/mL는 질량/부피 환산 근거이며 면적당 도포량 규격이 아님.",
+          "missing": [
+            "세정 필요 여부와 방식",
+            "와이프 흡수량·증발·회수량을 포함한 회당 투입량"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:824-density",
+            "evidence:process-materials:v1:board-outline-L1"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        },
+        {
+          "material_id": "process-material:kester:sac305:bar",
+          "name": "솔더 바 Kester SAC305",
+          "unit": "g",
+          "status": "납조 보충 기준 필요",
+          "base_per_board": null,
+          "production_approved": false,
+          "origin": "incomplete",
+          "formula": "접합부 납 체적 mm³ × 7.37 g/cm³ ÷ 1000 + 대당 드로스 손실",
+          "basis": "PCB 두께 1.6 mm. 드릴 구멍 전체 체적에는 핀과 열패드 비아가 포함되므로 그대로 납 사용량으로 쓰지 않음. 수삽 접합을 실납/납조에 중복 배분하지 않음.",
+          "missing": [
+            "웨이브/선택납땜 공정 선택",
+            "핀 치수·필렛 형상·납조 잔량과 드로스 손실"
+          ],
+          "evidence": [
+            "evidence:process-materials:v1:sac305-density",
+            "evidence:process-materials:v1:board-outline-L1"
+          ],
+          "default_allowance_percent": "10",
+          "allowance_basis": "10%는 조정 가능한 초기 계획 여유율이며 제조사 권고·실측 손실률 아님.",
+          "setup_quantity": null,
+          "setup_basis": "초기 비드/장비 충전/회수 잔량 미확인; 0으로 추정하지 않음"
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "random_values": false,
+    "unknown_is_zero": false,
+    "national_certification_claimed": false,
+    "measured_consumption": false,
+    "fixed_setup_included": false,
+    "material_routes_are_candidates": true
+  },
+  "generator": "ontologics.production_planning.build_usage_basis; Shapely 2.1.2"
+}

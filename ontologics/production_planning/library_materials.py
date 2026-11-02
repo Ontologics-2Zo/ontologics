@@ -101,3 +101,33 @@ class LibraryMaterials:
                     svc.db.execute('INSERT INTO pp_contract_material_reviews VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',(str(uuid4()),contract_id,link_id,item_index,quantity,reason,canonical(result),session.context['actor'],svc.now()))
                 return svc._envelope(ok=True,data={'result':result})
             return svc._run(session.context['actor'],'material_review_calculate',binding,save,permission='review',request_key=request_key)
+
+    def inventory(self, context, quantity):
+        """Read-only per-configuration comparison; never saves a production plan."""
+        if type(quantity) is not int or not 0 <= quantity <= 10000000:
+            raise DomainError('INVALID_INPUT', '비교 수량은 0~10,000,000 사이의 정수여야 합니다.')
+        with self.host.request(context) as session:
+            svc = session._service
+            snapshot = session.call('lookup', {})
+            if not snapshot['ok']:
+                return snapshot
+            version = snapshot['data_version']
+            query = lookup_contract_configurations(session, data_version=version)
+            if query['configurations'] is None:
+                raise DomainError('CATALOG_QUERY_FAILED', '제품과 BOM 자료를 조회하지 못했습니다.')
+            def read():
+                products = []
+                for detail in query['configurations']['candidates']:
+                    cid = detail['configuration']['id']
+                    stock = self.stock.calculate(self.stock.latest(svc, cid), svc)
+                    result = calculate_material_requirements(
+                        detail['items'], stock, quantity, configuration_id=cid,
+                        data_version=version, demand_source={'purpose': 'inventory_comparison'}, bom_complete=True)
+                    names = {n['id']: n['name'] for n in detail['components']}
+                    for row in result['components']:
+                        row['name'] = names.get(row['component_id'], row['component_id'])
+                    products.append(dict(configuration_id=cid,
+                        name=detail['configuration'].get('name', cid), result=result))
+                return svc._envelope(ok=True, data=dict(quantity=quantity, products=products))
+            return svc._run(session.context['actor'], 'product_inventory_comparison',
+                            dict(quantity=quantity), read)

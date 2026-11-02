@@ -1,5 +1,13 @@
 # PROJECT_STATUS
 
+## 2026-11-02 — BOM 외 공정 자재의 별도 근거 데이터
+
+사용자 요청으로 `data/production_planning/process_materials_v1.json`을 추가했다. 실제 제조사 자료에 있는 솔더 페이스트·실납·액상 플럭스·세정제·솔더 바 5종의 규격/수치와 L/L1 WROOM 구성 참조, KS 공개 메타데이터를 포함한다. 기존 BOM과 같은 고정 커밋의 PCB 원문, 제조사 자료, KS 페이지 총 11개를 `data/sources/process_materials_v1/`에 원본 그대로 보관하고 새 SourceDocument/Evidence ID와 SHA-256·URL·수집 시각·라이선스 확인 범위를 붙였다. 기존 catalog와 원본·운영 DB·공통 스키마·런타임 계산은 변경하지 않았다.
+
+수치는 난수가 아니다. PCB 외곽 면적 22.28331621 ㎠와 Kester 951의 고형분 도포 기준 120~240 µg/㎠·고형분 2%를 연결해, 웨이브 공정/한 면 전체 도포라는 조건부 참고량 0.13369989726~0.26739979452 g/대를 계산했다. 실제 구매량은 미정이다. 페이스트는 공식 계산법·품번별 금속 함량·합금 밀도를 연결한 참고 계수만 제공한다. 실제 스텐실 두께/개구부 합집합과 공정 손실은 미확인이고 U4 paste graphics·UEXT1 사다리꼴 패드가 있어 단순 패드 합계로 대당 수량을 확정하지 않았다. 기타 자재도 제조사 규격과 실제 대당 사용량을 구분한다. 모든 생산 승인 수량과 구매량은 null이며 국가인증·OLIMEX 실제 사용 사실을 주장하지 않는다.
+
+검증: 원문 11개 해시와 manifest 일치, Evidence 11개 참조, 구성 2개와 BOM의 모든 위치/PCB 참조 매칭, 외곽 면적의 독립 산식 대조, 플럭스 산술, 보관 PDF·HTML의 숫자 대조 통과. `python3 -m unittest discover -v`도 실행했으나 현재 Python 환경에서 840개 실행·8 failure·205 error·69 skip으로 전체 회귀는 통과하지 못했다. psycopg/rdflib 누락을 확인했으며 나머지 전체 실패 원인 분류는 수행하지 않았다. 로그 `/private/tmp/process-material-full-tests.log`. 다음 행동은 실제 공정·승인 자재·스텐실·실측 손실을 확보해 운영 사용량을 결정하는 것이다. 파일 추가만 완료했으며 웹/DB 연동은 수행하지 않았다.
+
 ## 2026-11-01 — PR #10 이후 A/B 공통 저장·RDF·Neo4j 통합
 
 기준 main은 PR #10 병합 커밋 `7d2db577d0b6bc99f435f53205ab5a1ba5f49980`이다. `codex/ab-domain-graph`에서 진행하며 기존 `codex/neo4j-auto-display`의 미커밋 파일·사용자 DB는 보존했다. main에 없던 로컬 RDF/Neo4j 구현을 필요한 선행 변경으로 재사용하고 자동 종류 표시를 함께 연결했다. 아래 과거의 미등록·그래프 미공유 기록은 당시 상태이며 현재 지원 범위는 이 절을 기준으로 한다.
@@ -740,3 +748,11 @@ A 일정 검토 버튼을 ‘일정 초안 저장’으로 변경하고 흐름 �
 공통 코드·CI·업무 코드·예제 안전장치를 유지하고 A 테스트 두 파일만 수정했다. 문서 예제 테스트는 fixture에서 이미 선택한 격리 DB 주소를 patch.dict로 실행 범위 안에서만 TEST_DATABASE_URL에 전달한다. 시간 정밀도 테스트는 Python3.10 후보 파서가 7자리 소수를 먼저 거부하는 동작을 허용하되, 최종 adapter 결과의 INVALID_TIME·valid=False·graph_integration_verified=False를 모두 검사한다. 검증 삭제·skip 추가 없음.
 
 실제 임시 PostgreSQL 및 Docker 격리 파서 검증: Python3.10.21, DATABASE_URL만 설정한 CI 유사 전체 실행 646개 중505개 통과·141개 기존 skip·실패0(57.106초). 기존 Python3.12 전체 DB 회귀646개 모두 통과(279.768초). 사용자 DB·모델 API 미사용. GitHub 원격 CI 결과는 push 후 별도 확인 필요.
+
+### 2026-11-02 공정 자재 공용 재고와 근거 웹 조회
+
+사용자 요청에 따라 A 내부 library_process_materials.py, 계약 보관함 API/CLI/화면 및 A 테스트를 추가했다. 공통 코드·T-box 변경 없음. 기존 공정 자료의 원문/카탈로그 해시를 확인하고 5종의 회사 가상 재고를 별도 PostgreSQL 원장에 명시적으로 등록했다. L/L1은 동일 자재/로트를 참조한다. 보유−예약−보류, 만료 제외, 미확인과 0 구분 및 조건부 플럭스 비교를 제공하며 소비량·구매 확정량·생산 가능 여부를 임의 확정하지 않는다. 실제 입출고/예약/구매를 생성하지 않았다.
+
+검증: 신규12개 + 기존 계약 보관함13개 = 25개 통과(82.485초), JS 문법/diff 검사 통과, 독립 코드 리뷰 actionable finding 없음. 브라우저 실제 DB에서 L/L1 전환, 100대/10대 비교, 기존 계약120대 BOM→공정 자재→근거 탐색을 확인했다. http://127.0.0.1:51171/#process-materials 서버 실행, 화면 /private/tmp/ontologics-process-stock.png. 가상 재고는 새로고침/서버 재시작 후 보존된다. 실제 회사 재고 및 공정 소비율은 별도 수집·검증이 필요하다. 전체 회귀 결과 후속 기록.
+
+전체 회귀: Python3.12 격리 PG 실행1534개, 실패10·오류19·기존 skip6 (348.103초). 전체 통과 아님. 오류에는 neo4j/rdflib 미설치, 자식 Python의 psycopg 경로 미상속, /tmp symlink 거부, 예제의 동일 disposable DB 환경 요구 및 테스트 패키지 탐색 기대값 불일치가 포함된다. 이번 수정 파일의 신규12개와 관련 계약 보관함13개는 별도 실행과 전체 실행에서 통과했다. 공통/B 코드나 해당 안전장치를 변경하지 않았다. 전체 로그 /private/tmp/process-stock-tests.log, 관련 로그 /private/tmp/process-stock-related-tests.log. 다음 행동: 전체 검사용 의존성·서브프로세스 환경을 정렬한 뒤 기존 실패 재검증.

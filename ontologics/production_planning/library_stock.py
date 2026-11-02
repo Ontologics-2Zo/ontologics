@@ -1,4 +1,6 @@
 """Explicit, persistent company-stock scenarios. Never loaded implicitly."""
+from copy import deepcopy
+from datetime import datetime
 from ..model import canonical, digest
 from ..service import DomainError
 from .materials import available_stock
@@ -24,6 +26,58 @@ def company_stock_scenario(detail, as_of):
     return dict(origin='synthetic',label='회사 재고 시나리오',scope=scope,snapshots=[doc])
 
 
+def shared_stock(rows):
+    """Resolve one company/location pool without copying or adding duplicate lots.
+
+    A configuration snapshot is an observation source. For each component use
+    its newest complete observation; retain original per-lot provenance.
+    The current reservation ledger has no warehouse dimension, so mixed scopes
+    must be reconciled rather than silently consuming stock from another site.
+    """
+    if not rows:return None
+    if len(rows)==1:return rows[0]
+    scopes={(r['payload']['scope']['company'],r['payload']['scope']['location'],
+             r['payload']['scope']['unit']) for r in rows}
+    if len(scopes)!=1:
+        raise DomainError('STOCK_SCOPE_CONFLICT','회사·창고가 다른 재고 자료입니다. 공용 재고 범위를 먼저 대사하세요.')
+    sources=[];chosen={}
+    for row in rows:
+        p=row['payload'];calculated=available_stock(p['snapshots'],p['scope'])
+        if not calculated['valid']:
+            raise DomainError('STOCK_SOURCE_INVALID','공용 재고 원본에 오류 또는 상충이 있습니다.')
+        at=datetime.fromisoformat(p['scope']['as_of'].replace('Z','+00:00'))
+        sources.append((row,calculated))
+        for cid,component in calculated['components'].items():
+            # Include lot quantities, not just the summed availability.
+            lots=[{k:v for k,v in x['observation'].items() if k!='id'} for x in calculated['selected'] if x['observation'].get('component_id')==cid]
+            signature=digest(dict(component=component,lots=lots))
+            old=chosen.get(cid)
+            if old and old[0]==at and old[3]!=signature:
+                raise DomainError('STOCK_OBSERVATION_CONFLICT','동일 시점의 부품 재고가 서로 다릅니다. 재고 담당자의 대사가 필요합니다.')
+            if old is None or at>old[0]:chosen[cid]=(at,row,calculated,signature)
+    newest=max(rows,key=lambda r:datetime.fromisoformat(r['payload']['scope']['as_of'].replace('Z','+00:00')))
+    result=deepcopy(next(c for r,c in sources if r['id']==newest['id']))
+    result.update(components={},selected=[],excluded=[],errors=[],conflicts=[],unresolved=[])
+    coverage={}
+    for cid,(_,row,calculated,_) in chosen.items():
+        result['components'][cid]=deepcopy(calculated['components'][cid])
+        result['components'][cid]['source_snapshot_id']=row['id']
+        result['components'][cid]['source_as_of']=row['payload']['scope']['as_of']
+        coverage[cid]=row['payload']['scope'].get('component_lots',{}).get(cid,[])
+    # Keep original source/locator evidence intact; do not rewrite source rows.
+    for row,calculated in sources:
+        selected_ids={cid for cid,value in chosen.items() if value[1]['id']==row['id']}
+        result['selected'].extend(deepcopy(x) for x in calculated['selected'] if x['observation'].get('component_id') in selected_ids)
+        result['unresolved'].extend(deepcopy(calculated['unresolved']))
+    result['scope']['component_lots']=coverage
+    result['scope']['coverage_basis']='부품별 최신 관측 원본 참조; 중복 로트 합산 없음'
+    payload=deepcopy(newest['payload']);payload['scope']=deepcopy(result['scope'])
+    payload['label']='회사 공용 부품 재고'
+    merged=dict(newest,id=digest(sorted(r['id'] for r in rows)),payload=payload,
+                shared_calculated=result,source_snapshot_ids=sorted(r['id'] for r in rows))
+    return merged
+
+
 class LibraryStock:
     def __init__(self,host,context):
         self.host=host
@@ -35,7 +89,31 @@ class LibraryStock:
                 actor TEXT NOT NULL,created_at TEXT NOT NULL)''')
 
     def latest(self,svc,configuration_id):
-        return svc.db.execute('SELECT * FROM pp_company_stock_snapshots WHERE configuration_id=%s ORDER BY created_at DESC,id DESC LIMIT 1',(configuration_id,)).fetchone()
+        # configuration_id identifies the consumer, never ownership of stock.
+        rows=svc.db.execute('''SELECT DISTINCT ON (configuration_id) *
+            FROM pp_company_stock_snapshots
+            ORDER BY configuration_id,created_at DESC,id DESC''').fetchall()
+        from .library_inventory_identity import links
+        mapping=links(svc)
+        if not mapping:
+            own=next((r for r in rows if r['configuration_id']==configuration_id),None)
+            return own or (rows[0] if len(rows)==1 else None)
+        normalized=[]
+        for raw in rows:
+            row=deepcopy(raw);p=row['payload'];coverage={}
+            for cid,lots in p['scope'].get('component_lots',{}).items():
+                key=mapping.get(cid,cid)
+                if key in coverage:raise DomainError('STOCK_IDENTITY_CONFLICT','동일 재고 품목의 관측이 중복됐습니다.')
+                coverage[key]=lots
+            p['scope']['component_lots']=coverage
+            for doc in p['snapshots']:
+                for item in doc['stocks']:
+                    item['component_id']=mapping.get(item['component_id'],item['component_id'])
+            normalized.append(row)
+        pooled=shared_stock(normalized)
+        if pooled:
+            pooled=dict(pooled,id=digest(dict(sources=sorted(r['id'] for r in rows),links=mapping)),inventory_links=mapping)
+        return pooled
 
     def store(self,context,configuration_id,payload,request_key):
         if payload.get('origin')!='synthetic':raise DomainError('INVALID_INPUT','이 등록 경로는 명시적인 회사 재고 시나리오 전용입니다.')
@@ -55,13 +133,15 @@ class LibraryStock:
     def calculate(self,row,svc=None,owner=None):
         if row is None:
             return dict(components={},selected=[],excluded=[],errors=[],conflicts=[],unresolved=[dict(code='STOCK_SOURCE_NOT_CONNECTED',refs=[],message='재고 자료 미연결')],scope=None,valid=True,state='unavailable')
-        payload=row['payload']; result=available_stock(payload['snapshots'],payload['scope'])
+        payload=row['payload']; result=deepcopy(row['shared_calculated']) if 'shared_calculated' in row else available_stock(payload['snapshots'],payload['scope'])
         result.update(snapshot_id=row['id'],origin=payload['origin'],label=payload['label'],state='available')
         if svc is not None:
             from .library_reservations import reserved_totals,reservation_token
             totals=reserved_totals(svc,owner)
             from .library_fulfillment import received_totals
             incoming=received_totals(svc)
+            from .library_inventory_identity import shared_totals
+            incoming=shared_totals(svc,incoming)
             for cid,component in result['components'].items():
                 value=component['available_quantity']
                 if value is not None:
@@ -70,6 +150,10 @@ class LibraryStock:
                     component['a_reserved_quantity']=totals.get(cid,0)
                     component['available_quantity']=max(0,value-totals.get(cid,0))
             result['reservation_token']=reservation_token(svc,owner)
+        result['inventory_links']=row.get('inventory_links',{})
+        for alias,key in row.get('inventory_links',{}).items():
+            if key in result['components']:
+                result['components'][alias]=dict(result['components'][key],stock_component_id=key)
         return result
 
 

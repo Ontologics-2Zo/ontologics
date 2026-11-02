@@ -16,7 +16,7 @@ $('new').onclick=()=>{$('register-panel').hidden=false;$('title').focus();};$('c
 $('file').onchange=()=>{selectedFile=$('file').files[0]||null;key=null;if(selectedFile&&!$('title').value)$('title').value=selectedFile.name.replace(/\.[^.]+$/,'');};for(const id of ['title'])$(id).oninput=()=>key=null;
 $('register-form').onsubmit=e=>{e.preventDefault();action(async()=>{const file=selectedFile;if(!file)throw Error('계약서 파일을 선택해 주세요.');if(file.size>600000)throw Error('600 KB 이하 파일을 선택해 주세요.');key||=crypto.randomUUID();notice('원본 저장 후 실제 모델로 계약을 해석합니다. 완료될 때까지 기다려 주세요…');const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(const b of bytes)binary+=String.fromCharCode(b);const d=await api('register',{title:$('title').value,filename:file.name,content_base64:btoa(binary),request_key:key});$('query').value='';offset=0;await open(d.id);$('register-panel').hidden=true;$('register-form').reset();selectedFile=null;key=null;notice(d.already_saved?'이미 보관한 동일 원본입니다. 기존 계약을 열었습니다.':'계약 원본을 저장했습니다. 아래 해석 상태와 결과를 확인해 주세요.');});};
 $('search-form').onsubmit=e=>{e.preventDefault();action(async()=>{offset=0;await search();notice('검색 결과를 불러왔습니다.');});};$('reload').onclick=()=>action(async()=>{await search();notice('최신 계약 목록을 불러왔습니다.');});$('prev').onclick=()=>action(async()=>{offset=Math.max(0,offset-30);await search();});$('next').onclick=()=>action(async()=>{offset+=30;await search();});
-action(async()=>{const r=await fetch('/api/context');const j=await r.json();if(!r.ok||!j.ok)throw Error('서버 연결을 확인한 뒤 새로고침해 주세요.');csrf=j.data.csrf_token;await search();notice('계약서를 등록하거나 보관한 계약을 검색하세요.');});
+action(async()=>{const r=await fetch('/api/context');const j=await r.json();if(!r.ok||!j.ok)throw Error('서버 연결을 확인한 뒤 새로고침해 주세요.');csrf=j.data.csrf_token;await search();notice('계약서를 등록하거나 보관한 계약을 검색하세요.');if(location.hash==='#process-materials')await showProcessMaterials();});
 
 const labels={company:'공급자',customer:'구매자',customer_registration_number:'구매자 사업자등록번호',manufacturer:'제조사',product_model:'제품명',revision:'설계 개정',variant:'제품 변형',ordered_quantity:'주문 수량',unit:'원문 단위',fulfilled_quantity:'기존 이행 수량',allocated_quantity:'기존 배정 수량',planned_input_quantity:'신규 생산 검토 수량',delivery_due:'고객 도착 납기',constraints:'개정·대체 조건',contract_item_id:'계약 항목 번호',configuration_id:'원문 구성 ID'};
 function renderReview(panel,d,afterSave=null){
@@ -101,7 +101,7 @@ const audit=el('details');audit.append(el('summary','조회 기록 · 상세 정
 async function showMaterials(id,itemIndex){
 const data=await api('materials',{contract_id:id,item_index:itemIndex});const view=$('planning-page');view.replaceChildren();notice(data.saved_current?'저장된 부품 소요량 검토를 불러왔습니다.':'생산 검토 수량과 근거를 입력하면 부품 소요량을 계산합니다.');
 const back=el('button','← 연결한 제품 확인');back.onclick=()=>action(()=>showPlanning(id));
-view.append(back,el('h1','생산 수량과 필요한 부품 검토'),el('p',data.title,'contract-context'),el('p','연결한 제품의 부품 목록을 읽어, 이번에 생산하려는 수량에 필요한 부품을 계산합니다.'));
+view.append(back,el('h1','생산 수량과 자재 재고 검토'),el('p',data.title,'contract-context'),el('p','연결한 제품의 부품 목록을 읽어, 이번에 생산하려는 수량에 필요한 부품을 계산합니다.'));
 const order=data.fields.ordered_quantity?.value;view.append(el('h2','1. 이번에 몇 대를 생산할지 정하세요'),el('p',`계약 주문 수량: ${order??'미확인'} ${data.fields.unit?.value??''}`),el('p','주문 수량과 생산 수량은 다를 수 있습니다. 이미 납품한 수량, 완제품 재고, 추가 생산 필요량을 확인하고 이번 검토 수량과 근거를 입력하세요.'));
 const form=el('form');const qlabel=el('label','생산 검토 수량 (대)');const quantity=el('input');quantity.type='number';quantity.min='0';quantity.max='10000000';quantity.step='1';quantity.required=true;qlabel.append(quantity);
 const rlabel=el('label','이 수량으로 검토하는 이유');const reason=el('textarea');reason.required=true;reason.maxLength=2000;reason.placeholder='예: 완제품 재고와 기존 납품 내역을 확인한 뒤 남은 주문 수량을 생산';rlabel.append(reason);
@@ -115,7 +115,9 @@ for(const component of result.components){const row=el('tr');for(const value of 
 if(result.excluded_bom?.length)view.append(el('p',`비장착 등 계산에서 제외된 BOM 항목: ${result.excluded_bom.length}건`));
 const details=el('details');details.append(el('summary','계산 방법과 추가 확인 사항'),el('p','필요 수량 = 확인된 제품 1대당 부품 수량 × 입력한 생산 검토 수량. 비장착으로 확인된 항목은 제외합니다.'),el('p',`필요 수량을 확정하지 못한 부품: ${result.components.filter(c=>c.D===null).length}종. 장착 여부와 BOM 수량을 제품 정보 담당자에게 확인하세요.`));if(result.errors?.length||result.conflicts?.length)details.append(el('p','부품 자료에 오류 또는 상충하는 내용이 있어 확인이 필요합니다. 현재 결과를 확정 생산 계획에 사용하지 마세요.'));view.append(details);
 }else view.append(el('p',data.saved?'제품 연결이 변경되어 이전 결과를 사용할 수 없습니다. 수량과 근거를 입력해 다시 계산하세요.':'아직 계산하지 않았습니다. 위에서 생산 검토 수량을 입력하세요.'));
-view.append(el('h2','3. 이후 무엇을 확인하나요?'),el('p','부족량이 표시된 부품의 구매 또는 대체안을 검토합니다. 필요 수량이 미확인인 부품은 장착 여부부터 확인해야 합니다. 이후 조달 일정과 생산 조건을 확인해 생산 계획을 작성합니다.'));
+const processSection=el('section',undefined,'process-inline');view.append(processSection);processSection.append(el('h2','3. 공정 자재 공용 재고'));
+try{const process=await api('process-materials',{configuration_id:data.link.configuration_id,quantity:data.saved_current?data.saved.quantity:0});renderProcessSummary(processSection,process,data.saved_current);const more=el('button','제품별 BOM·공정 자재 함께 보기 →','primary');more.onclick=()=>action(()=>showProcessMaterials(data.link.configuration_id,data.saved_current?data.saved.quantity:100,()=>showMaterials(id,itemIndex)));processSection.append(more);}catch(error){processSection.append(el('p',`공정 자재를 확인하지 못했습니다: ${error.message}`,'planning-warning'));}
+view.append(el('h2','4. 확보 검토에서 남은 일'),el('p','BOM 부품의 부족분과 공정 자재의 사용량·적용 여부를 함께 확인하세요. 공정 자재의 가용 재고가 있어도 승인된 사용량이 없으면 확보 완료를 확정하지 않습니다.'));
 view.scrollIntoView({behavior:'smooth'});
 }
 
@@ -335,3 +337,79 @@ if(buyer.state==='ambiguous')for(const c of buyer.candidates){const b=el('button
 else if(buyer.state==='create'||buyer.state==='matched'){const b=el('button','구매자로 고객 연결 갱신');b.onclick=()=>action(async()=>{await api('customer-sync',{contract_id:original.id,request_key:crypto.randomUUID()});await showPlanning(original.id);});area.append(b);}
 else if(buyer.state!=='unavailable'){const b=el('button','구매자 정보 확인');b.onclick=onEdit;area.append(b);}
 }
+
+
+// Process materials share the same lot pool across configurations.
+const processStatus={usage_unknown:'사용량 확인 필요',stock_unknown:'재고 미확인',reference_shortage:'조건부 이론량 대비 부족',reference_covered:'이론량 범위 충족 · 적용 미확정'};
+function processNumber(v){if(v===null||v===undefined)return '미확인';return new Intl.NumberFormat('ko-KR',{maximumFractionDigits:4}).format(Number(v));}
+function processRange(v,unit){return v?'약 '+v.map(processNumber).join(' ~ ')+' '+unit:'미확정';}
+function renderProcessSummary(view,data,compare=true){
+const scope=data.stock_scope;view.append(el('p',scope?`${scope.company} · ${scope.location} · 기준 ${date(scope.as_of)}`:'공정 자재 회사 재고가 아직 등록되지 않았습니다.'));
+if(scope){const origin=el('details');origin.append(el('summary','재고 데이터 출처'),el('p','업무 검증용 테스트 재고입니다. 실입고·실사 기록과 연결되기 전까지 실제 회사 재고로 확정하지 않습니다.'));view.append(origin);}else view.append(el('p','재고 미연결 · 재고 담당자의 등록이 필요합니다.','planning-warning'));
+if(compare)view.append(el('p',`${data.quantity}대 비교 · 공정 자재 ${data.materials.length}종 · 기준 미등록 ${data.materials.filter(m=>m.usage_basis?.base_per_board==null).length}종. 아래 자동 계산에서 필요량과 부족량을 확인하세요.`));
+else view.append(el('p','생산 검토 수량을 저장하면 근거가 있는 조건부 이론량과도 비교합니다. 현재는 재고만 조회합니다.'));
+const table=el('table',undefined,'material-table process-table'),head=el('tr');['공정 자재','보유','다른 작업 예약','사용 보류','가용','단위','사용량 기준'].forEach(x=>head.append(el('th',x)));table.append(head);
+for(const m of data.materials){const tr=el('tr');[m.name,processNumber(m.stock.on_hand),processNumber(m.stock.reserved),processNumber(m.stock.held),processNumber(m.stock.available),m.stock.unit,m.usage_basis?.origin==='synthetic_history_estimate'?'가상 이력 기반 추정':m.usage_basis?.base_per_board!=null?'도면·제조사 기반 추정':'대당 사용량 미설정'].forEach(x=>tr.append(el('td',x)));table.append(tr);}
+const scroll=el('div',undefined,'table-scroll');scroll.append(table);view.append(scroll,el('p','가용 = 보유 − 다른 작업 예약 − 사용 보류. 사용 보류는 창고에 있으나 품질 검사·사용 승인 대기 등으로 출고할 수 없는 수량입니다. 만료 로트도 가용에서 제외합니다.','subtle'));
+}
+async function showProcessMaterials(configurationId='config:esp32-poe:L:WROOM',quantity=100,back=null){
+const inventory=await api('product-inventory',{quantity});
+let view=$('planning-page');if(!view){view=el('section',undefined,'panel');view.id='planning-page';document.querySelector('main').insertBefore(view,document.querySelector('footer'));}
+view.hidden=false;document.querySelector('.layout').hidden=true;document.querySelector('.heading').hidden=true;$('register-panel').hidden=true;view.replaceChildren();
+const returnButton=el('button',back?'← 계약의 BOM 자재 검토':'← 계약 보관함');returnButton.onclick=()=>action(async()=>{if(back)await back();else{view.hidden=true;document.querySelector('.layout').hidden=false;document.querySelector('.heading').hidden=false;$('new').hidden=false;history.replaceState(null,'',location.pathname);}});
+view.append(returnButton,el('h1','제품별 자재 재고'),el('p','제품을 펼치면 BOM 부품과 공정 자재를 함께 볼 수 있습니다. 제품별 수량을 입력해 필요한 자재와 현재 가용 재고를 검토하세요.'));
+view.append(el('p','회사 공용 재고: 여러 제품에 표시되는 같은 자재·로트는 하나의 재고입니다. 제품별 가용량을 합산하거나 동시 생산 가능량으로 해석하지 마세요.','planning-warning'));
+const controls=el('div',undefined,'actions'),expand=el('button','모두 펼치기'),collapse=el('button','모두 접기');controls.append(expand,collapse);view.append(controls);
+const cards=new Map();
+const selectProduct=cid=>{const card=cards.get(cid);if(card){card.open=true;card.scrollIntoView({behavior:'smooth',block:'start'});}};
+for(const product of inventory.products){
+const card=el('details',undefined,'product-inventory');card.open=product.configuration_id===configurationId;card.dataset.configuration=product.configuration_id;cards.set(product.configuration_id,card);
+const summary=el('summary'),title=el('strong',product.name),status=el('span',undefined,'inventory-status');summary.append(title,status);card.append(summary);view.append(card);
+const content=el('div',undefined,'inventory-content');card.append(content);
+const processSettings={};let revision=0,quantityTimer=null;
+async function render(q,bom,version=revision){
+const process=await api('process-materials',{configuration_id:product.configuration_id,quantity:q}).catch(error=>({error:error.message}));
+if(version!==revision)return;content.replaceChildren();content.dataset.quantityPending='false';
+const rows=bom.components,short=rows.filter(r=>r.S!==null&&r.S>0).length,unknown=rows.filter(r=>r.S===null).length;
+status.textContent=`${q}대 비교 · BOM 부족 ${short}종 / 미확인 ${unknown}종 · 공정 ${process.error?'조회 실패':process.materials.length+'종 / 기준 미등록 '+process.materials.filter(m=>m.usage_basis?.base_per_board==null).length+'종'}`;
+const form=el('form',undefined,'inventory-quantity'),label=el('label','생산 수량 · BOM/공정 자재 공통'),input=el('input');input.type='number';input.min='0';input.max='10000000';input.step='1';input.required=true;input.value=q;input.setAttribute('aria-label',product.name+' 비교 수량');label.append(input);const submit=el('button','재고·필요량 다시 확인');submit.type='submit';form.append(label,submit);
+function invalidate(){++revision;content.dataset.quantityPending='true';content.querySelectorAll('.process-procurement button[type="submit"]').forEach(b=>{b.disabled=true;b.dataset.locked='true';});status.textContent='생산 수량 변경 · 재계산 필요';}
+async function reloadQuantity(version){if(!form.reportValidity())return;try{const next=Number(input.value),fresh=await api('product-inventory',{quantity:next});if(version!==revision)return;const current=fresh.products.find(p=>p.configuration_id===product.configuration_id);if(!current)throw Error('제품 구성이 변경되었습니다. 화면을 다시 여세요.');await render(next,current.result,version);}catch(error){if(version===revision){status.textContent='재계산 실패 · 이전 수량으로 RFQ 작성 불가';notice(error.message,true);}}}
+input.addEventListener('input',()=>{invalidate();clearTimeout(quantityTimer);quantityTimer=setTimeout(()=>reloadQuantity(revision),350);});
+form.onsubmit=e=>{e.preventDefault();clearTimeout(quantityTimer);invalidate();reloadQuantity(revision);};content.append(form);
+content.append(el('h2','BOM 부품'),el('p',bom.stock?.label||'이 제품의 BOM 재고 자료 미연결 · 미확인을 0으로 표시하지 않습니다.','subtle'));const linked=rows.filter(r=>bom.stock?.inventory_links?.[r.component_id]).length;content.append(el('p',`회사 공용 품목 연결 ${linked}종 · 그 외 ${rows.length-linked}종은 연결된 재고 자료가 있을 때만 조회합니다. 공용 품목은 다른 제품의 예약·해제도 함께 반영됩니다.`,'subtle'));
+const table=el('table',undefined,'material-table'),head=el('tr');['부품','제품 1대당','필요 수량','가용 재고','부족량'].forEach(x=>head.append(el('th',x)));table.append(head);
+for(const row of rows){const tr=el('tr');[row.name,row.q,row.D,row.A,row.S].forEach(x=>tr.append(el('td',x===null||x===undefined?'미확인':String(x))));table.append(tr);}const scroll=el('div',undefined,'table-scroll');scroll.append(table);content.append(scroll,el('p','BOM 수량 단위: 개. 기존 계획의 예약을 모두 차감한 공용 가용량입니다. 장착 여부·수량이 미확정인 부품은 필요량과 부족량도 미확인입니다.','subtle'));
+if(bom.errors?.length||bom.conflicts?.length)content.append(el('p','BOM 또는 재고 자료에 오류·상충이 있습니다. 확정 계획에 사용하지 마세요.','planning-warning'));
+content.append(el('h2','공정 자재 · 회사 공용 재고'));
+if(process.error){content.append(el('p','공정 자재 조회 실패: '+process.error,'planning-warning'));return;}
+renderProcessSummary(content,process);await renderProcessProcurement(content,process,q,processSettings);if(version!==revision)return;content.append(el('h3','자재별 로트·계산식·근거 펼치기'));renderProcessEvidence(content,process,product.configuration_id,q,selectProduct);
+}
+await render(quantity,product.result);
+}
+expand.onclick=()=>{for(const card of cards.values())card.open=true;};collapse.onclick=()=>{for(const card of cards.values())card.open=false;};
+notice('제품별 BOM과 공정 자재를 함께 조회했습니다. 제품 제목을 눌러 펼치거나 접으세요.');view.scrollIntoView({behavior:'smooth'});
+}
+function renderProcessEvidence(view,data,configurationId,quantity,onSelect){
+const names={};for(const node of data.graph.nodes)names[node.id]=node.label;
+for(const m of data.materials){
+const detail=el('details',undefined,'process-detail material-evidence');detail.append(el('summary',m.name+' · '+(m.usage_basis?.origin==='synthetic_history_estimate'?'가상 이력 기반 추정':m.usage_basis?.base_per_board!=null?'도면·제조사 기반 추정':'대당 사용량 미설정')));view.append(detail);
+const flow=el('div',undefined,'process-relation');for(const [i,label]of [names[configurationId],m.process,m.name,'공용 재고 '+processNumber(m.stock.available)+' '+m.stock.unit].entries()){if(i)flow.append(el('span','→','process-arrow'));flow.append(el('span',label,'process-node'));}detail.append(flow,el('h2',m.name),el('span','적용 후보 · 승인 사용량 미확정','tag pending'));
+if(m.reference_case){detail.append(el('h3','근거로 계산한 조건부 비교'),el('p',`${quantity}대의 이론 도포량: ${processRange(m.reference_required,m.stock.unit)} · 가용 재고: ${processNumber(m.stock.available)} ${m.stock.unit}`),el('p',`이론량 대비 부족 범위: ${processRange(m.reference_shortage,m.stock.unit)}`,'process-shortage'),el('p','Kester 951을 웨이브 공정에서 보드 한 면 전체에 도포한다고 가정한 값입니다. 실제 공정 채택·도포 면적·분사 손실·증발·초기 충전량은 미확인이므로 구매 확정량이 아닙니다.'));
+const calc=el('details');calc.append(el('summary','수치와 계산식 확인'),el('p',`PCB 외곽 면적 ${m.reference_case.inputs.area_cm2} cm² × 고형분 도포 기준 120~240 µg/cm² ÷ 1,000,000 ÷ 고형분 비율 0.02 × ${quantity}대`),el('p','가장자리 홈은 반영하고 드릴 구멍은 빼지 않은 외곽 면적입니다.'));detail.append(calc);
+}else detail.append(el('p','등록된 대당 기준은 위의 자동 필요량·RFQ에 연결됩니다. 기준 미등록 자재는 계산과 RFQ에서 제외됩니다.'));
+detail.append(el('h3','같은 공용 재고를 참조하는 제품'));
+const uses=el('div',undefined,'process-tabs');for(const cid of m.used_by){const b=el('button',names[cid]);b.onclick=()=>onSelect(cid);uses.append(b);}detail.append(uses,el('p','제품을 바꿔도 같은 자재·로트의 재고를 조회합니다. 제품별로 재고를 복제하거나 자동 배정하지 않습니다.','subtle'));
+detail.append(el('h3','재고 로트'));
+if(!m.stock.lots.length)detail.append(el('p','등록된 재고 로트 없음 · 수량 미확인'));
+for(const lot of m.stock.lots){const card=el('div',undefined,'process-lot');card.append(el('strong',`재고 로트 · ${processNumber(lot.available)} ${lot.unit} 가용`),el('p',`보유 ${processNumber(lot.on_hand)} − 다른 작업 예약 ${processNumber(lot.reserved)} − 보류 ${processNumber(lot.held)} ${lot.unit}`),el('p',`등록된 사용기한 ${date(lot.expires_at)}${lot.expired?' · 만료되어 전량 제외':''}`));if(Number(lot.held)>0)card.append(el('p','사용 보류 사유·해제 담당자: 미등록 · 재고 담당자 확인 필요','planning-warning'));const id=el('details');id.append(el('summary','로트 식별자·등록 근거'),el('p',lot.id),el('p',lot.expiry_basis));card.append(id);detail.append(card);}
+const params=el('details');params.append(el('summary','공식 재료 수치 확인'));
+const labels={alloy:'합금',metal_mass_fraction:'금속 질량 비율',powder_type:'분말 Type',package_net_mass:'포장 순량',alloy_density:'합금 밀도',reference_flux_specific_gravity:'계산용 플럭스 비중 가정',reference_stencil_thickness:'공개 예제의 스텐실 두께',diameter:'선경',flux_mass_percent:'플럭스 함량',specific_gravity:'비중',solids_mass_percent:'고형분 비율',recommended_solids_deposition:'권장 고형분 도포량',derived_wet_deposition_g_per_cm2:'환산 습식 도포량',specification_purity:'순도 규격',density:'밀도',available_bar_sizes:'공급 솔더 바 크기'};
+for(const [key,v]of Object.entries(m.parameters)){if(key==='derived_reference')continue;params.append(el('p',`${labels[key]||key}: ${typeof v==='string'?v:(v.comparison==='greater_than'?'초과 ':'')+(Array.isArray(v.value)?v.value.join(' ~ '):v.value)+' '+(v.unit||'g/cm²')}${v.temperature_c?' · '+v.temperature_c+'℃':''}`));}params.append(el('p','공개 계산 예제의 두께·비중은 이 보드의 실측 공정값이 아닙니다.'));detail.append(params);
+detail.append(el('h3','사용량 확정에 필요한 정보'));const missing=el('ul');
+const needs=m.id.includes(':np560:')?['WROOM 구성의 승인 스텐실 개구부·두께','실장 미확인 위치와 공정 손실 실측']:m.id.includes(':275:')?['실제 납땜 위치·실납 투입량','보수 수량과 준비 손실']:m.id.endsWith(':951')?['웨이브 공정 적용 여부와 실제 도포 면적','분사·증발 손실 및 초기 충전량']:m.id.endsWith(':824')?['실제 세정 공정과 재료 호환성','회당 사용량·세정 횟수·증발 및 회수량']:['설비 솔더 조 용량과 현재 충전량','실제 보충·드로스 손실 기준'];for(const t of needs)missing.append(el('li',t));detail.append(missing);
+detail.append(el('h3','공식 출처와 연결 근거'));
+for(const source of m.sources){const box=el('details');box.append(el('summary',source.path.split('/').pop()));const a=el('a','공식 원문 열기');try{const url=new URL(source.url);if(url.protocol==='https:'||url.protocol==='http:'){a.href=url.href;a.target='_blank';a.rel='noopener noreferrer';box.append(a);}}catch{}for(const ev of m.evidence_details.filter(e=>e.source_id===source.id))box.append(el('p',ev.locator),el('p',ev.description));box.append(el('p',`원문 SHA-256: ${source.sha256}`,'subtle'));detail.append(box);}
+}
+}
+$('process-stock').onclick=()=>action(()=>showProcessMaterials());

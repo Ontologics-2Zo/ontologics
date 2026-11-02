@@ -34,7 +34,32 @@ class LibraryApplication(WebApplication):
         self.fulfillment=LibraryFulfillment(self.plan_document)
         from .library_schedule import LibrarySchedule
         self.schedule=LibrarySchedule(self.plan_document)
+        from .library_process_materials import LibraryProcessMaterials
+        self.process_materials=LibraryProcessMaterials(host,context)
+        from .library_process_rfq import LibraryProcessRFQ
+        self.process_rfq=LibraryProcessRFQ(self.process_materials,context)
     def dispatch(self,path,body=None):
+        if path=='/api/tools/contracts/process-requirement-preview':
+            exact_keys(body,('configuration_id','quantity','allowance_percent'))
+            return self.process_rfq.preview(self.context,**body)
+        if path=='/api/tools/contracts/process-requirement-auto':
+            exact_keys(body,('configuration_id','quantity','allowance_percent','job_name','basis_hash','reviewed','request_key'))
+            return self.process_rfq.automatic_review(self.context,**body)
+        if path=='/api/tools/contracts/process-requirement-review':
+            exact_keys(body,('configuration_id','quantity','job_name','inputs','reviewed','request_key'))
+            return self.process_rfq.review(self.context,**body)
+        if path=='/api/tools/contracts/process-requirement-get':
+            exact_keys(body,('configuration_id','review_id'))
+            return self.process_rfq.inspect(self.context,**body)
+        if path=='/api/tools/contracts/process-rfq-create':
+            exact_keys(body,('review_id','material_ids','supplier','desired_date','date_basis','destination','note','reviewed','request_key'))
+            return self.process_rfq.create(self.context,**body)
+        if path=='/api/tools/contracts/product-inventory':
+            exact_keys(body,('quantity',))
+            return self.materials.inventory(self.context,**body)
+        if path=='/api/tools/contracts/process-materials':
+            exact_keys(body,('configuration_id','quantity'))
+            return self.process_materials.inspect(self.context,**body)
         if path=='/api/tools/contracts/customer':
             exact_keys(body,('contract_id',))
             return self.customers.inspect(self.context,**body)
@@ -194,7 +219,7 @@ class LibraryApplication(WebApplication):
 class LibraryHandler(Handler):
     def handle_method(self,method):
         path=urlsplit(self.path)
-        files={'/':'index.html','/library.js':'app.js','/library.css':'style.css'}
+        files={'/':'index.html','/library.js':'app.js','/library.css':'style.css','/process-rfq.js':'process_rfq.js'}
         if method=='GET' and path.path in files and not path.query:
             from ..service import DomainError
             try:
@@ -218,6 +243,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=51171)
     parser.add_argument('--schema',default='a_contract_library')
+    parser.add_argument('--seed-process-stock',action='store_true',help='사용자 승인 가상 공정 재고를 최초 한 번 등록하고 기존 기록은 보존')
+    parser.add_argument('--seed-stock-links',action='store_true',help='L/L1의 동일 표기·패키지를 회사 테스트 재고 품목으로 명시적으로 연결')
     args=parser.parse_args()
     from ..database import environment_values
     from ..graph_views import GraphSettings
@@ -231,6 +258,12 @@ def main():
     host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),settings,agent_registrations=(REGISTRATION,),cost_policy=policy,
                     graph_settings=GraphSettings.from_environment(environ=values))
     app=LibraryApplication(host,DevelopmentContext('dev-alice'),lambda:OpenAIProvider(provider_settings,REGISTRATION.allowed_tools),provider_settings.model)
+    if args.seed_process_stock:
+        result=app.process_materials.seed_scenario(app.context,'process-material-stock-demo-v1')
+        if not result['ok']:raise ValueError('공정 자재 가상 재고 초기화에 실패했습니다.')
+    if args.seed_stock_links:
+        from .library_inventory_identity import seed_company_test_links
+        print('회사 테스트 재고 품목 연결:',seed_company_test_links(host,app.context),flush=True)
     server=LibraryServer(app,args.port)
     print(json.dumps(dict(url=server.origin,storage='persistent PostgreSQL',model_calls=True)),flush=True)
     try:server.serve_forever()

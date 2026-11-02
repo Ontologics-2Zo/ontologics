@@ -1,0 +1,137 @@
+{
+  "purpose": "Unmodified original sources for separate process-material reference data",
+  "sources": [
+    {
+      "id": "source:process-materials:v1:L",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L/ESP32-PoE_Rev_L.kicad_pcb",
+      "path": "data/sources/process_materials_v1/L.kicad_pcb",
+      "sha256": "78bce8140fe7829d7c46c04cf5523d83ac61a5e8bf046e14d38140b1b99e6410",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Apache-2.0 hardware; see existing data/sources/OLIMEX-LICENSE.txt"
+    },
+    {
+      "id": "source:process-materials:v1:L1",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L1/ESP32-PoE_Rev_L1.kicad_pcb",
+      "path": "data/sources/process_materials_v1/L1.kicad_pcb",
+      "sha256": "9262f8e997f68d80c9dc7736381497102c1add64b4ddecb21b2d841867d2f045",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Apache-2.0 hardware; see existing data/sources/OLIMEX-LICENSE.txt"
+    },
+    {
+      "id": "source:process-materials:v1:indium-paste-usage",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.indium.com/wp-content/uploads/2025/03/Calculating-Solder-Paste-Usage-APPNOTE-98807-R1-1.pdf",
+      "path": "data/sources/process_materials_v1/indium-paste-usage.pdf",
+      "sha256": "7e230c8f00a95bb05aeca6cb8e9bd5fcdce1c20fa828db5b3588ea0033ec4e7d",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-np560",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/products/product/np560-solder-paste",
+      "path": "data/sources/process_materials_v1/kester-np560.html",
+      "sha256": "82426407caa9345d8d36123252757dd8d8c25df62cc595eab56ee204922ea457",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-sac305",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/DesktopModules/Bring2mind/DMX/API/Entries/Download?Command=Core_Download&EntryId=61810&PortalId=0&TabId=96&language=en-US",
+      "path": "data/sources/process_materials_v1/kester-sac305.pdf",
+      "sha256": "15d2f4c3d2655a18d246219198aa961a68476d2037084bcfe952bca0ca683155",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-951",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/DesktopModules/Bring2mind/DMX/API/Entries/Download?Command=Core_Download&EntryId=61851&PortalId=0&TabId=96&language=en-US",
+      "path": "data/sources/process_materials_v1/kester-951.pdf",
+      "sha256": "67fb24df48c70077a0316880cc1db050136c3c289086664cdf675bf832e10049",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-275",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/products/product/275-flux-cored-wire",
+      "path": "data/sources/process_materials_v1/kester-275.html",
+      "sha256": "ed310e3c5b212097cfe2992a4b228e34310d0efbf855916ff1a0a96964d8f0cd",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-paste",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010135737",
+      "path": "data/sources/process_materials_v1/ks-paste.html",
+      "sha256": "c3f96a34161f6d0a0042e67b5c8ed834c3a30e2f66981179000492e5e3dff8be",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-solid",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010135736",
+      "path": "data/sources/process_materials_v1/ks-solid.html",
+      "sha256": "1ec71d533e9008238e1a99ff7ca519940c410cfd0cf205fa189fb30c97db4991",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-flux",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010133462",
+      "path": "data/sources/process_materials_v1/ks-flux.html",
+      "sha256": "3f09c494c8b264a80f2ff8cb943ed53b72653bf31d9e8e0a736f27532de3ac88",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:mg-824",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://mgchemicals.com/downloads/tds/tds-824-l.pdf",
+      "path": "data/sources/process_materials_v1/mg-824.pdf",
+      "sha256": "614c8660641e62cc00097d41ef83cabe95573bac26a67540ddbf2a53bd911f54",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    }
+  ]
+}

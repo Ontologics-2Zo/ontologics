@@ -1,0 +1,818 @@
+{
+  "format": "process-material-reference/1.0",
+  "data_version": 1,
+  "created_at": "2026-11-02T06:52:17.560234+00:00",
+  "purpose": "별도 공정 자재 참고 데이터와 출처 기반 조건부 수치; 구매 확정 소요량 아님",
+  "integration": {
+    "runtime_loaded": false,
+    "db_imported": false,
+    "existing_bom_modified": false,
+    "global_schema_modified": false
+  },
+  "existing_catalog": {
+    "path": "data/catalog.json",
+    "sha256": "9884378d9879aab8175512c8c6758360715552bb403e7fb86d88af074dd0775c",
+    "source_commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53"
+  },
+  "sources": [
+    {
+      "id": "source:process-materials:v1:L",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L/ESP32-PoE_Rev_L.kicad_pcb",
+      "path": "data/sources/process_materials_v1/L.kicad_pcb",
+      "sha256": "78bce8140fe7829d7c46c04cf5523d83ac61a5e8bf046e14d38140b1b99e6410",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Apache-2.0 hardware; see existing data/sources/OLIMEX-LICENSE.txt"
+    },
+    {
+      "id": "source:process-materials:v1:L1",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://raw.githubusercontent.com/OLIMEX/ESP32-POE/deb38a377d50eadb04ddc7118a17a5ae58b1ee53/HARDWARE/ESP32-PoE-hardware-revision-L1/ESP32-PoE_Rev_L1.kicad_pcb",
+      "path": "data/sources/process_materials_v1/L1.kicad_pcb",
+      "sha256": "9262f8e997f68d80c9dc7736381497102c1add64b4ddecb21b2d841867d2f045",
+      "version": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Apache-2.0 hardware; see existing data/sources/OLIMEX-LICENSE.txt"
+    },
+    {
+      "id": "source:process-materials:v1:indium-paste-usage",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.indium.com/wp-content/uploads/2025/03/Calculating-Solder-Paste-Usage-APPNOTE-98807-R1-1.pdf",
+      "path": "data/sources/process_materials_v1/indium-paste-usage.pdf",
+      "sha256": "7e230c8f00a95bb05aeca6cb8e9bd5fcdce1c20fa828db5b3588ea0033ec4e7d",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-np560",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/products/product/np560-solder-paste",
+      "path": "data/sources/process_materials_v1/kester-np560.html",
+      "sha256": "82426407caa9345d8d36123252757dd8d8c25df62cc595eab56ee204922ea457",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-sac305",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/DesktopModules/Bring2mind/DMX/API/Entries/Download?Command=Core_Download&EntryId=61810&PortalId=0&TabId=96&language=en-US",
+      "path": "data/sources/process_materials_v1/kester-sac305.pdf",
+      "sha256": "15d2f4c3d2655a18d246219198aa961a68476d2037084bcfe952bca0ca683155",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-951",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/DesktopModules/Bring2mind/DMX/API/Entries/Download?Command=Core_Download&EntryId=61851&PortalId=0&TabId=96&language=en-US",
+      "path": "data/sources/process_materials_v1/kester-951.pdf",
+      "sha256": "67fb24df48c70077a0316880cc1db050136c3c289086664cdf675bf832e10049",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:kester-275",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kester.com/products/product/275-flux-cored-wire",
+      "path": "data/sources/process_materials_v1/kester-275.html",
+      "sha256": "ed310e3c5b212097cfe2992a4b228e34310d0efbf855916ff1a0a96964d8f0cd",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-paste",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010135737",
+      "path": "data/sources/process_materials_v1/ks-paste.html",
+      "sha256": "c3f96a34161f6d0a0042e67b5c8ed834c3a30e2f66981179000492e5e3dff8be",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-solid",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010135736",
+      "path": "data/sources/process_materials_v1/ks-solid.html",
+      "sha256": "1ec71d533e9008238e1a99ff7ca519940c410cfd0cf205fa189fb30c97db4991",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:ks-flux",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://www.kssn.net/search/stddetail.do?itemNo=K001010133462",
+      "path": "data/sources/process_materials_v1/ks-flux.html",
+      "sha256": "3f09c494c8b264a80f2ff8cb943ed53b72653bf31d9e8e0a736f27532de3ac88",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    },
+    {
+      "id": "source:process-materials:v1:mg-824",
+      "type": "SourceDocument",
+      "origin": "real",
+      "evidence": [],
+      "url": "https://mgchemicals.com/downloads/tds/tds-824-l.pdf",
+      "path": "data/sources/process_materials_v1/mg-824.pdf",
+      "sha256": "614c8660641e62cc00097d41ef83cabe95573bac26a67540ddbf2a53bd911f54",
+      "version": "retrieved-2026-11-02",
+      "collected_at": "2026-11-02T06:52:17.560234+00:00",
+      "license": "Copyright respective publisher; public access only, no open redistribution license verified"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence:process-materials:v1:np560-offering",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:kester-np560",
+      "locator": "Product Offerings: Part # 7048230910",
+      "description": "SAC305 Type 4, metal loading 88.3%, 500 g jar; actual supplier specification, not board approval."
+    },
+    {
+      "id": "evidence:process-materials:v1:275-offering",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:kester-275",
+      "locator": "Product Offerings: Part # 2470687601",
+      "description": "SAC305; nominal diameter 0.8 mm (0.031 inch); flux 2.20%; 1 LB spool."
+    },
+    {
+      "id": "evidence:process-materials:v1:951-deposition",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:kester-951",
+      "locator": "PDF page 2: Physical Properties and FLUX APPLICATION",
+      "description": "Specific gravity 0.814 at 25 C, theoretical solids 2.0%, recommended deposition 120–240 micrograms solids/cm2; wave process product."
+    },
+    {
+      "id": "evidence:process-materials:v1:sac305-density",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:kester-sac305",
+      "locator": "PDF page 2: Physical Properties; page 5: Availability",
+      "description": "Density 7.37 g/cm3; available bar sizes 1 kg and 20 kg. Issue 2023-06-23."
+    },
+    {
+      "id": "evidence:process-materials:v1:824-density",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:mg-824",
+      "locator": "PDF page 2: Physical Properties",
+      "description": "Specification purity >99.8%; density 0.785–0.786 g/mL at 20 C. Marketing name 99.9% is not used as acceptance minimum."
+    },
+    {
+      "id": "evidence:process-materials:v1:paste-method",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:indium-paste-usage",
+      "locator": "PDF page 1: Greely Formula and worked example",
+      "description": "Paste mass = aperture volume × density. Flux vehicle specific gravity generalized to 1; example stencil thickness 0.004 inch, not this board specification."
+    },
+    {
+      "id": "evidence:process-materials:v1:ks-paste",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:ks-paste",
+      "locator": "KS individual standard detail: title, issue date, scope",
+      "description": "Public metadata only; full standard and product certification not verified."
+    },
+    {
+      "id": "evidence:process-materials:v1:ks-solid",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:ks-solid",
+      "locator": "KS individual standard detail: title, issue date, scope",
+      "description": "Public metadata only; full standard and product certification not verified."
+    },
+    {
+      "id": "evidence:process-materials:v1:ks-flux",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:ks-flux",
+      "locator": "KS individual standard detail: title, issue date, scope",
+      "description": "Public metadata only; full standard and product certification not verified."
+    },
+    {
+      "id": "evidence:process-materials:v1:board-outline-L",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:L",
+      "locator": "Root gr_line elements on Edge.Cuts; module reference fields",
+      "description": "Closed 8-segment outline; same repository commit as existing BOM. Gross outline area excludes notch, does not subtract drill holes. PCB variant/process not approved by this calculation."
+    },
+    {
+      "id": "evidence:process-materials:v1:board-outline-L1",
+      "type": "Evidence",
+      "origin": "real",
+      "evidence": [],
+      "source_id": "source:process-materials:v1:L1",
+      "locator": "Root gr_line elements on Edge.Cuts; module reference fields",
+      "description": "Closed 8-segment outline; same repository commit as existing BOM. Gross outline area excludes notch, does not subtract drill holes. PCB variant/process not approved by this calculation."
+    }
+  ],
+  "standards": [
+    {
+      "id": "standard:process:paste",
+      "number": "KS C IEC 61190-1-2",
+      "displayed_issue_date": "2021-12-02",
+      "scope": "솔더 페이스트",
+      "evidence": [
+        "evidence:process-materials:v1:ks-paste"
+      ],
+      "full_text_reviewed": false,
+      "certifies_candidate": false
+    },
+    {
+      "id": "standard:process:solid",
+      "number": "KS C IEC 61190-1-3",
+      "displayed_issue_date": "2021-12-02",
+      "scope": "솔더 합금 및 고체 솔더",
+      "evidence": [
+        "evidence:process-materials:v1:ks-solid"
+      ],
+      "full_text_reviewed": false,
+      "certifies_candidate": false
+    },
+    {
+      "id": "standard:process:flux",
+      "number": "KS C IEC 61190-1-1",
+      "displayed_issue_date": "2021-08-27",
+      "scope": "전자 조립용 플럭스",
+      "evidence": [
+        "evidence:process-materials:v1:ks-flux"
+      ],
+      "full_text_reviewed": false,
+      "certifies_candidate": false
+    }
+  ],
+  "materials": [
+    {
+      "id": "process-material:kester:np560:7048230910",
+      "name": "솔더 페이스트 Kester NP560 7048230910",
+      "process": "SMT stencil printing",
+      "record_kind": "manufacturer_reference_candidate",
+      "applicability": "unconfirmed_for_esp32_poe",
+      "configuration_refs": [
+        "config:esp32-poe:L:WROOM",
+        "config:esp32-poe:L1:WROOM"
+      ],
+      "approved_for_production": false,
+      "approved_quantity_per_board": null,
+      "purchase_quantity": null,
+      "evidence": [
+        "evidence:process-materials:v1:np560-offering",
+        "evidence:process-materials:v1:paste-method",
+        "evidence:process-materials:v1:sac305-density"
+      ],
+      "parameters": {
+        "alloy": "SAC305",
+        "metal_mass_fraction": {
+          "value": "0.883",
+          "unit": "g/g",
+          "evidence": [
+            "evidence:process-materials:v1:np560-offering"
+          ]
+        },
+        "powder_type": {
+          "value": "4",
+          "unit": "type",
+          "evidence": [
+            "evidence:process-materials:v1:np560-offering"
+          ]
+        },
+        "package_net_mass": {
+          "value": "500",
+          "unit": "g",
+          "evidence": [
+            "evidence:process-materials:v1:np560-offering"
+          ]
+        },
+        "alloy_density": {
+          "value": "7.37",
+          "unit": "g/cm3",
+          "evidence": [
+            "evidence:process-materials:v1:sac305-density"
+          ]
+        },
+        "reference_flux_specific_gravity": {
+          "value": "1",
+          "unit": "dimensionless",
+          "evidence": [
+            "evidence:process-materials:v1:paste-method"
+          ],
+          "status": "manufacturer_method_generalization_not_measured_np560"
+        },
+        "reference_stencil_thickness": {
+          "value": "0.004",
+          "unit": "inch",
+          "evidence": [
+            "evidence:process-materials:v1:paste-method"
+          ],
+          "status": "published_example_only_not_olimex_stencil"
+        },
+        "derived_reference": {
+          "density_g_per_cm3": "4.222793919635132270281729684",
+          "thickness_mm": "0.1016",
+          "mass_g_per_mm2_aperture": "0.0004290358622349294386606237359",
+          "formula": "rho=7.37/((1-0.883)*7.37+0.883); coefficient=rho*0.1016/1000",
+          "status": "conditional_reference_coefficient_only",
+          "evidence": [
+            "evidence:process-materials:v1:np560-offering",
+            "evidence:process-materials:v1:paste-method",
+            "evidence:process-materials:v1:sac305-density"
+          ]
+        }
+      },
+      "missing_for_quantity": [
+        "Actual approved aperture union area per side",
+        "Actual stencil thickness",
+        "Variant population",
+        "Measured process losses"
+      ],
+      "standard_ref": "standard:process:paste",
+      "national_product_certification": {
+        "status": "not_verified",
+        "certificate_number": null
+      }
+    },
+    {
+      "id": "process-material:kester:275:2470687601",
+      "name": "실납 Kester 275 2470687601",
+      "process": "Hand soldering / rework",
+      "record_kind": "manufacturer_reference_candidate",
+      "applicability": "unconfirmed_for_esp32_poe",
+      "configuration_refs": [
+        "config:esp32-poe:L:WROOM",
+        "config:esp32-poe:L1:WROOM"
+      ],
+      "approved_for_production": false,
+      "approved_quantity_per_board": null,
+      "purchase_quantity": null,
+      "evidence": [
+        "evidence:process-materials:v1:275-offering"
+      ],
+      "parameters": {
+        "alloy": "SAC305",
+        "diameter": {
+          "value": "0.8",
+          "unit": "mm",
+          "evidence": [
+            "evidence:process-materials:v1:275-offering"
+          ],
+          "status": "manufacturer_nominal"
+        },
+        "flux_mass_percent": {
+          "value": "2.20",
+          "unit": "percent",
+          "evidence": [
+            "evidence:process-materials:v1:275-offering"
+          ]
+        },
+        "package_net_mass": {
+          "value": "1",
+          "unit": "lb",
+          "evidence": [
+            "evidence:process-materials:v1:275-offering"
+          ]
+        }
+      },
+      "missing_for_quantity": [
+        "Confirmed hand-solder joint scope",
+        "Measured wire mass or feed length per operation and core wire density",
+        "Rework count and setup loss"
+      ],
+      "standard_ref": "standard:process:solid",
+      "national_product_certification": {
+        "status": "not_verified",
+        "certificate_number": null
+      }
+    },
+    {
+      "id": "process-material:kester:951",
+      "name": "액상 플럭스 Kester 951",
+      "process": "Wave soldering spray/foam/dip; not the flux-pen product",
+      "record_kind": "manufacturer_reference_candidate",
+      "applicability": "unconfirmed_for_esp32_poe",
+      "configuration_refs": [
+        "config:esp32-poe:L:WROOM",
+        "config:esp32-poe:L1:WROOM"
+      ],
+      "approved_for_production": false,
+      "approved_quantity_per_board": null,
+      "purchase_quantity": null,
+      "evidence": [
+        "evidence:process-materials:v1:951-deposition"
+      ],
+      "parameters": {
+        "specific_gravity": {
+          "value": "0.814",
+          "unit": "dimensionless",
+          "evidence": [
+            "evidence:process-materials:v1:951-deposition"
+          ],
+          "temperature_c": "25"
+        },
+        "solids_mass_percent": {
+          "value": "2.0",
+          "unit": "percent",
+          "evidence": [
+            "evidence:process-materials:v1:951-deposition"
+          ],
+          "status": "theoretical solids; mass-fraction interpretation for scenario"
+        },
+        "recommended_solids_deposition": {
+          "value": [
+            "120",
+            "240"
+          ],
+          "unit": "ug/cm2",
+          "evidence": [
+            "evidence:process-materials:v1:951-deposition"
+          ]
+        },
+        "derived_wet_deposition_g_per_cm2": {
+          "value": [
+            "0.006",
+            "0.012"
+          ],
+          "formula": "[120,240]/1000000/0.02",
+          "status": "conditional_conversion",
+          "evidence": [
+            "evidence:process-materials:v1:951-deposition"
+          ]
+        }
+      },
+      "missing_for_quantity": [
+        "Confirmed wave process and coated area",
+        "Measured transfer and evaporation losses",
+        "Initial reservoir fill and reusable balance"
+      ],
+      "standard_ref": "standard:process:flux",
+      "national_product_certification": {
+        "status": "not_verified",
+        "certificate_number": null
+      }
+    },
+    {
+      "id": "process-material:mgchemicals:824",
+      "name": "공정용 세정제 MG Chemicals 824 액상 IPA",
+      "process": "Electronics cleaning when approved for the actual residue and components",
+      "record_kind": "manufacturer_reference_candidate",
+      "applicability": "unconfirmed_for_esp32_poe",
+      "configuration_refs": [
+        "config:esp32-poe:L:WROOM",
+        "config:esp32-poe:L1:WROOM"
+      ],
+      "approved_for_production": false,
+      "approved_quantity_per_board": null,
+      "purchase_quantity": null,
+      "evidence": [
+        "evidence:process-materials:v1:824-density"
+      ],
+      "parameters": {
+        "specification_purity": {
+          "value": "99.8",
+          "unit": "percent",
+          "evidence": [
+            "evidence:process-materials:v1:824-density"
+          ],
+          "comparison": "greater_than"
+        },
+        "density": {
+          "value": [
+            "0.785",
+            "0.786"
+          ],
+          "unit": "g/mL",
+          "evidence": [
+            "evidence:process-materials:v1:824-density"
+          ],
+          "temperature_c": "20"
+        }
+      },
+      "missing_for_quantity": [
+        "Confirmed cleaning requirement and compatibility",
+        "Cleaning method and dose per cycle",
+        "Cycle count, evaporation and recovered volume"
+      ],
+      "standard_ref": null,
+      "national_product_certification": {
+        "status": "not_verified",
+        "certificate_number": null
+      }
+    },
+    {
+      "id": "process-material:kester:sac305:bar",
+      "name": "솔더 바 Kester SAC305",
+      "process": "Wave / selective solder bath",
+      "record_kind": "manufacturer_reference_candidate",
+      "applicability": "unconfirmed_for_esp32_poe",
+      "configuration_refs": [
+        "config:esp32-poe:L:WROOM",
+        "config:esp32-poe:L1:WROOM"
+      ],
+      "approved_for_production": false,
+      "approved_quantity_per_board": null,
+      "purchase_quantity": null,
+      "evidence": [
+        "evidence:process-materials:v1:sac305-density"
+      ],
+      "parameters": {
+        "density": {
+          "value": "7.37",
+          "unit": "g/cm3",
+          "evidence": [
+            "evidence:process-materials:v1:sac305-density"
+          ]
+        },
+        "available_bar_sizes": {
+          "value": [
+            "1",
+            "20"
+          ],
+          "unit": "kg",
+          "evidence": [
+            "evidence:process-materials:v1:sac305-density"
+          ]
+        }
+      },
+      "missing_for_quantity": [
+        "Actual bath working volume and existing charge",
+        "Dross and solder consumption measurements",
+        "Replacement/replenishment policy"
+      ],
+      "standard_ref": "standard:process:solid",
+      "national_product_certification": {
+        "status": "not_verified",
+        "certificate_number": null
+      }
+    }
+  ],
+  "configuration_links": [
+    {
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "existing_bom_item_count": 74,
+      "unknown_population_item_count": 11,
+      "matched_bom_position_count": 128,
+      "evidence": [
+        "evidence:process-materials:v1:board-outline-L"
+      ],
+      "outline": {
+        "vertices_mm": [
+          [
+            "90.15",
+            "163.83"
+          ],
+          [
+            "90.15",
+            "170.15"
+          ],
+          [
+            "118.15",
+            "170.15"
+          ],
+          [
+            "118.15",
+            "90.15"
+          ],
+          [
+            "90.15",
+            "90.15"
+          ],
+          [
+            "90.15",
+            "152.654"
+          ],
+          [
+            "91.313",
+            "153.797"
+          ],
+          [
+            "91.313",
+            "162.687"
+          ],
+          [
+            "90.15",
+            "163.83"
+          ]
+        ],
+        "area_mm2": "2228.331621",
+        "area_cm2": "22.28331621",
+        "area_method": "shoelace on closed Edge.Cuts centreline polygon; drill holes not subtracted"
+      },
+      "paste_quantity": {
+        "theoretical_g_per_board": null,
+        "production_g_per_board": null,
+        "status": "not_calculable_from_current_validated_inputs",
+        "blockers": [
+          "Approved WROOM-specific stencil aperture union and thickness unavailable",
+          "Do not sum only rectangular pads: explicit paste graphics at U4 and trapezoid pads at UEXT1 exist",
+          "Unknown BOM population and shared PCB variant require stencil review",
+          "Transfer efficiency, initial bead and waste require process records"
+        ],
+        "nonrectangular_or_graphical_paste_features": [
+          {
+            "reference": "U4",
+            "shape_count": 72
+          },
+          {
+            "reference": "UEXT1",
+            "shape_count": 10
+          }
+        ]
+      },
+      "flux_reference_scenario": {
+        "material_id": "process-material:kester:951",
+        "status": "conditional_geometry_reference_not_production_requirement",
+        "process": "wave soldering only if selected and validated",
+        "coated_area_assumption": "One entire gross board outline side, no masking/hole subtraction; not confirmed actual spray footprint",
+        "formula": "area_cm2 * solids_loading_ug_per_cm2 / 1000000 / solids_mass_fraction",
+        "inputs": {
+          "area_cm2": "22.28331621",
+          "solids_loading_ug_per_cm2": [
+            "120",
+            "240"
+          ],
+          "solids_mass_fraction": "0.02"
+        },
+        "wet_flux_deposited_g_per_board": [
+          "0.13369989726",
+          "0.26739979452"
+        ],
+        "wet_flux_deposited_g_for_100_boards": [
+          "13.36998972600",
+          "26.73997945200"
+        ],
+        "purchase_quantity_g": null,
+        "evidence": [
+          "evidence:process-materials:v1:board-outline-L",
+          "evidence:process-materials:v1:951-deposition"
+        ],
+        "limitations": [
+          "2.0% solids is interpreted as mass fraction for this calculation",
+          "Deposited wet mass only; spray transfer, overspray, evaporation, bath fill and loss are not included",
+          "Do not apply this value to a rework flux pen or use it as direct purchasing demand"
+        ]
+      }
+    },
+    {
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "existing_bom_item_count": 74,
+      "unknown_population_item_count": 12,
+      "matched_bom_position_count": 128,
+      "evidence": [
+        "evidence:process-materials:v1:board-outline-L1"
+      ],
+      "outline": {
+        "vertices_mm": [
+          [
+            "90.15",
+            "163.83"
+          ],
+          [
+            "90.15",
+            "170.15"
+          ],
+          [
+            "118.15",
+            "170.15"
+          ],
+          [
+            "118.15",
+            "90.15"
+          ],
+          [
+            "90.15",
+            "90.15"
+          ],
+          [
+            "90.15",
+            "152.654"
+          ],
+          [
+            "91.313",
+            "153.797"
+          ],
+          [
+            "91.313",
+            "162.687"
+          ],
+          [
+            "90.15",
+            "163.83"
+          ]
+        ],
+        "area_mm2": "2228.331621",
+        "area_cm2": "22.28331621",
+        "area_method": "shoelace on closed Edge.Cuts centreline polygon; drill holes not subtracted"
+      },
+      "paste_quantity": {
+        "theoretical_g_per_board": null,
+        "production_g_per_board": null,
+        "status": "not_calculable_from_current_validated_inputs",
+        "blockers": [
+          "Approved WROOM-specific stencil aperture union and thickness unavailable",
+          "Do not sum only rectangular pads: explicit paste graphics at U4 and trapezoid pads at UEXT1 exist",
+          "Unknown BOM population and shared PCB variant require stencil review",
+          "Transfer efficiency, initial bead and waste require process records"
+        ],
+        "nonrectangular_or_graphical_paste_features": [
+          {
+            "reference": "U4",
+            "shape_count": 72
+          },
+          {
+            "reference": "UEXT1",
+            "shape_count": 10
+          }
+        ]
+      },
+      "flux_reference_scenario": {
+        "material_id": "process-material:kester:951",
+        "status": "conditional_geometry_reference_not_production_requirement",
+        "process": "wave soldering only if selected and validated",
+        "coated_area_assumption": "One entire gross board outline side, no masking/hole subtraction; not confirmed actual spray footprint",
+        "formula": "area_cm2 * solids_loading_ug_per_cm2 / 1000000 / solids_mass_fraction",
+        "inputs": {
+          "area_cm2": "22.28331621",
+          "solids_loading_ug_per_cm2": [
+            "120",
+            "240"
+          ],
+          "solids_mass_fraction": "0.02"
+        },
+        "wet_flux_deposited_g_per_board": [
+          "0.13369989726",
+          "0.26739979452"
+        ],
+        "wet_flux_deposited_g_for_100_boards": [
+          "13.36998972600",
+          "26.73997945200"
+        ],
+        "purchase_quantity_g": null,
+        "evidence": [
+          "evidence:process-materials:v1:board-outline-L1",
+          "evidence:process-materials:v1:951-deposition"
+        ],
+        "limitations": [
+          "2.0% solids is interpreted as mass fraction for this calculation",
+          "Deposited wet mass only; spray transfer, overspray, evaporation, bath fill and loss are not included",
+          "Do not apply this value to a rework flux pen or use it as direct purchasing demand"
+        ]
+      }
+    }
+  ],
+  "calculation_policy": {
+    "random_values_used": false,
+    "missing_value": null,
+    "unknown_is_zero": false,
+    "reference_scenarios_are_not_approved_requirements": true,
+    "do_not_sum_paste_and_its_internal_flux_as_separate_demand": true,
+    "shared_stock_allocation_required": true
+  },
+  "missing_operational_data": [
+    "Actual production route and supplier material approval",
+    "Inventory lots, accepted quantities and allocations",
+    "Supplier confirmed arrivals",
+    "Actual consumption and waste records"
+  ]
+}

@@ -9,6 +9,8 @@ from ..service import DomainError
 
 
 def initialize(svc):
+    from .library_inventory_identity import initialize as initialize_identity
+    initialize_identity(svc)
     from .library_fulfillment import initialize as initialize_supply
     initialize_supply(svc)
     svc.db.execute('''CREATE TABLE IF NOT EXISTS pp_material_reservations(
@@ -37,7 +39,8 @@ def reserved_totals(svc,exclude=None):
     for r in active_rows(svc,exclude):
         for line in r['payload']['lines']:
             cid=line['component_id'];totals[cid]=totals.get(cid,0)+(line['reserve'] or 0)
-    return totals
+    from .library_inventory_identity import shared_totals
+    return shared_totals(svc,totals)
 
 
 def current_reservation(svc,owner):
@@ -75,10 +78,16 @@ class LibraryReservations:
         if draft and digest(dict(payload=draft['payload'],markdown=draft['markdown']))!=draft['content_hash']:raise DomainError('RFQ_INTEGRITY','구매 초안 무결성을 확인하지 못했습니다.')
         purchase=draft if draft and draft['payload'].get('document_type')=='purchase_request' and draft['payload'].get('choice_id')==choice['id'] else None
         requested={r['component_id']:r['S'] for r in purchase['payload']['lines']} if purchase else {}
+        from .library_inventory_identity import links
+        inventory_links=links(svc);planned={}
         lines=[]
         for row in result['components']:
-            d=row['D'];a=availability.get(row['component_id']);known=type(d) is int and type(a) is int
+            d=row['D'];a=availability.get(row['component_id'])
+            stock_key=inventory_links.get(row['component_id'],row['component_id'])
+            if type(a) is int:a=max(0,a-planned.get(stock_key,0))
+            known=type(d) is int and type(a) is int
             n=min(d,a) if known else None;waiting=max(0,d-a) if known else None
+            if n is not None:planned[stock_key]=planned.get(stock_key,0)+n
             lines.append(dict(component_id=row['component_id'],name=row['name'],demand=d,available=a,reserve=n,waiting=waiting,requested=requested.get(row['component_id'],0),unknown=not known))
         payload=dict(choice_id=choice['id'],material_review_id=material['id'],quantity=material['quantity'],configuration=result['configuration_name'],replacements=result.get('replacements',[]),lines=lines,purchase_id=purchase['id'] if purchase else None,reservation_token=reservation_token(svc,owner),production_authorized=False)
         payload['preview_hash']=digest(payload)

@@ -25,7 +25,8 @@ def preview_fields(row):
                        'source_validated' if state == 'supported' else 'unconfirmed',
                 original_value=original.get('value'), reason=decision.get('reason', '') if decision else '')
             if name == 'constraints':
-                fields[name]['policy'] = classify_policy([value]) if state in USABLE and value else classify_policy([])
+                fields[name]['policy'] = (deepcopy(original['policy']) if state in USABLE and value == original.get('value') and state != 'corrected'
+                                          else classify_policy([value]) if state in USABLE and value else classify_policy([]))
         items.append(dict(fields=fields))
     return items, check
 

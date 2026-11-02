@@ -44,7 +44,25 @@ copy the literal POLICY VALUE (without the field label), preserving review quali
 Only revision-change/substitution restrictions belong to constraints; general
 planning assumptions and statements about approval workflow do not. For constraints, extract relevant complementary policy clauses and exceptions as separate literal claims. For other fields, a list of
 claims means competing readings of the SAME field, not a bag of unrelated facts.
-Do not summarize constraints or infer permission. Missing fields use empty claim lists, not defaults. Conflicting claims
+For EACH constraints claim, include policy_status, a semantic reading of that
+literal clause: approval_required (buyer consent needed before a component or
+revision change), prohibited (replacement forbidden), conditional (replacement
+explicitly allowed within stated conditions), or unknown (not determinable).
+This label describes contractual policy only; it NEVER asserts a particular
+replacement has been approved. Preserve all limits, exceptions and negations.
+Complementary clauses share a status only if their meaning supports it.
+For example, keeping existing components until an approval reply is received is
+approval_required, NOT conditional: it does not permit using replacement parts. Mixed
+component scopes or contradictory policies must not be forced into one status.
+Do not extract delivery-date changes, price/quantity changes, shipping arrangements,
+or generic change-document administration as substitution policy. Also exclude
+pre-production BOM/drawing checks and consultation to clarify specifications: these
+are verification workflow, not permission to substitute components. A general
+requirement to record changes in a written amendment is not itself a component
+substitution prohibition/permission. No substitution clause means empty constraints.
+Copy full sentences with their subjects and conditions, never sentence-ending
+fragments such as "구매자의 사전 서면 승인 없이는 허용하지 않는다" when a subject is available.
+Do not summarize constraint values or infer permission. Missing fields use empty claim lists, not defaults. Conflicting claims
 remain separate. No confirmation fields. source_sha256/data_version may be omitted;
 if included they must exactly match host metadata. Do not add other fields.'''
 REGISTRATION = AgentRegistration('contract_interpretation', INSTRUCTIONS, frozenset({'lookup'}))
@@ -116,7 +134,9 @@ def parse_interpretation(text, extracted, *, data_version):
         for field, claims in item['fields'].items():
             if not isinstance(claims, list) or len(claims) > 64: raise InterpretationError('INTERPRETATION_SHAPE')
             for claim_index, claim in enumerate(claims):
-                _object(claim, {'value','evidence'}, {'value','evidence'})
+                _object(claim, {'value','evidence','policy_status'} if field == 'constraints' else {'value','evidence'}, {'value','evidence'})
+                if 'policy_status' in claim and claim['policy_status'] not in ('approval_required','prohibited','conditional','unknown'):
+                    raise InterpretationError('INTERPRETATION_SHAPE')
                 if not isinstance(claim['evidence'], list) or len(claim['evidence']) > 64:
                     raise InterpretationError('INTERPRETATION_SHAPE')
                 for evidence_index, ev in enumerate(claim['evidence']):
@@ -170,7 +190,7 @@ _FIELD_MEANINGS = {
     'allocated_quantity': 'Explicit already allocated count; absence is not zero.',
     'planned_input_quantity': 'Explicit new production review count; do not derive from other counts.',
     'delivery_due': 'Literal customer arrival deadline with source precision; no invented time or zone.',
-    'constraints': 'Policy value for revision changes or substitutions, excluding its label. Preserve not-stated/human-review qualifications. Exclude loss/rework/scheduling assumptions and confirmation workflow statements.',
+    'constraints': 'Only explicit component substitution or design revision policy. EXCLUDE delivery/schedule/partial-shipment permission, production-preparation checks, general change-agreement paperwork, and supply obligations. Do not quote these as unknown policies: omit them entirely. Approval-pending clauses (keep original parts until approval) mean approval_required, NEVER conditional. conditional requires explicit permission to use alternative components within stated limits. Each claim needs policy_status and complete literal evidence.',
 }
 
 
@@ -180,6 +200,7 @@ def interpretation_messages(extracted, *, data_version, configurations=None):
     contract = {name:dict(value_type='integer' if name in _QUANTITIES else 'literal_string',
                          meaning=_FIELD_MEANINGS[name]) for name in _FIELDS}
     contract['product_model']['exclude'] = ['manufacturer','revision','variant']
+    contract['constraints']['policy_status'] = dict(values=['approval_required','prohibited','conditional','unknown'], meaning='semantic contract condition only; not actual approval')
     contract['constraints']['claim_list_semantics'] = 'policy_clauses_including_exceptions'
     contract['constraints']['scope'] = ['revision_change','substitution']
     task = dict(field_contract=contract, claim_list_semantics='competing_values_for_same_field',

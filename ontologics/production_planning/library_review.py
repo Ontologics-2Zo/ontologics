@@ -36,6 +36,7 @@ class LibraryReview:
                 if row:
                     if row['result'] is not None and digest(row['result'])!=row['result_sha256']:
                         raise DomainError('RESULT_INTEGRITY','해석 결과 무결성을 확인할 수 없습니다.')
+                    row['reading_fields']=[effective_fields(item) for item in (row.get('result') or {}).get('items',[])]
                     row['constraint_fields']=[effective_fields(item).get('constraints') for item in (row.get('result') or {}).get('items',[])]
                     row['checks']=svc.db.execute('SELECT id,actor,checked_at,scopes,note,decisions FROM pp_contract_reading_checks WHERE interpretation_id=%s ORDER BY checked_at,id',(row['id'],)).fetchall()
                 return svc._envelope(ok=True,data=row)

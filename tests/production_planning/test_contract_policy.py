@@ -63,6 +63,89 @@ class PolicyTests(unittest.TestCase):
         fields,_=preview_fields(row)
         self.assertEqual('unknown',fields[0]['fields']['constraints']['policy']['status'])
 
+    def test_model_semantics_for_paraphrase_keep_literal_evidence(self):
+        text='구매자와 합의한 대체 부품 명세에 포함된 품목은 그 명세의 적용 범위 안에서 추가 승인 절차 없이 사용할 수 있다.'
+        f=field([text],'supported');f['claims'][0]['policy_status']='conditional'
+        r=resolve_constraint(f)
+        self.assertEqual('conditional',r['policy']['status'])
+        self.assertEqual('model_interpretation',r['policy']['method'])
+        self.assertEqual(text,r['value']);self.assertFalse(r['policy']['approval_verified'])
+
+    def test_model_cannot_override_explicit_prohibition_or_mixed_conditions(self):
+        f=field([DENIED,ALLOWED]);
+        for c in f['claims']:c['policy_status']='conditional'
+        self.assertEqual('unknown',resolve_constraint(f)['policy']['status'])
+        combined=field([DENIED+' '+ALLOWED],'supported')
+        combined['claims'][0]['policy_status']='conditional'
+        self.assertEqual('unknown',resolve_constraint(combined)['policy']['status'])
+        f=field(['사전 승인을 얻어야 한다.','목록에 한하여 사용 가능하다.'])
+        for c,status in zip(f['claims'],['approval_required','conditional']):c['policy_status']=status
+        self.assertEqual('unknown',resolve_constraint(f)['policy']['status'])
+
+    def test_invalid_semantic_status_is_not_authority(self):
+        f=field(['대체할 수 있다.'],'supported');f['claims'][0]['policy_status']='approved'
+        self.assertEqual('unknown',resolve_constraint(f)['policy']['status'])
+
+    def test_parser_policy_status_only_on_constraints(self):
+        import json,tempfile
+        from pathlib import Path
+        from ontologics.production_planning.contract_intake import extract_contract_text
+        from ontologics.production_planning.contract_interpretation import parse_interpretation,InterpretationError
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/'source.txt';p.write_text(APPROVAL)
+            e=extract_contract_text(p)
+            c=dict(value=APPROVAL,policy_status='approval_required',evidence=[dict(segment_id='text:line:1',quote=APPROVAL,occurrence=0)])
+            raw={'items':[{'fields':{'constraints':[c]}}]}
+            parsed=parse_interpretation(json.dumps(raw),e,data_version=1)
+            self.assertEqual('approval_required',parsed['items'][0]['fields']['constraints'][0]['policy_status'])
+            c['policy_status']='approved'
+            with self.assertRaises(InterpretationError):parse_interpretation(json.dumps(raw),e,data_version=1)
+            c['policy_status']='conditional';raw['items'][0]['fields']={'customer':[c]}
+            with self.assertRaises(InterpretationError):parse_interpretation(json.dumps(raw),e,data_version=1)
+
+    def test_delivery_and_change_document_clauses_do_not_change_policy(self):
+        f=field([ALLOWED,'구매자의 사전 서면 동의를 받은 경우에만 변경 일정을 적용한다.',
+                 '수량·가격·납기·제품 구성의 변경은 계약번호와 변경 항목을 명시한 변경 합의서로 관리한다.'])
+        for c,h in zip(f['claims'],['conditional','approval_required','unknown']):c['policy_status']=h
+        p=resolve_constraint(f)['policy']
+        self.assertEqual('conditional',p['status']);self.assertEqual(2,len(p['excluded_clauses']))
+        self.assertEqual([ALLOWED],p['conditions'])
+
+    def test_delivery_approval_alone_is_not_substitution_approval(self):
+        f=field(['구매자의 사전 서면 동의를 받은 경우에만 변경 일정을 적용한다.'],'supported')
+        f['claims'][0]['policy_status']='approval_required'
+        r=resolve_constraint(f)
+        self.assertEqual('unknown',r['policy']['status']);self.assertEqual('missing',r['state'])
+
+    def test_approval_pending_support_is_not_conditional_permission(self):
+        f=field(['대체 자재를 적용하려면 구매자로부터 사전에 서면 승인을 얻어야 한다.',
+                 '승인 회신을 받기 전에는 기존에 지정된 부품을 사용한다.'])
+        for c,h in zip(f['claims'],['approval_required','conditional']):c['policy_status']=h
+        self.assertEqual('approval_required',resolve_constraint(f)['policy']['status'])
+
+    def test_same_date_and_explicit_time_are_complementary(self):
+        from ontologics.production_planning.contract_policy import effective_fields
+        f=field(['2026-11-20','2026-11-20T17:00:00+09:00'])
+        r=effective_fields({'fields':{'delivery_due':f}})['delivery_due']
+        self.assertEqual('supported',r['state']);self.assertEqual('2026-11-20T17:00:00+09:00',r['value'])
+        for values in (['2026-11-21','2026-11-20T17:00:00+09:00'],
+                       ['2026-11-20T17:00:00+09:00','2026-11-20T18:00:00+09:00']):
+            r=effective_fields({'fields':{'delivery_due':field(values)}})['delivery_due']
+            self.assertEqual('conflict',r['state'])
+
+    def test_intake_preserves_explicit_deadline_precision(self):
+        import tempfile
+        from pathlib import Path
+        from ontologics.production_planning.contract_intake import extract_contract_text,prepare_contract_demand
+        from tests.production_planning.test_contract_intake import TEXT,interpretation,claim
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/'source.txt';p.write_text(TEXT+'Exact due: 2026-11-10T17:00:00+09:00\n')
+            e=extract_contract_text(p);raw=interpretation(e)
+            raw['items'][0]['fields']['delivery_due'].append(claim(e,'2026-11-10T17:00:00+09:00'))
+            r=prepare_contract_demand(e,raw,{'data_version':1,'candidates':[]},source_only=True)
+            f=r['items'][0]['fields']['delivery_due']
+            self.assertEqual('supported',f['state']);self.assertEqual('2026-11-10T17:00:00+09:00',f['value'])
+
 class PolicyDatabaseTests(unittest.TestCase):
     def test_four_documents_and_legacy_review_preserve_result_hash(self):
         from tests.db import isolated_database

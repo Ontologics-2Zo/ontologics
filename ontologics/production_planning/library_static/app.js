@@ -39,7 +39,7 @@ const important=new Set(['customer','product_model','revision','variant','ordere
 area.append(el('h3',`계약 항목 ${i+1} · 주요 내용`));
 const more=el('details');more.append(el('summary','거래처 및 기타 항목 보기'));
 for(const name of Object.keys(labels)){
-const f=name==='constraints'?(r.constraint_fields?.[i]||item.fields[name]):item.fields[name];if(!f)continue;
+const f=r.reading_fields?.[i]?.[name]||(name==='constraints'?(r.constraint_fields?.[i]||item.fields[name]):item.fields[name]);if(!f)continue;
 const scope=`${i}:${name}`;const decision=decisions[scope]=previous[scope]?{...previous[scope]}:{state:f.state==='supported'?'accepted':'unresolved',value:f.state==='supported'?f.value:null,reason:''};
 const row=el('div',undefined,'reading-field');row.append(el('strong',labels[name]),el('div',name==='constraints'?(f.policy?.label||'미확인'):f.state==='supported'?String(f.value):f.state==='conflict'?'원문 값 충돌':'원문에서 확정하지 못함','reading-value'));
 if(name==='constraints')row.append(el('p','계약 조건 분류: 구매자 승인 필요 / 대체 불가 / 조건 내 허용 / 미확인. 특정 대체품의 승인 완료 여부와는 별개입니다.','subtle'));

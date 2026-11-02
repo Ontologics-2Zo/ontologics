@@ -15,7 +15,8 @@ from pathlib import Path
 import re
 
 from ..model import instant
-from .contract_policy import classify_policy, resolve_constraint
+from .contract_dates import precise_deadline
+from .contract_policy import classify_claims, resolve_constraint
 
 _QUANTITIES = {'ordered_quantity', 'fulfilled_quantity', 'allocated_quantity', 'planned_input_quantity'}
 _FIELDS = ('contract_item_id', 'company', 'customer', 'customer_registration_number', 'manufacturer', 'product_model',
@@ -206,6 +207,9 @@ def prepare_contract_demand(extracted: dict, interpreted: dict, configurations: 
                 if not isinstance(c, dict):
                     issue(cp, 'INVALID_CLAIM', 'Claim must carry value and evidence', error=True); state = 'invalid'; continue
                 value = c.get('value')
+                if 'policy_status' in c and (name != 'constraints' or c['policy_status'] not in ('approval_required','prohibited','conditional','unknown')):
+                    issue(cp, 'INVALID_POLICY_STATUS', 'Policy status is a bounded interpretation, never approval', error=True)
+                    state = 'invalid'; continue
                 if name in _QUANTITIES:
                     minimum = 0 if name in ('fulfilled_quantity', 'allocated_quantity') else 1
                     good = type(value) is int and value >= minimum
@@ -256,7 +260,10 @@ def prepare_contract_demand(extracted: dict, interpreted: dict, configurations: 
             unique = {json.dumps(v, ensure_ascii=False) for v in supported}
             if len(supported) != len(claims) and state == 'invalid':
                 pass
-            elif len(unique) > 1 and not (name == 'constraints' and len(supported) == len(claims) and classify_policy(supported)['status'] != 'unknown'):
+            elif name == 'delivery_due' and len(supported) == len(claims) and precise_deadline(supported) is not None:
+                supported = [precise_deadline(supported)]
+                state = 'supported'
+            elif len(unique) > 1 and not (name == 'constraints' and len(supported) == len(claims) and classify_claims(claims)['status'] != 'unknown'):
                 state = 'conflict'; issue(fp, 'CONFLICTING_VALUES', 'Which of the conflicting source values applies?')
             elif unique and len(supported) == len(claims): state = 'supported'
             evaluated[name] = dict(state=state, value=supported[0] if state == 'supported' else None, claims=deepcopy(claims))

@@ -11,6 +11,7 @@ from .contract_library import ContractLibrary
 from .library_review import LibraryReview
 from .library_review import REGISTRATION
 from .library_planning import LibraryPlanning
+from .customer_library import CustomerLibrary
 from .library_materials import LibraryMaterials
 from .library_rfq import LibraryRFQ
 
@@ -21,6 +22,7 @@ class LibraryApplication(WebApplication):
         super().__init__(host,context)
         self.library=ContractLibrary(host,context)
         self.review=LibraryReview(self.library,context,provider_factory,model)
+        self.customers=CustomerLibrary(self.review,context)
         self.planning=LibraryPlanning(self.review,context)
         self.materials=LibraryMaterials(self.planning,context)
         self.rfq=LibraryRFQ(self.materials,context)
@@ -33,6 +35,24 @@ class LibraryApplication(WebApplication):
         from .library_schedule import LibrarySchedule
         self.schedule=LibrarySchedule(self.plan_document)
     def dispatch(self,path,body=None):
+        if path=='/api/tools/contracts/customer':
+            exact_keys(body,('contract_id',))
+            return self.customers.inspect(self.context,**body)
+        if path=='/api/tools/contracts/customer-sync':
+            exact_keys(body,('contract_id','request_key'))
+            return self.customers.sync(self.context,**body)
+        if path=='/api/tools/contracts/customer-select':
+            exact_keys(body,('contract_id','customer_id','basis_hash','request_key'))
+            return self.customers.select(self.context,**body)
+        if path=='/api/tools/contracts/customer-contracts':
+            exact_keys(body,('customer_id',))
+            return self.customers.contracts(self.context,**body)
+        if path=='/api/tools/contracts/planning-preview':
+            exact_keys(body,('contract_id',))
+            return self.planning.inspect_preview(self.context,**body)
+        if path=='/api/tools/contracts/materials-preview':
+            exact_keys(body,('contract_id','item_index'))
+            return self.materials.preview(self.context,**body)
         if path=='/api/tools/contracts/schedule-propose':
             exact_keys(body,('contract_id','item_index','not_before'))
             return self.schedule.propose(self.context,**body)
@@ -75,21 +95,29 @@ class LibraryApplication(WebApplication):
             return self.reservations.release(self.context,**body)
         if path=='/api/context':return super().dispatch(path,body)
         if path=='/api/tools/contracts/register':
+            body=dict(body)
+            body.setdefault('counterparty','')  # Legacy API accepted; never used as buyer evidence.
             exact_keys(body,('title','counterparty','filename','content_base64','request_key'))
             saved=self.library.register(self.context,**body)
             if saved['ok'] and self.review.provider_factory:
                 previous=self.review.latest(self.context,saved['data']['id'])
                 if previous['ok'] and previous['data'] is None:
                     self.interpret(saved['data']['id'],'auto:'+body['request_key'])
+            if saved['ok']:
+                link=self.customers.sync(self.context,saved['data']['id'],'buyer-register:'+body['request_key'])
+                saved['data']['buyer_sync_ok']=link['ok']
             return saved
         if path=='/api/tools/contracts/search':
             exact_keys(body,('query','offset'))
-            r=self.library.search(self.context,**body)
+            r=self.library.search(self.context,**body,customer_contract_ids=self.customers.search_contract_ids(self.context,body['query']))
             if r['ok']:
                 for item in r['data']['items']:
                     latest=self.review.latest(self.context,item['id'])
                     if not latest['ok']:return latest
                     row=latest['data']
+                    buyer=self.customers.inspect(self.context,item['id'])
+                    if not buyer['ok']:return buyer
+                    item['counterparty']=buyer['data']['buyer_name'] or ''
                     item['review_state']=('checked' if row.get('checks') else row['status']) if row else 'not_started'
             return r
         if path=='/api/tools/contracts/get':
@@ -99,6 +127,10 @@ class LibraryApplication(WebApplication):
                 review=self.review.latest(self.context,body['contract_id'])
                 if not review['ok']:return review
                 r['data']['review']=review['data']
+                buyer=self.customers.inspect(self.context,body['contract_id'])
+                if not buyer['ok']:return buyer
+                r['data']['buyer']=buyer['data']
+                r['data']['counterparty']=buyer['data']['buyer_name'] or ''
             return r
         if path=='/api/tools/contracts/interpret':
             exact_keys(body,('contract_id','request_key'))
@@ -141,15 +173,22 @@ class LibraryApplication(WebApplication):
             return self.review.storage(self.context,body['contract_id'])
         if path=='/api/tools/contracts/review':
             exact_keys(body,('contract_id','interpretation_id','result_sha256','decisions','note','request_key'))
-            return self.review.confirm(self.context,scopes=[],**body)
+            result=self.review.confirm(self.context,scopes=[],**body)
+            if result['ok']:result['data']['buyer_sync_ok']=self.customers.sync(self.context,body['contract_id'],'buyer-review:'+body['request_key'])['ok']
+            return result
         if path=='/api/tools/contracts/confirm':
             exact_keys(body,('contract_id','interpretation_id','result_sha256','scopes','note','request_key'))
-            return self.review.confirm(self.context,**body)
+            result=self.review.confirm(self.context,**body)
+            if result['ok']:result['data']['buyer_sync_ok']=self.customers.sync(self.context,body['contract_id'],'buyer-confirm:'+body['request_key'])['ok']
+            return result
         return failure('ROUTE_NOT_FOUND','지원하지 않는 작업입니다.')
 
     def interpret(self,contract_id,request_key):
         if not self.model_lock.acquire(blocking=False):return failure('AI_BUSY','다른 계약을 해석 중입니다. 잠시 후 재시도하세요.')
-        try:return self.review.interpret(self.context,contract_id,request_key)
+        try:
+            result=self.review.interpret(self.context,contract_id,request_key)
+            if result['ok']:result['data']['buyer_sync_ok']=self.customers.sync(self.context,contract_id,'buyer-interpret:'+request_key)['ok']
+            return result
         finally:self.model_lock.release()
 
 class LibraryHandler(Handler):

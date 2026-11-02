@@ -42,7 +42,7 @@ quantities. Separate manufacturer from product_model even if the document lists
 them together. Quote the product model alone for product_model. For constraints
 copy the literal POLICY VALUE (without the field label), preserving review qualifiers.
 Only revision-change/substitution restrictions belong to constraints; general
-planning assumptions and statements about approval workflow do not. A list of
+planning assumptions and statements about approval workflow do not. For constraints, extract relevant complementary policy clauses and exceptions as separate literal claims. For other fields, a list of
 claims means competing readings of the SAME field, not a bag of unrelated facts.
 Do not summarize constraints or infer permission. Missing fields use empty claim lists, not defaults. Conflicting claims
 remain separate. No confirmation fields. source_sha256/data_version may be omitted;
@@ -157,7 +157,8 @@ def parse_interpretation(text, extracted, *, data_version):
 _FIELD_MEANINGS = {
     'contract_item_id': 'Literal contract item reference, not a configuration ID.',
     'company': 'Producing company as stated.',
-    'customer': 'Customer as stated, including source qualifications.',
+    'customer': 'Purchaser/buyer legal company name as stated, not supplier, manufacturer, contact person or shipping recipient. Use document-level buyer for its line items when unambiguous.',
+    'customer_registration_number': 'Explicit purchaser business registration number only, never supplier number. Omit if absent; preserve literal hyphens.',
     'manufacturer': 'Product manufacturer only, separate from model name.',
     'product_model': 'Model name only. Exclude manufacturer, revision and variant even when on the same line.',
     'revision': 'Explicit design revision only.',
@@ -179,6 +180,7 @@ def interpretation_messages(extracted, *, data_version, configurations=None):
     contract = {name:dict(value_type='integer' if name in _QUANTITIES else 'literal_string',
                          meaning=_FIELD_MEANINGS[name]) for name in _FIELDS}
     contract['product_model']['exclude'] = ['manufacturer','revision','variant']
+    contract['constraints']['claim_list_semantics'] = 'policy_clauses_including_exceptions'
     contract['constraints']['scope'] = ['revision_change','substitution']
     task = dict(field_contract=contract, claim_list_semantics='competing_values_for_same_field',
                 source_sha256=extracted['source']['sha256'], data_version=data_version,

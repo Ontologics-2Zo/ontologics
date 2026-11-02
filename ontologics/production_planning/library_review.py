@@ -7,10 +7,11 @@ from pathlib import Path
 from ..model import canonical,digest
 from ..runtime import ModelConfig
 from ..service import DomainError
+from .contract_policy import effective_fields
 from .contract_intake import extract_contract_text,prepare_contract_demand
 from .contract_interpretation import REGISTRATION as BASE_REGISTRATION,interpretation_messages,parse_interpretation
 from ..host import AgentRegistration
-REGISTRATION=AgentRegistration('contract_original_interpretation',BASE_REGISTRATION.instructions+'\nFor this original-document reading phase, keep all dates and units verbatim in their source language.\ncontract_item_id means an explicit LINE ITEM identifier, NEVER the overall contract/document number. If there is no line-item number, leave its claims empty.\nunit is the literal counting unit (e.g. 대), not the counted product noun (e.g. 보드).\nFor constraints quote the complete explicit revision/substitution restriction clause, including its subject, not sentence-ending fragments. Supplementary statements about later consultation are not conflicting alternatives to the main restriction. Do not split complementary policy sentences into competing claims. If the policy is split across lines and cannot fit the evidence schema, leave it unresolved rather than fabricate a merged quote.\n',BASE_REGISTRATION.allowed_tools)
+REGISTRATION=AgentRegistration('contract_original_interpretation',BASE_REGISTRATION.instructions+'\nFor this original-document reading phase, keep all dates and units verbatim in their source language.\ncontract_item_id means an explicit LINE ITEM identifier, NEVER the overall contract/document number. If there is no line-item number, leave its claims empty.\nunit is the literal counting unit (e.g. 대), not the counted product noun (e.g. 보드).\nFor constraints quote the complete explicit revision/substitution restriction clause, including its subject, not sentence-ending fragments. For constraints only, extract all relevant clauses as separate literal claims, including complementary approval clauses and any exceptions. They will be classified together by the host. Never fabricate a merged quote across lines.\n',BASE_REGISTRATION.allowed_tools)
 
 DDL='''CREATE TABLE IF NOT EXISTS pp_contract_interpretations(
  id TEXT PRIMARY KEY, contract_id TEXT NOT NULL REFERENCES pp_contract_originals(id),
@@ -35,6 +36,7 @@ class LibraryReview:
                 if row:
                     if row['result'] is not None and digest(row['result'])!=row['result_sha256']:
                         raise DomainError('RESULT_INTEGRITY','해석 결과 무결성을 확인할 수 없습니다.')
+                    row['constraint_fields']=[effective_fields(item).get('constraints') for item in (row.get('result') or {}).get('items',[])]
                     row['checks']=svc.db.execute('SELECT id,actor,checked_at,scopes,note,decisions FROM pp_contract_reading_checks WHERE interpretation_id=%s ORDER BY checked_at,id',(row['id'],)).fetchall()
                 return svc._envelope(ok=True,data=row)
             return svc._run(session.context['actor'],'contract_interpretation_get',{'contract_id':contract_id},read)
@@ -108,9 +110,9 @@ class LibraryReview:
                     raise DomainError('STALE_REVISION','해석 결과가 바뀌었습니다. 최신 결과를 다시 확인하세요.')
                 if row['status']!='needs_review' or row['source_sha256']!=original['data']['sha256'] or digest(row['result'])!=result_sha256:
                     raise DomainError('INVALID_STATE','현재 결과를 확인 처리할 수 없습니다.')
-                allowed=[f'{i}:{name}' for i,item in enumerate(row['result']['items']) for name,f in item['fields'].items() if f['state']=='supported']
+                allowed=[f'{i}:{name}' for i,item in enumerate(row['result']['items']) for name,f in effective_fields(item).items() if f['state']=='supported']
                 if decisions is not None:
-                    fields={f'{i}:{name}':f for i,item in enumerate(row['result']['items']) for name,f in item['fields'].items()}
+                    fields={f'{i}:{name}':f for i,item in enumerate(row['result']['items']) for name,f in effective_fields(item).items()}
                     if not isinstance(decisions,dict) or set(decisions)!=set(fields):
                         raise DomainError('INVALID_INPUT','모든 항목의 검토 상태가 필요합니다.')
                     scopes=[]

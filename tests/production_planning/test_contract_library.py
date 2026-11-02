@@ -72,6 +72,49 @@ class ContractLibraryTests(unittest.TestCase):
         winner=next(r['data']['reservation'] for r in responses if r['ok'])
         self.assertTrue(app.reservations.release(self.alice,winner['contract_id'],0,winner['id'],'race-release')['ok'])
 
+    def test_auto_preview_without_confirmation_and_resume(self):
+        import json
+        from pathlib import Path
+        from ontologics.service import Service
+        from ontologics.production_planning.library_review import REGISTRATION
+        from ontologics.production_planning.contract_library_web import LibraryApplication
+        self.host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),self.settings,agent_registrations=(REGISTRATION,))
+        values=dict(manufacturer='OLIMEX',product_model='ESP32-POE',revision='L',variant='WROOM',ordered_quantity=100,unit='대')
+        raw='\n'.join(f'{k}: {v}' for k,v in values.items()).encode()
+        def provider(**kwargs):
+            fields={k:[dict(value=v,evidence=[dict(segment_id=f'text:line:{i+1}',quote=str(v),occurrence=0)])] for i,(k,v) in enumerate(values.items())}
+            return dict(text=json.dumps({'items':[{'fields':fields}]}),tool_calls=[])
+        app=LibraryApplication(self.host,self.alice,lambda:provider,'test')
+        cid=app.library.register(self.alice,**dict(self.args,content_base64=base64.b64encode(raw).decode()))['data']['id']
+        self.assertTrue(app.review.interpret(self.alice,cid,'auto-read')['ok'])
+        svc=Service(self.settings,principals={'fixture':{'kind':'human','roles':['seed','read']}})
+        self.addCleanup(svc.close)
+        nodes=json.loads((Path(__file__).resolve().parents[2]/'data/catalog.json').read_text())['nodes']
+        self.assertTrue(svc.bootstrap('fixture',nodes,request_key='auto-catalog')['ok'])
+        preview=app.dispatch('/api/tools/contracts/planning-preview',{'contract_id':cid})
+        self.assertTrue(preview['ok'],preview)
+        item=preview['data']['items'][0];self.assertTrue(item['readiness']['ready'],item)
+        self.assertEqual('review_required',app.planning.inspect(self.alice,cid)['data']['status'])
+        result=app.dispatch('/api/tools/contracts/materials-preview',{'contract_id':cid,'item_index':0})
+        self.assertTrue(result['ok'],result)
+        data=result['data'];self.assertEqual(100,data['quantity']);self.assertEqual('order_material_preview',data['purpose'])
+        for c in data['components']:
+            if c['q'] is not None:self.assertEqual(c['q']*100,c['D'])
+        with self.host.request(self.alice) as session:
+            for table in ('pp_contract_reading_checks','pp_contract_configuration_links','pp_contract_material_reviews'):
+                self.assertEqual(0,session._service.db.execute('SELECT count(*) AS n FROM '+table).fetchone()['n'])
+        row=app.review.latest(self.alice,cid)['data']
+        decisions={f'0:{k}':dict(state='accepted' if f['state']=='supported' else 'unresolved',value=f['value'] if f['state']=='supported' else None,reason='') for k,f in row['result']['items'][0]['fields'].items()}
+        decisions['0:ordered_quantity']=dict(state='corrected',value='120',reason='정정 수량')
+        response=app.review.confirm(self.alice,cid,row['id'],row['result_sha256'],[],'','auto-confirm',decisions)
+        self.assertTrue(response['ok'],response)
+        self.assertEqual(120,app.materials.preview(self.alice,cid,0)['data']['quantity'])
+        decisions['0:revision']=dict(state='unresolved',value=None,reason='개정 확인 필요')
+        self.assertTrue(app.review.confirm(self.alice,cid,row['id'],row['result_sha256'],[],'','hold-revision',decisions)['ok'])
+        blocked=app.planning.inspect_preview(self.alice,cid)['data']['items'][0]
+        self.assertFalse(blocked['readiness']['ready'])
+        self.assertIsNone(blocked['fields']['revision']['value'])
+
     def test_save_reconnect_search_and_original_bytes(self):
         from ontologics.production_planning.contract_library import ContractLibrary
         saved=self.library.register(self.alice,**self.args)

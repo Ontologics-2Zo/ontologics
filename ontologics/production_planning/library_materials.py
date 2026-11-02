@@ -17,6 +17,37 @@ class LibraryMaterials:
                 item_index INTEGER NOT NULL,quantity INTEGER NOT NULL,reason TEXT NOT NULL,
                 result JSONB NOT NULL,actor TEXT NOT NULL,created_at TEXT NOT NULL)''')
 
+    def preview(self,context,contract_id,item_index):
+        response=self.planning.inspect_preview(context,contract_id)
+        if not response['ok']:return response
+        data=response['data']
+        if type(item_index) is not int or not 0<=item_index<len(data['items']):
+            raise DomainError('INVALID_INPUT','주문 품목을 확인하세요.')
+        item=data['items'][item_index];ready=item['readiness']
+        with self.host.request(context) as session:
+            svc=session._service
+            if ready['ready']:
+                query=lookup_contract_configurations(session,data_version=data['data_version'])
+                if query['configurations'] is None:raise DomainError('CATALOG_QUERY_FAILED','제품 자료 조회에 실패했습니다.')
+                details=[d for d in query['configurations']['candidates'] if d['configuration']['id']==ready['configuration_id']]
+                if len(details)!=1:raise DomainError('CONFIGURATION_NOT_FOUND','정확한 제품 구성이 없습니다.')
+                detail=details[0]
+            def read():
+                if not ready['ready']:
+                    return svc._envelope(ok=True,data=dict(ready=False,readiness=ready))
+                stock=dict(components={},errors=[],conflicts=[],unresolved=[])
+                result=calculate_material_requirements(detail['items'],stock,ready['quantity'],
+                    configuration_id=ready['configuration_id'],data_version=data['data_version'],
+                    demand_source=dict(purpose='order_material_preview',basis=ready['basis']),bom_complete=True)
+                names={n['id']:n['name'] for n in detail['components']}
+                rows=[dict(component_id=r['component_id'],name=names.get(r['component_id'],r['component_id']),q=r['q'],D=r['D']) for r in result['components']]
+                state='error' if not result['valid'] else 'complete' if rows and all(r['D'] is not None for r in rows) else 'partial'
+                return svc._envelope(ok=True,data=dict(ready=True,purpose='order_material_preview',
+                    quantity=ready['quantity'],configuration_id=ready['configuration_id'],basis=ready['basis'],basis_hash=item['basis_hash'],
+                    completeness=state,components=rows,excluded_count=len(result['excluded_bom']),
+                    production_quantity=None,purchase_quantity=None,confirmation_verified=False))
+            return svc._run(session.context['actor'],'contract_material_preview',dict(contract_id=contract_id,item_index=item_index),read)
+
     def get(self,context,contract_id,item_index):
         response=self.planning.inspect(context,contract_id)
         if not response['ok']:return response

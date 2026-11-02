@@ -15,13 +15,14 @@ from pathlib import Path
 import re
 
 from ..model import instant
+from .contract_policy import classify_policy, resolve_constraint
 
 _QUANTITIES = {'ordered_quantity', 'fulfilled_quantity', 'allocated_quantity', 'planned_input_quantity'}
-_FIELDS = ('contract_item_id', 'company', 'customer', 'manufacturer', 'product_model',
+_FIELDS = ('contract_item_id', 'company', 'customer', 'customer_registration_number', 'manufacturer', 'product_model',
            'revision', 'variant', 'configuration_id', 'ordered_quantity', 'unit',
            'fulfilled_quantity', 'allocated_quantity', 'planned_input_quantity',
            'delivery_due', 'constraints')
-_OPTIONAL = {'company', 'customer', 'manufacturer', 'configuration_id', 'constraints'}
+_OPTIONAL = {'company', 'customer', 'customer_registration_number', 'manufacturer', 'configuration_id', 'constraints'}
 
 
 def _hash(value):
@@ -253,10 +254,13 @@ def prepare_contract_demand(extracted: dict, interpreted: dict, configurations: 
                 if grounded: supported.append(value)
                 else: state = 'invalid'
             unique = {json.dumps(v, ensure_ascii=False) for v in supported}
-            if len(unique) > 1:
+            if len(supported) != len(claims) and state == 'invalid':
+                pass
+            elif len(unique) > 1 and not (name == 'constraints' and len(supported) == len(claims) and classify_policy(supported)['status'] != 'unknown'):
                 state = 'conflict'; issue(fp, 'CONFLICTING_VALUES', 'Which of the conflicting source values applies?')
-            elif len(unique) == 1 and len(supported) == len(claims): state = 'supported'
+            elif unique and len(supported) == len(claims): state = 'supported'
             evaluated[name] = dict(state=state, value=supported[0] if state == 'supported' else None, claims=deepcopy(claims))
+            if name == 'constraints': evaluated[name] = resolve_constraint(evaluated[name])
 
         if source_only:
             items.append(dict(fields=evaluated))

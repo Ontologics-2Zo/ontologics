@@ -62,7 +62,7 @@ class ContractLibrary:
             return svc._run(session.context['actor'],'contract_original_register',dict(title=title,counterparty=counterparty,
                 filename=filename,sha256=sha),save,permission='draft',request_key=request_key)
 
-    def search(self,context,query='',offset=0):
+    def search(self,context,query='',offset=0,*,customer_contract_ids=None):
         query=bounded(query,200,False)
         if type(offset) is not int or not 0<=offset<=100000:raise DomainError('INVALID_INPUT','잘못된 목록 위치입니다.')
         pattern='%'+query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
@@ -71,6 +71,9 @@ class ContractLibrary:
             def read():
                 where=' WHERE title ILIKE %s OR counterparty ILIKE %s OR filename ILIKE %s OR id ILIKE %s'
                 params=(pattern,)*4
+                if customer_contract_ids is not None:
+                    where=' WHERE title ILIKE %s OR filename ILIKE %s OR id ILIKE %s OR id=ANY(%s)'
+                    params=(pattern,pattern,pattern,list(customer_contract_ids))
                 total=svc.db.execute('SELECT count(*) AS n FROM pp_contract_originals'+where,params).fetchone()['n']
                 rows=svc.db.execute('SELECT '+COLUMNS+' FROM pp_contract_originals'+where+' ORDER BY received_at DESC,id LIMIT 30 OFFSET %s',params+(offset,)).fetchall()
                 return svc._envelope(ok=True,data=dict(items=[metadata(r) for r in rows],total=total,offset=offset,limit=30))

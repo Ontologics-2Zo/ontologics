@@ -11,7 +11,7 @@ from pathlib import Path
 import unittest
 
 from examples.order_fulfillment import b_contract, b_delivery
-from ontologics import model
+from ontologics import domain_schema, model
 from tests.order_fulfillment.model_oracle import legacy_model
 
 from ontologics.ingest import build_catalog
@@ -49,6 +49,10 @@ class RepresentativeGraphTests(unittest.TestCase):
         # historical relationship must remain byte-for-byte equal as values.
         expected['@context'].update(specifications={'@type': '@json'},
                                     confirmations={'@type': '@json'})
+        # PR #6: reference keys of the C claim types are part of the common context.
+        expected['@context'].update({key: {'@type': '@id'} for kind in domain_schema.C_TYPES
+                                     for key in (*domain_schema.C_SCHEMA[kind][1],
+                                                 *domain_schema.LIST_REFERENCES.get(kind, {}))})
         self.assertEqual(expected, actual)
 
     @classmethod

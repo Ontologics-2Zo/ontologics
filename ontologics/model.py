@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from . import domain_schema
 
-SCHEMA_VERSION = 'graph-0.2'
+SCHEMA_VERSION = 'graph-0.3'
 ROOT = Path(__file__).resolve().parents[1]
 # Required fields and typed relationships. T-box is generated from these definitions.
 SCHEMA = {
@@ -25,8 +25,10 @@ SCHEMA = {
     'InventoryMovement': (['lot_id', 'quantity', 'occurred_at', 'movement'], {'lot_id': 'ComponentLot'}),
 }
 SCHEMA.update(domain_schema.subset(domain_schema.SCHEMA, domain_schema.SCHEMA))
+SCHEMA.update(domain_schema.subset(domain_schema.C_SCHEMA, domain_schema.C_SCHEMA))
+C_TYPES = domain_schema.C_TYPES
 REAL = {'ProductModel', 'ProductRevision', 'Configuration', 'ComponentModel', 'BOMItem'}
-SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'} | set(domain_schema.SCHEMA)
+SYNTHETIC = {'ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverage', 'InventoryMovement'} | set(domain_schema.SCHEMA) | set(domain_schema.C_SCHEMA)
 COMMON_FIELDS = {'id', 'type', 'origin', 'evidence'}
 OPTIONAL_FIELDS = {
     'SourceDocument': {'kind', 'product', 'revision', 'variant', 'sheet_name', 'verification',
@@ -254,6 +256,9 @@ def validate_graph(nodes):
         validate_fulfillment(index, error)
         validate_production_observations(index, error)
         validate_delivery_conditions(index, error)
+    if any(isinstance(n.get('type'), str) and n['type'] in domain_schema.C_TYPES for n in index.values()):
+        from .claim_response.schema import validate_claim_nodes
+        validate_claim_nodes(index, error, warnings)
     # Two populated BOM lines cannot assign different parts to one physical position.
     positions = {}
     for n in index.values():

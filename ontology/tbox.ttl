@@ -1,7 +1,7 @@
 @prefix o: <urn:ontologics:> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.2" .
+o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.3" .
 o:SourceDocument a owl:Class .
 o:Evidence a owl:Class .
 o:ProductModel a owl:Class .
@@ -25,6 +25,12 @@ o:ProductionObservation a owl:Class .
 o:Allocation a owl:Class .
 o:Shipment a owl:Class .
 o:DeliveryCondition a owl:Class .
+o:ProductionLine a owl:Class .
+o:UnitProductionRecord a owl:Class .
+o:ClaimIntake a owl:Class .
+o:QualityCase a owl:Class .
+o:QualityScope a owl:Class .
+o:ContainmentRequest a owl:Class .
 o:source_id a owl:ObjectProperty ; rdfs:range o:SourceDocument .
 o:model_id a owl:ObjectProperty ; rdfs:range o:ProductModel .
 o:revision_id a owl:ObjectProperty ; rdfs:range o:ProductRevision .
@@ -39,7 +45,12 @@ o:production_work_id a owl:ObjectProperty ; rdfs:range o:ProductionWork .
 o:delivery_round_id a owl:ObjectProperty ; rdfs:range o:DeliveryRound .
 o:stock_id a owl:ObjectProperty ; rdfs:range o:FinishedGoodsStock .
 o:allocation_id a owl:ObjectProperty ; rdfs:range o:Allocation .
+o:production_line_id a owl:ObjectProperty ; rdfs:range o:ProductionLine .
+o:intake_id a owl:ObjectProperty ; rdfs:range o:ClaimIntake .
+o:case_id a owl:ObjectProperty ; rdfs:range o:QualityCase .
+o:scope_id a owl:ObjectProperty ; rdfs:range o:QualityScope .
 o:round_ids a owl:ObjectProperty ; rdfs:range o:DeliveryRound .
+o:unit_ids a owl:ObjectProperty ; rdfs:range o:ProductUnit .
 o:evidence a owl:ObjectProperty ; rdfs:range o:Evidence .
 o:ProductModel owl:disjointWith o:ProductUnit, o:ComponentModel, o:ComponentLot .
 o:ComponentModel owl:disjointWith o:ComponentLot .

@@ -113,23 +113,26 @@ python -m unittest tests.test_graph_rdf -v
 
 실제 Neo4j·HTTP 통합 및 전체 회귀를 실행하려면 `.env.local` 또는 프로세스 환경에 같은 `NEO4J_*`·`ONTOLOGICS_GRAPH_NAMESPACE` 설정과 `TEST_NEO4J_URL`·`TEST_NEO4J_USER`·`TEST_NEO4J_PASSWORD`를 준비한다. unittest는 `.env.graph.local`을 자동으로 읽지 않는다. `python -m unittest tests.test_graph_neo4j tests.test_graph_integration -v`는 별도 시험 namespace/schema를 사용한다. CQ 실행 결과는 Git 제외 `artifacts/local/cq_graph_backends.json`에 저장한다. 실제 인증·AWS·운영 백업/복구 완료를 뜻하지 않는다.
 
-### A 생산계획 / B 계약·납품 타입 통합 (`graph-0.2`)
+### A 생산계획 / B 계약·납품 / C 클레임 타입 통합 (`graph-0.3`)
 
-PR #9·#10의 신규 업무 11종을 기존 12종과 함께 공통 저장·검증·조회·RDF·Neo4j로 연결했다. 정의는 `ontologics/domain_schema.py`, 공통 실행은 `model.py`다. 동료는 역할 내부 계산을 수정하고 공개 타입·근거·승인 의미 변경은 공통 계약 검토를 거친다. A/B 호환 Service·Host도 공통 승인 경로를 사용한다. 상세 계약은 [TOOLS](docs/TOOLS.md#ab-신규-업무-타입의-공통-저장조회)를 참조한다.
+PR #9·#10의 신규 업무 11종과 PR #6의 C 1차 6종을 기존 12종과 함께 공통 저장·검증·조회·RDF·Neo4j로 연결했다. 정의는 `ontologics/domain_schema.py`, 공통 실행은 `model.py`다. 동료는 역할 내부 계산을 수정하고 공개 타입·근거·승인 의미 변경은 공통 계약 검토를 거친다. A/B 호환 Service·Host도 공통 승인 경로를 사용한다. 상세 계약은 [TOOLS](docs/TOOLS.md#ab-신규-업무-타입의-공통-저장조회)를 참조한다.
 
 ```bash
-# 위 Neo4j 설정 + 새 namespace (예: ontologics_graph02)와 별도 시험 PG를 사용
-# 이전 graph-0.1/매핑1 namespace를 덮어쓰지 않는다.
+# 위 Neo4j 설정 + 새 namespace (예: ontologics_graph03)와 별도 시험 PG를 사용
+# 이전 graph-0.1/graph-0.2 namespace를 덮어쓰지 않는다.
 python -m ontologics.tbox --check
 python -m examples.ab_graph_check --schema test_ab_team_001
 python -m unittest tests.test_domain_graph tests.test_ab_graph_integration -v
+python -m unittest tests.test_c_graph_rdf tests.test_c_graph_integration -v
 ```
 
 예제 기대 결과는 `passed: true`, 신규 11종 조회 일치, 자기 승인/구 초안 버전 차단, 승인 후 동일 시간 조건에서 U104 A 제외/B 포함·U106 미확인 유지다. 기존 원본·가상 입력을 사용하고 모델 API를 호출하지 않는다. 최초 시드는 개발 자료이며 이후 승인도 개발 신원 검증이다. 기존 데이터의 스키마 업그레이드는 초안/승인 원장 변경 없이 새 namespace에 필요한 승인 버전만 명시적으로 재동기화한다. 실행 명령·환경변수는 바로 위 절을 따른다.
 
 A 웹 `contract_library_web`은 호스트 환경의 조회 backend를 사용한다. B 저수준 `make_host(..., graph_settings=...)`는 호출자가 명시 주입하며 기존 기본값은 PostgreSQL이다. 격리 시나리오 예제의 고정 대역·별도 업무 테이블·자동 승인 없는 산출물을 공통 확정 데이터와 구분한다. S1 JSON 이력 접수 범위는 기존 5종으로 유지한다.
 
-Neo4j Browser의 `:style`에서 `ontology/neo4j-browser.grass`를 불러오면 23종을 이름·색상으로 구분한다. 신규 승인 동기화 시 타입 label과 caption은 자동 생성되지만 브라우저별 스타일 가져오기는 한 번 필요하다.
+Neo4j Browser의 `:style`에서 `ontology/neo4j-browser.grass`를 불러오면 29종을 이름·색상으로 구분한다. 신규 승인 동기화 시 타입 label과 caption은 자동 생성되지만 브라우저별 스타일 가져오기는 한 번 필요하다.
+
+C 검사에서는 근거가 있는 가상 1차 6종의 초안·자기 승인 차단·정확한 버전 반영·재시도와 PostgreSQL/SPARQL/Neo4j 조회 일치를 확인한다. `graph-0.3`은 C 추가를 구분하는 공개 스키마 버전이며 Neo4j 직렬화 형식은 `neo4j-projection-2`를 유지한다. 기존 `graph-0.2` namespace는 그대로 두고 새 namespace에서 필요한 승인 버전을 재동기화한다. 이전 읽기 체크포인트는 버전 불일치로 재개하지 않으며 새 요청으로 조회한다. 저장된 초안·승인·operations/hash는 재작성하지 않는다. C의 시험 결과·재생산 2차 타입(#7), 실제 중단/출고 실행, C 화면·Agent 라우팅 통합은 이번 범위가 아니다.
 
 ## 개발용 사용자 신원과 공통 호스트
 

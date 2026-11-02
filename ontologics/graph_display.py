@@ -16,6 +16,9 @@ DISPLAY_NAMES = {
     'FinishedGoodsStock': '완제품 재고 관측', 'ProductionWork': '생산 기록',
     'ProductionObservation': '생산 수량 관측', 'Allocation': '납품 배정',
     'Shipment': '출하 기록', 'DeliveryCondition': '납품 조건',
+    'ProductionLine': '생산라인', 'UnitProductionRecord': '보드 생산 기록',
+    'ClaimIntake': '클레임 접수', 'QualityCase': '클레임 사건',
+    'QualityScope': '영향 범위', 'ContainmentRequest': '중단 요청서',
 }
 
 
@@ -56,6 +59,18 @@ def browser_caption(node, index):
         detail = node['company'] + ' ' + node['as_of'][:10]
     elif kind == 'DeliveryRound':
         detail = node['id'] + ' ' + node['due_at'][:10]
+    elif kind == 'ProductionLine':
+        detail = node['line_code'] + ' ' + node['name']
+    elif kind == 'UnitProductionRecord':
+        detail = index[node['unit_id']]['serial'] + ' / ' + index[node['production_line_id']]['line_code']
+    elif kind == 'ClaimIntake':
+        detail = node['external_claim_id']
+    elif kind == 'QualityCase':
+        detail = index[node['intake_id']]['external_claim_id']
+    elif kind == 'QualityScope':
+        detail = index[node['production_line_id']]['line_code'] + ' ' + node['as_of'][:10]
+    elif kind == 'ContainmentRequest':
+        detail = {'production_stop': '생산 중단 요청', 'shipment_hold': '출고 보류 요청'}[node['request_kind']]
     else:
         detail = node['id']
     return DISPLAY_NAMES[kind] + (' [가상]' if node['origin'] == 'synthetic' else '') + ' ' + detail

@@ -1,5 +1,9 @@
 # PROJECT_STATUS
 
+## 2026-11-02 — 현재 브랜치에 origin/main 업데이트 병합
+
+`refactor/reduce-manual-intervention`에 `origin/main`의 `73179a3`까지 반영했다. 작업 이력은 양쪽 내용을 보존하고 materials 테스트의 새 경로와 main의 domain_schema 참조를 함께 유지했다. 관련 스키마·그래프 테스트 39개 통과, 충돌 해결 파일의 diff 공백 검사 통과. 전체 병합 diff에는 main에서 들어온 참조 Markdown 문서 2개의 줄바꿈용 후행 공백 5곳이 보고되었으며 원문을 유지했다. 전체 discover는 884개 실행 중 실패 8·오류 210·skip 72로 통과하지 못했다. 현재 python3에서 psycopg 누락을 확인했으며 전체 오류 원인 분류는 미수행이다. 로그: `/private/tmp/main-merge-focused.log`, `/private/tmp/main-merge-full.log`. 다음 행동은 개발 의존성 환경에서 전체 회귀 재검증이다. 기존 미추적 요청 문서는 병합 커밋에서 제외했다.
+
 ## 2026-11-02 — production_planning → materials 이름 변경
 
 사용자가 폴더·에이전트·클래스 이름 변경을 요청했다. ontologics/materials, tests/materials, data/materials와 examples/materials_*로 이동하고 import·실행 문서 참조를 변경했다. 에이전트 등록명은 materials/materials_review, 대표 클래스는 MaterialsHost/MaterialsService/MaterialsApplication/MaterialsHandler/MaterialsServer이며 제품 연결 검토는 LibraryProductReview다. 공통 model.py/tbox.py는 import 경로만 변경했다. 저장된 DB 테이블·근거 식별자·업무 API·생산계획 도메인 의미는 유지한다. data/production_planning은 기존 SourceDocument 경로 해석을 위한 상대 심볼릭 링크이며 원본 자료 바이트와 해시는 모두 이동 전과 일치한다. 상세: ontologics/materials/docs/2026-11-02-materials-rename.md.
@@ -15,6 +19,24 @@
 수치는 난수가 아니다. PCB 외곽 면적 22.28331621 ㎠와 Kester 951의 고형분 도포 기준 120~240 µg/㎠·고형분 2%를 연결해, 웨이브 공정/한 면 전체 도포라는 조건부 참고량 0.13369989726~0.26739979452 g/대를 계산했다. 실제 구매량은 미정이다. 페이스트는 공식 계산법·품번별 금속 함량·합금 밀도를 연결한 참고 계수만 제공한다. 실제 스텐실 두께/개구부 합집합과 공정 손실은 미확인이고 U4 paste graphics·UEXT1 사다리꼴 패드가 있어 단순 패드 합계로 대당 수량을 확정하지 않았다. 기타 자재도 제조사 규격과 실제 대당 사용량을 구분한다. 모든 생산 승인 수량과 구매량은 null이며 국가인증·OLIMEX 실제 사용 사실을 주장하지 않는다.
 
 검증: 원문 11개 해시와 manifest 일치, Evidence 11개 참조, 구성 2개와 BOM의 모든 위치/PCB 참조 매칭, 외곽 면적의 독립 산식 대조, 플럭스 산술, 보관 PDF·HTML의 숫자 대조 통과. `python3 -m unittest discover -v`도 실행했으나 현재 Python 환경에서 840개 실행·8 failure·205 error·69 skip으로 전체 회귀는 통과하지 못했다. psycopg/rdflib 누락을 확인했으며 나머지 전체 실패 원인 분류는 수행하지 않았다. 로그 `/private/tmp/process-material-full-tests.log`. 다음 행동은 실제 공정·승인 자재·스텐실·실측 손실을 확보해 운영 사용량을 결정하는 것이다. 파일 추가만 완료했으며 웹/DB 연동은 수행하지 않았다.
+
+## 2026-11-02 — PR/main CI 중복 실행 정리
+
+main `160b7e2`에서 별도 `codex/ci-pr-main-once` 브랜치로 분리했다. `.github/workflows/tests.yml`의 push 대상만 main으로 제한하고 기존 pull_request 이벤트를 유지한다. PR에는 전체 회귀·CQ·공통 도구 예제를 한 번 실행하며 main에서는 병합 결과에 같은 검사를 적용한다. PR 대상 브랜치 제한·경로 필터·테스트 skip은 추가하지 않았다. 같은 PR의 오래된 실행만 취소하며 main은 커밋별 concurrency group으로 분리해 연속 병합 검사가 서로 취소되지 않게 한다.
+
+검증은 YAML/이벤트·concurrency 조건과 기존 jobs/서비스/권한/단계의 동일성, diff 및 독립 검토를 확인하고 이 PR의 실제 CI를 따른다. 애플리케이션 코드·공통 계약·승인 데이터는 바뀌지 않았으며 로컬 전체 회귀·모델 호출은 반복하지 않는다. main push의 실제 실행 확인은 사용자 병합 뒤에 가능하다. 현재 실행 서버 및 다른 worktree의 미커밋 변경은 그대로 보존한다.
+
+## 2026-11-02 — PR #6 C 1차 RDF·SHACL·Neo4j 공통 통합
+
+기준 main `13b9af6`과 동료의 #6 최종 수정 `601413d`를 보존하고 공통 표현·검증을 보완했다. C 6종을 포함한 총 29종의 공개 그래프 계약은 `graph-0.3`이다. C 업무 규칙, S1/S2·A/B 계산, 신원·승인·확정 저장 코드는 바꾸지 않았다. #7의 시험 결과·재생산 타입은 포함하지 않는다.
+
+**보완:** `claimed_quantity`와 선택 `draft_version`을 SHACL의 1 이상 정수로, `reported_serials`를 다중 문자열로 검사한다. 참조 목록·문자열 목록·배열 순서·근거·실제/가상 구분을 보존한다. C 6종의 Neo4j label/caption과 Browser 색상을 추가했고 T-box를 재생성했다. 인계 JSON-LD는 공통 생성기의 context만 갱신했으며 기존 @graph 사실은 동일하다. Neo4j 직렬화 형식은 `neo4j-projection-2`를 유지한다.
+
+**실행 근거:** C 전용 실제 RDF 검사 3개와 실제 PG/RDF/Neo4j 승인·호환 통합 2개를 추가했다. C 초안의 자기 승인·구 버전·미승인 반영 차단, Bob의 정확 버전 승인, 멱등 반영, 3 backend 전체 내용·근거 일치, 표시 metadata, C/A/B 혼합 상태의 U104 보완 후 A 제외/B 포함·U106 미확인을 확인했다. 이전 graph-0.2 승인 초안의 operations/hash/author/review_history와 이전 namespace를 보존한 채 새 namespace로 재투영하고 정확 승인 반영하는 경로도 통과했다. 기존 읽기 체크포인트의 스키마 불일치 차단을 유지한다.
+
+전체 회귀는 1541개 실행(skip 0)으로 1540개 통과, 기존 A 오류 응답 검사의 금지어 `private`가 검토 사본 경로 `/private/tmp`에 걸린 1개 실패가 있었다. 동일 코드·동일 검사를 일반 작업 경로에서 재실행해 통과했다. 검사 삭제·skip·완화나 A 코드 수정은 하지 않았고 단일 로컬 전체 실행 성공으로 표현하지 않는다. 공통 demo CLI도 v1→v2→v3, U104 A 제외/B 포함을 확인했다. T-box·diff·문서 파일 링크 검사와 독립 변경 검토를 통과했다. 최종 원격 전체 회귀·CQ·도구 예제 결과는 #6 최신 커밋의 CI Checks를 따른다. 실제 모델 호출은 0회다.
+
+**보존/다음:** 기존 사용자 DB와 실행 중인 웹 namespace는 바꾸지 않았다. 새 스키마로 서비스 전환 시 기존 namespace를 덮어쓰지 말고 새 namespace에 필요한 승인 버전을 명시적으로 동기화한 뒤 status·조회 일치를 확인한다. DB 초안·승인 원장은 재작성하지 않는다. 시험은 UUID schema와 전용 namespace에서 진행하고 해당 시험 자원만 정리한다. C 화면·Supervisor 연결·실제 중단 실행·#7·실제 인증·운영 복구·AWS는 이번 완료 범위가 아니다. PR 병합은 사용자가 판단한다.
 
 ## 2026-11-01 — PR #10 이후 A/B 공통 저장·RDF·Neo4j 통합
 

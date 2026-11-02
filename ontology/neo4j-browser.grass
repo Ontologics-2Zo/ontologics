@@ -145,3 +145,39 @@ node.DeliveryCondition {
   diameter: 48px;
   caption: "{browser_caption}";
 }
+
+node.ProductionLine {
+  color: #0369a1;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.UnitProductionRecord {
+  color: #0284c7;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.ClaimIntake {
+  color: #be123c;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.QualityCase {
+  color: #9f1239;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.QualityScope {
+  color: #ea580c;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.ContainmentRequest {
+  color: #7e22ce;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}

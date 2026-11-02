@@ -206,6 +206,18 @@ class CPhase1ValidationTests(unittest.TestCase):
         self.index['containment:test-shipment-hold']['case_id'] = 'quality-case:test-other'
         self.assert_invalid('CASE_MISMATCH')
 
+    def test_request_line_must_match_the_scope_line(self):
+        # Same line as the scope: valid (fixture). Another existing line: rejected, never auto-allowed.
+        self.assertTrue(validate_graph(self.nodes)['valid'])
+        self.copy_node('production-line:test-C-01', 'production-line:test-C-02', line_code='C-02', name='Demo line C-02')
+        for nid in ('containment:test-production-stop', 'containment:test-shipment-hold'):
+            with self.subTest(nid=nid):
+                self.index[nid]['production_line_id'] = 'production-line:test-C-02'
+                result = self.assert_invalid('LINE_MISMATCH')
+                self.assertIn(nid, {e['node_id'] for e in result['errors'] if e['code'] == 'LINE_MISMATCH'})
+                self.index[nid]['production_line_id'] = 'production-line:test-C-01'
+                self.assertTrue(validate_graph(self.nodes)['valid'])
+
     def test_shape_mutations_on_c_types_never_crash(self):
         for nid in [n['id'] for n in self.c_nodes if n['type'] in C_TYPES]:
             node = self.index[nid]

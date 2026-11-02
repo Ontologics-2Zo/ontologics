@@ -27,18 +27,33 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 
 #### C 클레임 대응 확장 타입
 
-C 클레임 대응 Agent가 고객 클레임 → 품질 사건 → 생산라인 추적 → 영향 범위 → 중단 요청서 초안을 남기기 위해 추가한 타입이다. 모두 `synthetic`만 허용하며 실제 OLIMEX 품질·생산 기록이 아니다. 기존 12개 타입의 필드·의미는 바꾸지 않는다. 자료 정책은 [C 자료 정책](claim_response/DATA_POLICY.md)을 따른다.
+C 클레임 대응 Agent가 고객 클레임 → 품질 사건 → 생산라인 추적 → 영향 범위 → 중단 요청서 초안을 남기기 위해 추가한 타입이다. 모두 `synthetic`만 허용하며 실제 OLIMEX 품질·생산 기록이 아니다. 기존 12개 타입과 A/B 타입의 필드·의미는 바꾸지 않는다. 정의는 [domain_schema.py](../ontologics/domain_schema.py)의 `C_SCHEMA`, C 업무 규칙은 [claim_response/schema.py](../ontologics/claim_response/schema.py)의 `validate_claim_nodes()`에 있고, 공통 `validate_graph`가 C 타입이 있을 때만 이 규칙을 부른다. 자료 정책은 [C 자료 정책](claim_response/DATA_POLICY.md), 근거 자료는 [references](claim_response/references/README.md)를 따른다.
 
 | type | 주요 필드·관계 |
 | --- | --- |
 | ProductionLine | company, line_code, name. (company, line_code) 중복 금지 |
-| UnitProductionRecord | unit_id → ProductUnit, production_line_id → ProductionLine, produced_at. 보드당 1개. 선택 production_work_id는 공통 ProductionWork 타입이 정의되기 전까지 어떤 값도 거부 |
+| UnitProductionRecord | unit_id → ProductUnit, production_line_id → ProductionLine, produced_at. 보드당 1개. 선택 production_work_id는 미지원 접점: 범위는 B와 같은 ProductionWork로 선언하지만 C 보드의 작업 연결을 B와 합의하기 전까지 값을 넣으면 `PRODUCTION_WORK_UNSUPPORTED`로 거부 |
 | ClaimIntake | external_claim_id, customer_name, reported_at, reported_symptom, claimed_quantity(양의 정수), reported_serials(고유 문자열 목록), intake_state=needs_review/confirmed/rejected. 선택 reported_conditions, requested_action, delivery_reference. 신고 수량과 일련번호 수가 다르면 경고 |
 | QualityCase | intake_id → ClaimIntake(confirmed만), customer_name, reported_at, reported_symptom, unit_ids → ProductUnit 목록 |
 | QualityScope | case_id → QualityCase, production_line_id → ProductionLine, as_of, unit_ids → ProductUnit 목록, scope_state=hold/candidate, 선택 start/end |
-| ContainmentRequest | case_id → QualityCase, scope_id → QualityScope(같은 사건), request_kind=production_stop/shipment_hold, prepared_at, document_ref. production_stop은 production_line_id 필수. 선택 draft_id/draft_version |
+| ContainmentRequest | case_id → QualityCase, scope_id → QualityScope(같은 사건), request_kind=production_stop/shipment_hold, prepared_at, document_ref. production_stop은 production_line_id 필수. production_line_id가 있으면 scope의 생산라인과 같아야 함(`LINE_MISMATCH`, 다른 라인 요청은 자동 허용 안 함). 선택 draft_id/draft_version |
 
 `reported_symptom`은 고객이 신고한 표현일 뿐 확인된 불량이나 원인이 아니다. 목록 참조(`unit_ids`)와 선택 참조는 JSON-LD에서 ID 관계로 직렬화한다. 요청서는 그래프에 문서 참조만 남기며 생성·검토가 송부나 현장 반영을 뜻하지 않는다.
+
+C 관계·숫자·목록 필드의 의미 (RDF·SHACL·Neo4j 매핑 참고):
+
+| 필드 | 타입 | 값 | 의미 | 실패 코드 (시험) |
+| --- | --- | --- | --- | --- |
+| `QualityCase.unit_ids`, `QualityScope.unit_ids` | 목록 참조 | 비어 있지 않은 고유 `ProductUnit` ID 목록 | 사건 대상 보드 / 조사·보류 대상 보드 (불량 목록 아님) | `INVALID_REFERENCE` (`test_list_references_need_existing_unique_units`) |
+| `ContainmentRequest.production_line_id` | 선택 참조 | `ProductionLine` ID, scope와 같은 라인 | 요청 대상 생산라인 | `INVALID_REFERENCE`, `LINE_MISMATCH`, `PRODUCTION_LINE_REQUIRED` (`test_request_line_must_match_the_scope_line`, `test_production_stop_names_line_and_request_matches_scope_case`) |
+| `UnitProductionRecord.production_work_id` | 선택 참조 (미지원) | 넣지 않음 | B 생산 작업 연결 예정 자리 | `PRODUCTION_WORK_UNSUPPORTED` (`test_production_work_link_is_rejected_even_for_an_existing_work`) |
+| `ClaimIntake.claimed_quantity` | 정수 | 1 이상 (bool 아님) | 고객이 적은 수량. 일련번호 수와 다르면 경고만 | `INVALID_QUANTITY`, 경고 `CLAIM_QUANTITY_SERIAL_MISMATCH` (`test_claim_counts_and_serial_lists_are_typed`) |
+| `ClaimIntake.reported_serials` | 문자열 목록 | 비어 있지 않은 고유 문자열 | 고객이 적은 일련번호 원문 (참조 아님) | `INVALID_FIELD_TYPE` |
+| `ContainmentRequest.draft_version` | 정수 | 1 이상 | 공통 초안 버전 | `INVALID_FIELD_TYPE` |
+| `intake_state`, `scope_state`, `request_kind` | 값 목록 | 위 표의 값 | 상태·종류 | `INVALID_ENUM` (`test_value_lists_are_enforced`) |
+| `reported_at`, `produced_at`, `as_of`, `start`, `end`, `prepared_at` | 시각 | UTC offset 필수, `start < end` | 신고·생산·판단 기준·요청서 작성 시각 | `INVALID_TIME`, `INVALID_INTERVAL` (`test_times_need_offsets_and_scope_interval_is_ordered`) |
+
+정상 시험 자료는 `tests/claim_response/test_schema.py`의 `CPhase1ValidationTests.c_nodes`(라인 C-01, 보드 2대, 클레임 1건, 사건·보류 범위·요청서 2건)이다.
 
 C 추적 경로: `ClaimIntake.reported_serials → ProductUnit.serial`(사람 확인 후 `QualityCase.unit_ids`), `UnitProductionRecord.unit_id → ProductUnit`, `UnitProductionRecord.production_line_id → ProductionLine`, `QualityScope.case_id → QualityCase`, `ContainmentRequest.scope_id → QualityScope`.
 

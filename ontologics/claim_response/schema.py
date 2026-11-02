@@ -74,6 +74,11 @@ def validate_claim_nodes(index, error, warnings):
             scope = index.get(n.get('scope_id')) if isinstance(n.get('scope_id'), str) else None
             if scope and scope.get('type') == 'QualityScope' and scope.get('case_id') != n.get('case_id'):
                 error(nid, 'CASE_MISMATCH', 'case_id must match the case of scope_id')
+            # A request names the line of the scope it points to. A request for another line is not
+            # inferred from the scope; it needs its own meaning and evidence contract first.
+            if (scope and scope.get('type') == 'QualityScope' and 'production_line_id' in n
+                    and n['production_line_id'] != scope.get('production_line_id')):
+                error(nid, 'LINE_MISMATCH', 'production_line_id must be the production line of scope_id')
         keys = IDENTITIES.get(kind)
         if keys and all(_text(n.get(key)) for key in keys):
             identity = (kind, *(n[key] for key in keys))

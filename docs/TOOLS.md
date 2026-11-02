@@ -2,6 +2,23 @@
 
 Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 기준이며 별도 Agent 서버·MCP 배포가 필요 없다. 기본 저장소는 PostgreSQL이고 Neo4j 조회를 선택할 때만 별도 Neo4j 서버가 필요하다. `Service`는 신뢰된 호스트 애플리케이션, `AgentGateway`는 서비스 Agent에 공개하는 도구 경계다. `examples/agent_tools.py`와 `ontologics/demo.py`는 실행 가능한 예제다.
 
+## A·B·C 공통 기반 기준
+
+이 절은 이미 구현·채택한 기준을 동료 개발의 시작점으로 연결한다. 새 PRD·공개 API·승인 권한을 정의하거나 미합의 연결을 확정하지 않는다. 공통 담당자는 아래 의미·검증·저장 계약을 관리하고 역할 담당자는 그 계약 안에서 고유 기능을 개발한다.
+
+| 같이 유지할 기준 | 현재 계약·구현 | 변경 검토 경계 |
+| --- | --- | --- |
+| 제품·부품·보드·로트 식별 | 제품 정의/개정/구성/실물을 구분. `model.py`·`domain_schema.py`의 공통 ID·참조를 재사용. 원본 범위의 부품 ID, 회사·일련번호의 보드, 회사·공급처·부품·로트 의미 유지 | 새 ID 대응·자동 품목 병합·새 참조 의미는 역할 내부 판단으로 추가하지 않음 |
+| 원본 근거·미확인 | SourceDocument → Evidence → 사실. 원본 path/hash/license/locator와 real/synthetic 유지. 새 근거는 새 ID, 정정은 새 초안 | 모델 설명·검색 유사도·가상 기록을 확인된 실장·불량·안전·실제 운영으로 승격하지 않음 |
+| 버전·저장·조회 | PostgreSQL snapshots가 정본. `graph-0.3`은 29종의 스키마 계약, 데이터 vN은 저장소별 반영 이력. RDF/Neo4j는 동일 승인 버전·내용 검증 후 공개 | 새 타입은 공통 schema·T-box·검증·호환성 검토. 일반 데이터 승인마다 SCHEMA_VERSION을 올리지 않음 |
+| Agent 입출력·도구 | `contracts.py`의 AgentSpec/Task/Result·EvidenceRef·AgentError, `RequestSession.run_task()`. 도구의 허용 인자·결과·오류와 역할 payload 구분 | 공개 필드·타입·도구 허용 목록 변경은 공통 검토. 역할 내부 스키마/흐름은 해당 담당자가 수정 |
+| 신원·사람 승인 | IdentityProvider → CommonHost → 요청 사용자/초안 작성자. 다른 사람의 정확 초안 버전 승인 → 호스트 반영. 의존 변경 묶음·자기 승인 금지·멱등 유지 | Agent가 actor/reviewer/권한을 지정하거나 승인·확정 DB 쓰기를 실행하지 않음 |
+| 시간·실행 한도·격리 | S1 A 시점/B 장착 구간 겹침 `[start,end)`는 `temporal.py`. 같은 요청의 하위 역할·재시도·임베딩도 공통 budget/deadline/cost 사용. 접수 원본은 기존 Sandbox | 역할별 시간 판정·별도 예산 생성·파서 우회 금지. 강제 종료 복구·실제 인증·운영 격리 완료와 구별 |
+
+기존 코드의 상속은 재사용 수단이며 운영 권한을 상속하는 허가가 아니다. A `PlanningHost`와 B Host/Service 어댑터도 공통 신원·승인·저장 경계를 유지한다. 신규 typed 역할의 최소 실행은 [README](../README.md#동료의-확장-agent-연결)의 두 기존 예제를 사용한다. A의 현행 `run_agent`, B typed task/확정 그래프 읽기, C schema-only의 차이는 [실행 지침](AGENT_RUNTIME.md#abc-업무-패키지와-공통-실행-경계)에 명시한다.
+
+**아직 공동 결정이 필요한 연결:** B·C I02의 생산 작업 식별과 I04의 보드별 재고·출하 소속/목록 완전성/유효 시점은 미합의다. 현행 C는 `production_work_id`를 `PRODUCTION_WORK_UNSUPPORTED`로 거부한다. `ClaimIntake.delivery_reference`는 외부 문서 문자열이며 내부 Shipment/DeliveryRound ID로 해석하지 않는다. FinishedGoodsStock·Shipment에 임의로 `unit_ids`를 추가하거나 부분 목록으로 전체 수량을 계산하지 않는다. [C 정책](claim_response/DATA_POLICY.md)과 [B·C 협의 원문](order_fulfillment/B_C_INTEGRATION_TEAM_HANDOFF.md)을 함께 본다. 원문의 작성 당시 상태와 현재 graph-0.3 공통 저장 지원은 구분하며, #7의 시험·재생산 및 실제 중단 실행을 이번 기준에 자동 포함하지 않는다.
+
 ## 그래프·저장·시간
 
 [model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. 기존 12종과 [domain_schema.py](../ontologics/domain_schema.py)의 A 생산계획/B 계약·납품 신규 11종과 C 클레임 1차 6종(총 29종)을 `graph-0.3`으로 관리한다. 역할 schema 모듈은 같은 정의의 호환 사본을 제공한다. [공유 생성기](../ontologics/tbox.py)가 [T-box](../ontology/tbox.ttl)를 생성하며 [graph_rdf.py](../ontologics/graph_rdf.py)는 같은 메타데이터로 RDF·SHACL·SPARQL을 연결한다. [catalog.json](../data/catalog.json)은 실제 원본 정규화, [initial_graph.jsonld](../data/initial_graph.jsonld)는 기존 S1/S2 인계용 A-box(데모 버전 3)이며 신규 업무 사실을 자동 추가하지 않는다. PostgreSQL `snapshots.nodes` JSONB가 승인 버전의 정본이고 RDF/Neo4j는 그 조회 표현이다.

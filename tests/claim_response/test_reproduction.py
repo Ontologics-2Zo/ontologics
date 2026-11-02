@@ -14,6 +14,8 @@ from tests.claim_response import test_requests as base
 
 RESULTS = ROOT / 'data/claim_response/test_results'
 COLLECTED = '2026-10-28T09:00:00+09:00'
+DUE = '2026-11-13'  # the claim's 희망 기한
+PRODUCT = {'manufacturer': 'OLIMEX', 'model': 'ESP32-POE', 'revision': 'L', 'variant': 'WROOM'}
 
 
 def request_and_case():
@@ -122,7 +124,8 @@ class ReproductionRequestTests(unittest.TestCase):
         reproduction = reproduction_requirement(self.case, self.request, results['nodes'], self.replacement,
                                                 configuration_id=base.CONFIG)
         return results, prepare_reproduction_request(self.case, reproduction, prepared_at=COLLECTED,
-                                                     external_claim_id=base.CLAIM_ID)
+                                                     external_claim_id=base.CLAIM_ID, requested_due_date=DUE,
+                                                     product=PRODUCT, delivery_reference='DO-DEMO-C-001')
 
     def test_confirmed_scenarios_become_requests_with_their_numbers(self):
         for name, required in (('scenario_1.csv', 10), ('scenario_2.csv', 16)):
@@ -130,17 +133,31 @@ class ReproductionRequestTests(unittest.TestCase):
                 _, out = self.build(name)
                 [(filename, text)] = out['documents'].items()
                 self.assertTrue(out['node']['document_ref'].endswith('/' + filename))
-                for phrase in ('# 재생산 요청서 검토 초안', f'**{required}대**', '| 수량 상태 | 확정 |',
-                               '| 송부 상태 | 미송부 |', 'C-R001 ~ C-R007', base.CLAIM_ID, base.CONFIG):
+                for phrase in ('# C → A 클레임 재생산 검토 요청서 (검토 초안)', f'정상 완제품 **{required}대** (확정 총량)',
+                               '| 수량 상태 | 확정 |', '| 송부 상태 | 미송부 |', 'C-R001 ~ C-R007', base.CLAIM_ID,
+                               base.CONFIG, f'| 필요한 날짜 | 날짜: {DUE} / 기준: 고객 도착',
+                               '해당 클레임 제품과 동일 (OLIMEX ESP32-POE, 개정 L, 변형 WROOM',
+                               '| 관련 계약 | 검토자 기입', '| 생산 적용 조건 | 기존 조건 유지',
+                               '기존 동일 (납품 문서 DO-DEMO-C-001의 납품처)', '동일 건의 이전 C 요청 없음'):
                     self.assertIn(phrase, text)
                 self.assertNotIn('최소 수량', text)
 
     def test_lower_bound_is_marked_as_a_minimum(self):
         _, out = self.build('scenario_4.csv')
         text = next(iter(out['documents'].values()))
-        for phrase in ('(하한, 추가 확인 필요)', '**2대**', '| 미결 (판정 없음·미검사) | 100대 |', '최소 수량',
+        for phrase in ('(하한, 추가 확인 필요)', '**2대**', '(현재 확인된 최소 수량)', '| 미결 (판정 없음·미검사) | 100대 |', '최소 수량',
                        '최종 재생산 수량으로 쓰지 않는다'):
             self.assertIn(phrase, text)
+
+    def test_due_date_is_required_and_stays_out_of_the_node(self):
+        results = read_test_results(RESULTS / 'scenario_1.csv', self.request, self.case, collected_at=COLLECTED)
+        reproduction = reproduction_requirement(self.case, self.request, results['nodes'], self.replacement,
+                                                configuration_id=base.CONFIG)
+        with self.assertRaisesRegex(ValueError, 'MISSING_DUE_DATE'):
+            prepare_reproduction_request(self.case, reproduction, prepared_at=COLLECTED,
+                                         external_claim_id=base.CLAIM_ID, requested_due_date=None)
+        _, out = self.build('scenario_1.csv')
+        self.assertFalse(any('due' in key for key in out['node']))
 
     def test_undetermined_gets_no_document_and_no_node(self):
         _, out = self.build('scenario_3.csv')

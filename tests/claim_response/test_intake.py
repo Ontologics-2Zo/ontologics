@@ -57,6 +57,7 @@ class ClaimIntakeConversionTests(unittest.TestCase):
                 self.assertEqual(e['configuration_candidate_id'], report['configuration_candidate_id'])
                 self.assertEqual(e['requires_separate_trace_data'], report['requires_separate_trace_data'])
                 self.assertEqual(e['quality_case_id'], report['quality_case_id'])
+                self.assertEqual(e['requested_due_date'], report['claim']['requested_due_date'])
                 candidates = [{k: u[k] for k in ('serial', 'quantity', 'unit', 'unit_id', 'match_state')}
                               for u in report['unit_candidates']]
                 self.assertEqual(e['unit_candidates'], candidates)
@@ -79,14 +80,15 @@ class ClaimIntakeConversionTests(unittest.TestCase):
                 node = intake_of(result)
                 self.assertEqual('needs_review', node['intake_state'])
                 self.assertLessEqual(set(node), ALLOWED_FIELDS['ClaimIntake'])
+                self.assertNotIn('requested_due_date', node)  # C-internal: report and A request only
                 self.assertEqual(5, node['claimed_quantity'])  # alternatives, never 15 or three claims
                 self.assertTrue(all(u['unit_id'] is None and u['match_state'] == 'needs_lookup'
                                     for u in result['report']['unit_candidates']))
                 self.assertEqual({'origin': 'synthetic'}, {'origin': n['origin'] for n in result['nodes']})
 
     def test_locators_point_to_rows_cells_and_mail_lines(self):
-        self.assertEqual('클레임!A1:M6', self.results['xlsx']['report']['locator'])
-        self.assertEqual('클레임!A2:M2', self.results['xlsx']['report']['unit_candidates'][0]['locator'])
+        self.assertEqual('클레임!A1:N6', self.results['xlsx']['report']['locator'])
+        self.assertEqual('클레임!A2:N2', self.results['xlsx']['report']['unit_candidates'][0]['locator'])
         self.assertEqual('row 2', self.results['csv']['report']['unit_candidates'][0]['locator'])
         self.assertTrue(self.results['eml']['report']['locator'].startswith('text/plain body lines '))
 
@@ -158,6 +160,27 @@ class BrokenClaimTests(unittest.TestCase):
         self.assertEqual('needs_review', optional['report']['state'])
         self.assertNotIn('reported_conditions', intake_of(optional))
 
+    def test_requested_due_date_is_required_and_date_only(self):
+        due = '"2026-11-13"'
+        self.assertBlocked(self.convert(self.csv_with(due, '""')), 'MISSING_FIELD')
+        for bad in ('"2026-11-13T18:00:00+09:00"', '"2026/11/13"', '"2026-02-30"', '"다음 주"'):
+            with self.subTest(value=bad):
+                self.assertBlocked(self.convert(self.csv_with(due, bad)), 'INVALID_DATE')
+        self.assertBlocked(self.convert(self.csv_with(due, '"2026-10-25"')), 'DUE_DATE_BEFORE_REPORT')
+        self.assertBlocked(self.convert(self.csv_with(due, '"2026-11-14"', 1)), 'ROW_VALUE_CONFLICT')
+        same_day = self.convert(self.csv_with(due, '"2026-10-26"'))
+        self.assertEqual('2026-10-26', same_day['report']['claim']['requested_due_date'])
+
+    def test_mail_due_date_phrase(self):
+        sentence = '교체가 필요한 경우 희망 기한은 2026년 11월 13일까지입니다.\n'
+        missing = self.convert(self.mail_with(sentence, ''))
+        self.assertBlocked(missing, 'MISSING_FIELD')
+        self.assertIsNone(missing['report']['claim']['requested_due_date'])
+        self.assertBlocked(self.convert(self.mail_with('11월 13일까지', '11월 13일 오후 6시까지')), 'INVALID_DATE')
+        self.assertBlocked(self.convert(self.mail_with('11월 13일까지', '11월 31일까지')), 'INVALID_DATE')
+        other = self.convert(self.mail_with('11월 13일까지', '12월 1일까지'))
+        self.assertEqual('2026-12-01', other['report']['claim']['requested_due_date'])
+
     def test_bad_quantities_and_serials_are_reported(self):
         self.assertBlocked(self.convert(self.csv_with('"C-D003","1"', '"C-D003","0"')), 'INVALID_QUANTITY')
         self.assertBlocked(self.convert(self.csv_with('"C-D003","1"', '"C-D003","1.5"')), 'INVALID_QUANTITY')
@@ -185,6 +208,14 @@ class BrokenClaimTests(unittest.TestCase):
         renamed = rewrite('xl/workbook.xml', lambda xml: xml.replace('name="클레임"', 'name="Sheet1"'))
         with self.assertRaisesRegex(ValueError, 'MISSING_SHEET'):
             self.convert(renamed)
+        serial = rewrite('xl/worksheets/sheet1.xml',
+                         lambda xml: re.sub(r'<x:c r="N(\d+)" s="(\d+)" t="str"><x:v>2026-11-13</x:v>',
+                                            r'<x:c r="N\1" s="\2" t="n"><x:v>46339</x:v>', xml))
+        self.assertEqual('2026-11-13', self.convert(serial)['report']['claim']['requested_due_date'])
+        with_time = rewrite('xl/worksheets/sheet1.xml',
+                            lambda xml: re.sub(r'<x:c r="N(\d+)" s="(\d+)" t="str"><x:v>2026-11-13</x:v>',
+                                               r'<x:c r="N\1" s="\2" t="n"><x:v>46339.75</x:v>', xml))
+        self.assertBlocked(self.convert(with_time), 'INVALID_DATE')
         formula = rewrite('xl/worksheets/sheet1.xml',
                           lambda xml: re.sub(r'(<x:c r="I2"[^>]*>)', r'\1<x:f>1</x:f>', xml, count=1))
         with self.assertRaisesRegex(ValueError, 'UNSUPPORTED_FORMULA'):

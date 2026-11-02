@@ -189,9 +189,12 @@ def live_report(agent, expected):
     }
 
 
-def run_phase2(svc, case, line_id, hold, candidate, containment_draft, *, external_claim_id, results_path,
-               request_dir):
-    """6-1 ~ 6-5 after the 1st phase. Scripted reviews stand in for people; nothing is sent."""
+def run_phase2(svc, case, line_id, hold, candidate, containment_draft, *, external_claim_id, claim_report,
+               results_path, request_dir):
+    """6-1 ~ 6-5 after the 1st phase. Scripted reviews stand in for people; nothing is sent.
+
+    claim_report is the conversion report: its 희망 기한, product and delivery document go into the A request.
+    """
     # The request drafts are reviewed (scripted) so the case is in the graph for the test request.
     must(svc.review('reviewer', containment_draft['draft_id'], containment_draft['draft_version'], decision='approve',
                     note='Development review: request drafts checked; sending is recorded by people.',
@@ -211,15 +214,18 @@ def run_phase2(svc, case, line_id, hold, candidate, containment_draft, *, extern
     replacement = c_operations_replacement(load_operations())
     reproduction = reproduction_requirement(case, test['node'], results['nodes'], replacement,
                                             configuration_id=CONFIGURATION)
+    for_a = {'requested_due_date': claim_report['claim']['requested_due_date'],
+             'product': claim_report['product_reference'],
+             'delivery_reference': claim_report['claim']['delivery_reference']}
     request = prepare_reproduction_request(case, reproduction, prepared_at=REPRODUCTION_AT,
-                                           external_claim_id=external_claim_id)
+                                           external_claim_id=external_claim_id, **for_a)
     nodes = results['nodes'] + ([request['node']] if request['node'] else [])
     draft = must(svc.prepare_draft('claim-agent', [{'op': 'put', 'node': n} for n in nodes],
                                    request_key='reproduction-draft'))['data']
     status = must(svc.get_draft('claim-agent', draft['draft_id'], draft['draft_version']))['data']['status']
     if request['node']:
         request = prepare_reproduction_request(case, reproduction, prepared_at=REPRODUCTION_AT,
-                                               external_claim_id=external_claim_id, review_status=status)
+                                               external_claim_id=external_claim_id, review_status=status, **for_a)
     documents = {**test['documents'], **request['documents']}
     return {
         'versions': {'after_request_review': after_requests, 'test_request_sent': approved['data_version'],
@@ -301,7 +307,8 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
         after_drafts, phase2 = svc._version(), None
         if results_path is not None:
             phase2 = run_phase2(svc, case, line_id, hold, candidate, draft, external_claim_id=intake['external_claim_id'],
-                                results_path=Path(results_path), request_dir=request_dir)
+                                claim_report=conversion['report'], results_path=Path(results_path),
+                                request_dir=request_dir)
 
         return {
             'contract_version': __version__, 'database_schema': svc.schema,
@@ -309,7 +316,8 @@ def run_demo(database=None, *, schema=None, claim_path=DEFAULT_CLAIM, request_di
             'versions': {'seed': seeded['data_version'], 'claim_registered': registered['data_version'],
                          'claim_confirmed': version, 'after_request_drafts': after_drafts},
             'claim': {'file': conversion['report']['file'], 'external_claim_id': intake['external_claim_id'],
-                      'claimed_quantity': intake['claimed_quantity'], 'reported_serials': intake['reported_serials']},
+                      'claimed_quantity': intake['claimed_quantity'], 'reported_serials': intake['reported_serials'],
+                      'requested_due_date': conversion['report']['claim']['requested_due_date']},
             'links': {'matched': [l['unit_id'] for l in trace['links'] if l['match_state'] == MATCHED],
                       'open': [l for l in trace['links'] if l['match_state'] != MATCHED]},
             'production_line_id': line_id,

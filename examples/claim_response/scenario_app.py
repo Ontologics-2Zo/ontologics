@@ -142,7 +142,8 @@ class ClaimCase:
                 ('신고 보드', ', '.join(c['serial'] for c in report['unit_candidates'])),
                 ('수량', f"{report['claimed_quantity']}대" if report['claimed_quantity'] is not None else None),
                 ('증상 (고객 표현)', claim.get('reported_symptom')), ('발생 조건', claim.get('reported_conditions')),
-                ('납품 문서', claim.get('delivery_reference')), ('원본 위치', report['locator'])]
+                ('납품 문서', claim.get('delivery_reference')), ('희망 기한', claim.get('requested_due_date')),
+                ('원본 위치', report['locator'])]
         problems = [f"{i['code']} {i.get('message') or ''}".strip() for i in report['issues']]
         warnings = [f"{w['code']} {w.get('message') or ''}".strip() for w in report['warnings']]
         if problems:
@@ -316,6 +317,16 @@ class ClaimCase:
                                        ('송부', '사람이 보냈다고 기록함 (시스템은 보내지 않음)'), ('다음', '테스트팀 결과 기다림')])
         self.state = 'awaiting_results'
 
+    def _reproduction_request(self, reproduction, review_status=None):
+        """A request in A's form. 희망 기한, product and delivery document come from the converted claim."""
+        s, report = self.s, self.s['conversion']['report']
+        return prepare_reproduction_request(s['case'], reproduction, prepared_at=s['t_reproduction'],
+                                            external_claim_id=s['intake']['external_claim_id'],
+                                            requested_due_date=report['claim']['requested_due_date'],
+                                            product=report['product_reference'],
+                                            delivery_reference=report['claim']['delivery_reference'],
+                                            review_status=review_status)
+
     def upload_results(self, filename, content):
         if self.state not in ('awaiting_results', 'results_blocked'):
             raise ActionError('지금은 결과 파일을 올릴 단계가 아닙니다.')
@@ -346,8 +357,7 @@ class ClaimCase:
         reproduction = reproduction_requirement(s['case'], s['test']['node'], results['nodes'],
                                                 replacement, configuration_id=s['configuration'])
         s['t_reproduction'] = self.clock()
-        request = prepare_reproduction_request(s['case'], reproduction, prepared_at=s['t_reproduction'],
-                                               external_claim_id=s['intake']['external_claim_id'])
+        request = self._reproduction_request(reproduction)
         nodes = results['nodes'] + ([request['node']] if request['node'] else [])
         draft = must(self.svc.prepare_draft('claim-agent', [{'op': 'put', 'node': n} for n in nodes],
                                             request_key='app-reproduction'))['data']
@@ -367,8 +377,7 @@ class ClaimCase:
             rows.append(('A 요청서', '만들지 않음 (미정은 0으로 저장하지 않음)'))
             self._event('재생산 수량', rows, tone='warn', note='미결 보드의 판정이 나오면 새 결과로 다시 계산합니다.')
         else:
-            request = prepare_reproduction_request(s['case'], reproduction, prepared_at=s['t_reproduction'],
-                                                   external_claim_id=s['intake']['external_claim_id'], review_status=status)
+            request = self._reproduction_request(reproduction, review_status=status)
             rows.append(('A 요청서', REVIEW_LABELS.get(status, status) + ' · 미송부'))
             self._event('재생산 수량·A 요청서', rows, tone='ok' if r['state'] == 'confirmed' else 'warn',
                         documents=request['documents'])
@@ -385,8 +394,7 @@ class ClaimCase:
         s = self.s
         required = s['reproduction']['required_good_quantity']
         if required is not None:
-            refreshed = prepare_reproduction_request(s['case'], s['reproduction'], prepared_at=s['t_reproduction'],
-                                                     external_claim_id=s['intake']['external_claim_id'], review_status='applied')
+            refreshed = self._reproduction_request(s['reproduction'], review_status='applied')
             self._refresh(refreshed['documents'])
         self._event('검토 완료', [('그래프 버전', applied['data_version']),
                                   ('문서 검토 상태', REVIEW_LABELS['applied'] if required is not None else '해당 문서 없음'),

@@ -4,6 +4,8 @@ The converter reads a single synthetic customer claim file and prepares candidat
 graph nodes (SourceDocument, Evidence, ClaimIntake). It never approves, applies or
 links customer serials to internal ProductUnit IDs; people review the draft first.
 Values missing from the source stay missing and are reported as issues.
+The customer's requested due date (희망 기한) is required and date-only. It stays in
+the conversion report for the C → A reproduction request and is not a graph field.
 """
 from __future__ import annotations
 
@@ -14,7 +16,7 @@ import io
 import re
 import xml.etree.ElementTree as ET
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from email import policy
 from pathlib import Path, PurePosixPath
 
@@ -43,11 +45,15 @@ COLUMNS = {
     '발생 조건': 'reported_conditions',
     '납품 문서 번호': 'delivery_reference',
     '요청 사항': 'requested_action',
+    '희망 기한': 'requested_due_date',
 }
 # Values that describe the whole claim and must agree on every row.
 CLAIM_FIELDS = ('external_claim_id', 'customer_name', 'reported_at', 'manufacturer', 'model', 'revision',
-                'variant', 'reported_symptom', 'reported_conditions', 'delivery_reference', 'requested_action')
+                'variant', 'reported_symptom', 'reported_conditions', 'delivery_reference', 'requested_action',
+                'requested_due_date')
 REQUIRED_FIELDS = ('external_claim_id', 'customer_name', 'reported_at', 'reported_symptom')
+# Required, date-only (YYYY-MM-DD). Checked by _due_date(); kept out of the ClaimIntake node.
+DUE_DATE_FIELD = 'requested_due_date'
 OPTIONAL_INTAKE_FIELDS = ('reported_conditions', 'requested_action', 'delivery_reference')
 PRODUCT_FIELDS = ('manufacturer', 'model', 'revision', 'variant')
 # The customer never supplies these; later C steps find them from separate trace data.
@@ -143,6 +149,15 @@ def _excel_serial(value, *, date1904):
     return moment.replace(tzinfo=KST).isoformat()
 
 
+def _excel_date(value, *, date1904):
+    """A date-only cell is a whole day number. A time part is kept so that _due_date() rejects it."""
+    number = float(value)
+    base = datetime(1904, 1, 1) if date1904 else datetime(1899, 12, 30)
+    if number.is_integer():
+        return (base + timedelta(days=int(number))).date().isoformat()
+    return (base + timedelta(seconds=round(number * 86400))).isoformat()
+
+
 def parse_claim_xlsx(path):
     """Read the '클레임' sheet of the fixed claim form. Formulas are not accepted."""
     _read_bounded(path)
@@ -196,6 +211,8 @@ def parse_claim_xlsx(path):
             kind, value = cells.get(i, (None, None))
             if field == 'reported_at' and kind == 'n' and _clean(value):
                 value = _excel_serial(value, date1904=date1904)
+            elif field == DUE_DATE_FIELD and kind == 'n' and _clean(value):
+                value = _excel_date(value, date1904=date1904)
             elif field == 'quantity' and kind == 'n' and _clean(value):
                 number_value = float(value)
                 value = str(int(number_value)) if number_value.is_integer() else value
@@ -233,6 +250,8 @@ MAIL_TIME = (r'신고 시각은\s*(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일\s*(�
 MAIL_PRODUCT = r'제품은\s*(\S+)\s+(\S+?),\s*설계 개정\s*(\S+?),\s*변형\s*(\S+?)입니다'
 MAIL_SERIAL = r'^\s*-\s*([A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])\s*$'
 MAIL_REQUEST = r'^(.+?요청)드립니다\.?\s*$'
+# "희망 기한은 2026년 11월 13일까지입니다." A time after the date is captured so that it is rejected.
+MAIL_DUE = r'희망 기한(?:은|는|:)\s*(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일(\s*(?:오전|오후)?\s*\d{1,2}시(?:\s*\d{1,2}분)?)?'
 
 
 def _line_of(text, position):
@@ -266,6 +285,11 @@ def parse_claim_mail(path):
         hour = int(hour) % 12 + (12 if half == '오후' else 0)
         found['reported_at_parts'] = (int(year), int(month), int(day), hour, int(minute or 0), zone)
         lines['reported_at'] = _line_of(text, match.start())
+    match = re.search(MAIL_DUE, text)
+    if match:
+        year, month, day, clock = match.groups()
+        value = f'{int(year):04d}-{int(month):02d}-{int(day):02d}' + (' ' + clock.strip() if clock else '')
+        keep(DUE_DATE_FIELD, value, match.start())
     match = re.search(MAIL_PRODUCT, text)
     if match:
         for field, value in zip(PRODUCT_FIELDS, match.groups()):
@@ -311,6 +335,24 @@ def _timestamp(value, label, issues, locator):
         return None
 
 
+def _due_date(value, reported_at, issues, locator):
+    """희망 기한: required, a real calendar date written as YYYY-MM-DD, not before the reported day."""
+    if value is None:
+        _issue(issues, 'MISSING_FIELD', DUE_DATE_FIELD, locator)
+        return None
+    try:
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
+            raise ValueError(value)
+        due = date.fromisoformat(value)
+    except ValueError:
+        _issue(issues, 'INVALID_DATE', DUE_DATE_FIELD + ' must be a date only (YYYY-MM-DD): ' + value, locator)
+        return None
+    if reported_at is not None and due < datetime.fromisoformat(reported_at).astimezone(KST).date():
+        _issue(issues, 'DUE_DATE_BEFORE_REPORT', DUE_DATE_FIELD + ' is earlier than the reported day: ' + value, locator)
+        return None
+    return value
+
+
 def _quantity(value, issues, locator):
     if value is None:
         _issue(issues, 'MISSING_FIELD', 'quantity', locator)
@@ -334,6 +376,8 @@ def _from_rows(parsed, issues):
             claim[field] = values.pop()
     if 'reported_at' not in conflicts:
         claim['reported_at'] = _timestamp(claim['reported_at'], parsed['timezone_label'], issues, parsed['locator'])
+    if DUE_DATE_FIELD not in conflicts:
+        claim[DUE_DATE_FIELD] = _due_date(claim[DUE_DATE_FIELD], claim['reported_at'], issues, parsed['locator'])
     units = []
     for row in rows:
         if row['serial'] is None:
@@ -351,6 +395,7 @@ def _from_mail(parsed, issues):
     claim = {field: fields.get(field) for field in CLAIM_FIELDS if field != 'reported_at'}
     where = lambda field: 'text/plain line ' + str(lines[field]) if field in lines else parsed['locator']
     claim['reported_at'] = _timestamp(fields.get('reported_at_parts'), 'KST', issues, where('reported_at'))
+    claim[DUE_DATE_FIELD] = _due_date(fields.get(DUE_DATE_FIELD), claim['reported_at'], issues, where(DUE_DATE_FIELD))
     each = fields.get('unit_quantity')
     units = []
     for serial, line in parsed['serials']:

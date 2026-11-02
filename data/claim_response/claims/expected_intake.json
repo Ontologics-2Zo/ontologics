@@ -11,6 +11,8 @@
   "reported_conditions": "실내 설치 후 최초 기동. 동일 조건의 다른 보드는 정상",
   "requested_action": "원인 확인 및 교환 가능 여부 회신 요청",
   "delivery_reference": "DO-DEMO-C-001",
+  "requested_due_date": "2026-11-13",
+  "requested_due_date_note": "희망 기한은 필수·날짜만(YYYY-MM-DD). 변환 보고서와 A 요청서에만 쓰고 ClaimIntake 노드에는 넣지 않음.",
   "claimed_quantity": 5,
   "unit": "piece",
   "product_reference": {
@@ -68,11 +70,11 @@
   "provenance_examples": [
     {
       "file": "01_메일_클레임.eml",
-      "locator": "MIME text/plain 본문의 클레임 번호·제품 설명·일련번호 목록·현상 문단"
+      "locator": "MIME text/plain 본문의 클레임 번호·제품 설명·일련번호 목록·현상 문단·희망 기한 문장"
     },
     {
       "file": "02_엑셀_클레임.xlsx",
-      "locator": "클레임!A1:M6; 일련번호 H2:H6, 신고 수량 I2:I6, 신고 일시 C2:C6(KST)"
+      "locator": "클레임!A1:N6; 일련번호 H2:H6, 신고 수량 I2:I6, 신고 일시 C2:C6(KST), 희망 기한 N2:N6"
     },
     {
       "file": "03_CSV_클레임.csv",
@@ -82,15 +84,15 @@
   "source_files": [
     {
       "file": "01_메일_클레임.eml",
-      "sha256": "48110e43eeceae9b9c89852f956ba5c5de28a389e0d9e2967805f74bceab149f"
+      "sha256": "5081ee0e1db9827dcc7cabdb9bbf6ec585f9f6624b864718fd641632b2320ed6"
     },
     {
       "file": "02_엑셀_클레임.xlsx",
-      "sha256": "44a8e56e63eb0aab7acb59232c6e4352a4f30a2e1cb241330b8dde6c3ccc7ab4"
+      "sha256": "5dd08152ee888a44acd7e97f9c6b36167ac73de4b76fab7f2c4e039b67f95543"
     },
     {
       "file": "03_CSV_클레임.csv",
-      "sha256": "49d684f3b3d9c3c38f88e239ea9117a8b3706cdc0b49b0e84e1af701933eff8b"
+      "sha256": "ce5eaf711f6e13ee18f6274b7c1a37cc7021486d7e40df7dacb5770faf06cca5"
     }
   ]
 }

@@ -27,6 +27,27 @@
     "lot_id": {
       "@type": "@id"
     },
+    "contract_id": {
+      "@type": "@id"
+    },
+    "contract_item_id": {
+      "@type": "@id"
+    },
+    "snapshot_id": {
+      "@type": "@id"
+    },
+    "production_work_id": {
+      "@type": "@id"
+    },
+    "delivery_round_id": {
+      "@type": "@id"
+    },
+    "stock_id": {
+      "@type": "@id"
+    },
+    "allocation_id": {
+      "@type": "@id"
+    },
     "production_line_id": {
       "@type": "@id"
     },
@@ -39,20 +60,17 @@
     "scope_id": {
       "@type": "@id"
     },
-    "test_request_id": {
+    "round_ids": {
       "@type": "@id"
     },
     "unit_ids": {
       "@type": "@id"
     },
-    "test_result_ids": {
-      "@type": "@id"
+    "specifications": {
+      "@type": "@json"
     },
-    "production_work_id": {
-      "@type": "@id"
-    },
-    "replacement_unit_ids": {
-      "@type": "@id"
+    "confirmations": {
+      "@type": "@json"
     }
   },
   "@graph": [

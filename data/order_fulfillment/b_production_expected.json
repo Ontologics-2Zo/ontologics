@@ -1,0 +1,28 @@
+{
+  "production_work_id": "work:demo:CQ03:main",
+  "delivery_round_id": "delivery-round:demo:B-01:1",
+  "snapshot_id": "snapshot:demo:CQ03:10",
+  "as_of": "2026-10-27T10:00:00+09:00",
+  "queried_at": "2026-10-27T10:10:00+09:00",
+  "status": "forecast",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "unit": "piece",
+  "target_quantity": 1000,
+  "latest_good_quantity": 600,
+  "selected_observation_ids": [
+    "observation:demo:CQ03:09",
+    "observation:demo:CQ03:10"
+  ],
+  "good_rate_per_hour": 90,
+  "produced_rate_per_hour": 100,
+  "recent_defect_ratio": 0.1,
+  "remaining_quantity": 400,
+  "remaining_seconds": 16000,
+  "estimated_completion_at": "2026-10-27T14:26:40+09:00",
+  "fulfillment_assessed": false,
+  "source_id": "source:demo:CQ03:production-v1",
+  "source_sha256": "6b18f76917db81837a4a06891d9a8331b412c19d1d62f46d0e3a681bc442c810",
+  "assumptions_evidence": [
+    "evidence:demo:CQ03:assumptions"
+  ]
+}

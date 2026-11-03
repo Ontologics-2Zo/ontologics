@@ -1,0 +1,22 @@
+{
+  "cq": "B-CQ01",
+  "origin": "synthetic",
+  "contract_id": "contract:demo:B-01",
+  "contract_item_id": "contract-item:demo:B-01:1",
+  "delivery_round_id": "delivery-round:demo:B-01:1",
+  "company": "DEMO-B",
+  "customer_name": "가상고객사 A",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "configuration_name": "ESP32-POE Rev L WROOM",
+  "contract_quantity": 1000,
+  "quantity": 1000,
+  "unit": "piece",
+  "due_at": "2026-10-27T15:00:00+09:00",
+  "due_basis": "arrival",
+  "destination": "가상고객사 A 수령창고",
+  "fulfillment_assessed": false,
+  "source_id": "source:demo:B-01:contract-v1",
+  "source_sha256": "bbe0b4a2ad05bcb14e0eb477f90d9ae5f25c67a706a906e606b8e8023eda67ae",
+  "contract_evidence": ["evidence:demo:B-01:contract", "evidence:demo:B-01:item", "evidence:demo:B-01:round"],
+  "configuration_evidence": ["evidence:olimex-L-wroom:identity"]
+}

@@ -1,0 +1,30 @@
+{
+  "contract_item": {
+    "id": "contract-item:planning:001",
+    "configuration_id": "config:esp32-poe:L:WROOM",
+    "ordered_quantity": 100,
+    "fulfilled_quantity": 0,
+    "allocated_quantity": 0,
+    "unit": "piece",
+    "delivery_due": "2026-11-10",
+    "constraints_state": "unspecified"
+  },
+  "planned_input_quantity": 100,
+  "unit": "piece",
+  "data_version": 1,
+  "confirmation_ref": null,
+  "external_inputs": [
+    {
+      "source_ref": "input:planning:contract",
+      "sha256": "6e2057d140963a9584ea25e514971d81e00728a7dbaeac3b19dd9ba7c519a962"
+    },
+    {
+      "source_ref": "input:planning:stock",
+      "sha256": "789c8e35aa77e658aaa0ef3deec593a35dfb7e5363a7480f15e3fd65858e0f81"
+    },
+    {
+      "source_ref": "input:planning:production",
+      "sha256": "5973421783a94e122fa5f3b84fb544802cd304e07872506ea875268eee442498"
+    }
+  ]
+}

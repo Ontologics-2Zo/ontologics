@@ -1,3 +1,22 @@
+## 자재 검토 요청 문서 등록 (기존 공통 타입 재사용)
+
+`ontologics/order_fulfillment/material_request_document.py`와
+`material_request_registration.py`는 추가 요청을 기존 SourceDocument/Evidence로 구성합니다.
+공통 스키마·실행 코드·T-box 변경 없이 기존 승인 경로를 사용합니다.
+
+```bash
+python -m examples.order_fulfillment.b_material_request_registration --env-file <개발환경파일> --neo4j
+```
+
+이 명령은 가상 업무 요청과 개발 작성자·검토자 신원으로 실제 등록·승인·조회를 실행합니다.
+PostgreSQL+pgvector와 Neo4j 설정이 필요하며 실행마다 새 `request_demo_<UUID>` 스키마를 사용합니다.
+계획 200대에 추가 30대, 40대로 수정, 별도 예비 단말 10대가 예제입니다.
+자료는 `data/order_fulfillment/sources/material_requests_demo/`, 실행 중 보존 원문은
+Git 제외 경로 `data/receipts/order_fulfillment/material_requests/`에 있습니다.
+
+상세 계약: [요청 전달 문서](../../ontologics/materials/docs/B_TO_A_MATERIALS_REQUEST.md).
+정확한 근거 ID·승인 버전으로 조회하며, materials의 신규 요청 발견·접수·계산은 후속 범위입니다.
+
 # Order Fulfillment — B 개발 안내
 
 ## GitHub CI의 Git 이력·로컬 설치 의존성 제거

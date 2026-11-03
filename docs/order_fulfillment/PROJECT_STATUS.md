@@ -1,3 +1,32 @@
+## 2026-11-03 — 기존 공통 문서·근거 타입으로 자재 검토 요청 등록
+
+새 타입 대신 SourceDocument/Evidence를 사용하는 현재 합의에 따라 구현했다. 아래 이전 UNKNOWN_TYPE 기록은 새 타입 방식의 사전 시험이며 이번 방식의 장애가 아니다.
+
+- 구현: `ontologics/order_fulfillment/material_request_document.py`, `material_request_registration.py`. 요청 내용·기준 참조 검증, Markdown 원문과 구조화 전사, 저장소/실행자/키별 원문 재사용, 기존 공통 초안 등록과 정확 버전 조회를 제공한다.
+- 원문과 Evidence 설명은 동일 레코드에서 생성하며 조회 시 재생성 해시와 SourceDocument 해시를 대조한다. 변경된 원문·같은 키 다른 내용·가상 기준의 real 재표시를 차단한다. 요청 데이터 안의 지시는 실행 권한이 아니다.
+- 자료: `data/order_fulfillment/sources/material_requests_demo/`. 기존 계획 200대에 설치 구역 추가 30대, 구역 증가에 따른 40대 수정, 유지보수 예비 단말 독립 10대. 기존 실제 공개 Configuration을 참조하고 모든 운영 요청은 synthetic으로 표시한다.
+- 실제 실행: 전용 PostgreSQL+pgvector 및 Neo4j 컨테이너. 작성자/검토자/읽기 사용자 3개 개발 신원으로 공통 prepare_draft→validate→review→apply_approved→sync→lookup을 실행했다. 검토자는 개발 대역이며 실제 운영자 인증·실제 업무 승인이라고 주장하지 않는다. LLM/API 호출 없음.
+- 실제 실행 스키마: `request_demo_376499a395fa4271b55012789f7a7a2d`. 요청 MREQ-HB-20261103-001 개정1/2 및 MREQ-HB-20261103-002 개정1이 승인 데이터 v2/v3/v4에 각각 반영되었고, 별도 읽기 사용자의 PostgreSQL/Neo4j 결과가 모두 일치했다. 30→40은 대체 관계, 10은 독립 관계로 보존했다. 최신 수요 자동 합산은 구현하지 않았다.
+- 최종 관련 테스트: 20개 통과(요청 문서 7, 실제 등록 6, 실제 Neo4j 조회 1, 이전 신규 타입 경계 1, T-box 회귀 5). 자기 승인·미승인 반영·원문 변조·구 초안·권한 부족·미동기화 상태가 차단됨을 확인했다. 조회 전후 snapshots 내용이 같고 A 접수 상태를 쓰지 않았다.
+- 독립 코드 검토에서 잘못된 근거 기록의 예외 처리와 실제/가상 근거 혼용을 지적받아 실패 테스트로 재현 후 수정했다. 재검토에서 중대한 추가 문제 없음.
+- 기존 공통 demo 성공. T-box --check, Python 구문 검사, diff 공백 검사 통과. 공통 코드·스키마·T-box 및 materials 실행 코드 변경 없음.
+- 전체 회귀 첫 실행: 1,630개 중 1,614 통과·3 실패·3 오류·10 skip(588.262초). 5건은 macOS TMPDIR 심볼릭 링크 거부, 1건은 테스트 실행기의 discover 시작 경로로 모듈명이 달라진 문제였다. 애플리케이션 코드를 바꾸지 않고 /private/tmp 아래 실제 임시 경로와 저장소 기준 패키지 탐색을 사용해 해당 두 모듈 18개를 재실행하여 모두 통과했다. 전체 단일 실행 성공을 주장하지 않으며 전체 재실행은 하지 않았다.
+- 검증 로그는 로컬 `/private/tmp/ontologics-request-verification/`에 보존한다. 접속 비밀값과 실행 원문은 커밋하지 않는다. 실행 중 생성한 원문은 기존 Git 제외 경로 `data/receipts/order_fulfillment/material_requests/`에 보존한다.
+- 검증 전용 컨테이너는 실행 후 중지한다. 기존 사용 중 서버는 변경하지 않는다.
+- 남은 범위: materials의 요청 발견·미처리 목록·해석/재검증·계산·RFQ·접수 이력. 공통 검색 60건 제한을 완전한 수신함으로 사용하지 않는다. 문서 기록의 제품 참조는 전용 그래프 관계가 아니며 후속 소비자가 검증해야 한다.
+
+## 2026-11-03 — B 요청 공통 등록 사전 점검: 차단 확인
+
+사용자 제약은 공통 코드 변경 금지, B 영역 변경만 허용(T-box는 생성 산출물 예외)이다. 먼저 최소 요청으로 등록 지원 여부를 확인했다.
+
+- 재현: `python3 -m examples.order_fulfillment.b_material_request_boundary` (차단 시 종료 코드 2).
+- B 전용 최소 선언을 기존 T-box 생성기에 전달하면 요청 클래스가 생성된다. 파일은 쓰지 않는다.
+- 동일 타입을 실제 `model.validate_graph`에 전달하면 `UNKNOWN_TYPE`으로 거부된다. 공통 SCHEMA를 변경하거나 monkeypatch하지 않았다.
+- `service.py`의 초안/검증/반영 경로도 이 공통 검증을 호출한다. B lookup 메타데이터나 T-box 선언만으로 이를 해결할 수 없다.
+- 이 시험은 타입 등록 경계만 확인한다. 입력은 의도적인 최소 probe이며 완성된 업무 요청이 아니다. PostgreSQL 승인·저장 및 Neo4j 동기화·조회 시험은 수행하지 않았다.
+- 결정: 미지원 요청을 정상 지원하는 것처럼 B 운영 schema/host/service에 노출하지 않고, 후속 업무 구현 및 T-box 파일 변경을 보류한다. 공통 확장 등록 접점에 대한 담당자 결정이 필요하다. 원격 B 구현의 공통 변경은 가져오지 않았다.
+- 검증: 신규 경계 테스트 1개 통과. 관련 T-box 테스트를 포함한 6개 중 4개 통과, 2개는 현재 python3의 psycopg 누락으로 import 오류. 전체 회귀 통과를 주장하지 않는다.
+
 ## 2026-10-30 — PR #9 CI의 Git 이력·Mac 설치 경로 의존성 수정
 
 GitHub push/PR 자동 검사는 모두 935개 중 실패3·오류10으로 끝났다.

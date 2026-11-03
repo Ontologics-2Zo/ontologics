@@ -19,6 +19,8 @@ DISPLAY_NAMES = {
     'ProductionLine': '생산라인', 'UnitProductionRecord': '보드 생산 기록',
     'ClaimIntake': '클레임 접수', 'QualityCase': '클레임 사건',
     'QualityScope': '영향 범위', 'ContainmentRequest': '중단 요청서',
+    'TestRequest': '테스트 의뢰', 'QualityTestResult': '테스트팀 결과',
+    'ReproductionRequirement': '재생산 요건',
 }
 
 
@@ -71,6 +73,13 @@ def browser_caption(node, index):
         detail = index[node['production_line_id']]['line_code'] + ' ' + node['as_of'][:10]
     elif kind == 'ContainmentRequest':
         detail = {'production_stop': '생산 중단 요청', 'shipment_hold': '출고 보류 요청'}[node['request_kind']]
+    elif kind == 'TestRequest':
+        detail = node['case_id'] + ' ' + node['prepared_at'][:10]
+    elif kind == 'QualityTestResult':
+        detail = index[node['unit_id']]['serial'] + ' ' + node['outcome']
+    elif kind == 'ReproductionRequirement':
+        state = {'confirmed': '수량 확정', 'lower_bound': '하한'}[node['assessment_state']]
+        detail = node['configuration_id'] + ' ' + str(node['required_good_quantity']) + '대 ' + state
     else:
         detail = node['id']
     return DISPLAY_NAMES[kind] + (' [가상]' if node['origin'] == 'synthetic' else '') + ' ' + detail

@@ -115,13 +115,13 @@ python -m unittest tests.test_graph_rdf -v
 
 실제 Neo4j·HTTP 통합 및 전체 회귀를 실행하려면 `.env.local` 또는 프로세스 환경에 같은 `NEO4J_*`·`ONTOLOGICS_GRAPH_NAMESPACE` 설정과 `TEST_NEO4J_URL`·`TEST_NEO4J_USER`·`TEST_NEO4J_PASSWORD`를 준비한다. unittest는 `.env.graph.local`을 자동으로 읽지 않는다. `python -m unittest tests.test_graph_neo4j tests.test_graph_integration -v`는 별도 시험 namespace/schema를 사용한다. CQ 실행 결과는 Git 제외 `artifacts/local/cq_graph_backends.json`에 저장한다. 실제 인증·AWS·운영 백업/복구 완료를 뜻하지 않는다.
 
-### A 생산계획 / B 계약·납품 / C 클레임 타입 통합 (`graph-0.3`)
+### A 생산계획 / B 계약·납품 / C 클레임 타입 통합 (`graph-0.4`)
 
-PR #9·#10의 신규 업무 11종과 PR #6의 C 1차 6종을 기존 12종과 함께 공통 저장·검증·조회·RDF·Neo4j로 연결했다. 정의는 `ontologics/domain_schema.py`, 공통 실행은 `model.py`다. 동료는 역할 내부 계산을 수정하고 공개 타입·근거·승인 의미 변경은 공통 계약 검토를 거친다. A/B 호환 Service·Host도 공통 승인 경로를 사용한다. 상세 계약은 [TOOLS](docs/TOOLS.md#ab-신규-업무-타입의-공통-저장조회)를 참조한다.
+PR #9·#10의 신규 업무 11종, PR #6의 C 1차 6종과 #7의 C 2차 3종을 기존 12종과 함께 공통 저장·검증·조회·RDF·Neo4j로 연결했다. 정의는 `ontologics/domain_schema.py`, 공통 실행은 `model.py`다. 동료는 역할 내부 계산을 수정하고 공개 타입·근거·승인 의미 변경은 공통 계약 검토를 거친다. A/B 호환 Service·Host도 공통 승인 경로를 사용한다. 상세 계약은 [TOOLS](docs/TOOLS.md#ab-신규-업무-타입의-공통-저장조회)를 참조한다.
 
 ```bash
-# 위 Neo4j 설정 + 새 namespace (예: ontologics_graph03)와 별도 시험 PG를 사용
-# 이전 graph-0.1/graph-0.2 namespace를 덮어쓰지 않는다.
+# 위 Neo4j 설정 + 새 namespace (예: ontologics_graph04)와 별도 시험 PG를 사용
+# 이전 graph-0.1/graph-0.2/graph-0.3 namespace를 덮어쓰지 않는다.
 python -m ontologics.tbox --check
 python -m examples.ab_graph_check --schema test_ab_team_001
 python -m unittest tests.test_domain_graph tests.test_ab_graph_integration -v
@@ -132,9 +132,9 @@ python -m unittest tests.test_c_graph_rdf tests.test_c_graph_integration -v
 
 A 웹 `contract_library_web`은 호스트 환경의 조회 backend를 사용한다. B 저수준 `make_host(..., graph_settings=...)`는 호출자가 명시 주입하며 기존 기본값은 PostgreSQL이다. 격리 시나리오 예제의 고정 대역·별도 업무 테이블·자동 승인 없는 산출물을 공통 확정 데이터와 구분한다. S1 JSON 이력 접수 범위는 기존 5종으로 유지한다.
 
-Neo4j Browser의 `:style`에서 `ontology/neo4j-browser.grass`를 불러오면 29종을 이름·색상으로 구분한다. 신규 승인 동기화 시 타입 label과 caption은 자동 생성되지만 브라우저별 스타일 가져오기는 한 번 필요하다.
+Neo4j Browser의 `:style`에서 `ontology/neo4j-browser.grass`를 불러오면 32종을 이름·색상으로 구분한다. 신규 승인 동기화 시 타입 label과 caption은 자동 생성되지만 브라우저별 스타일 가져오기는 한 번 필요하다.
 
-C 검사에서는 근거가 있는 가상 1차 6종의 초안·자기 승인 차단·정확한 버전 반영·재시도와 PostgreSQL/SPARQL/Neo4j 조회 일치를 확인한다. `graph-0.3`은 C 추가를 구분하는 공개 스키마 버전이며 Neo4j 직렬화 형식은 `neo4j-projection-2`를 유지한다. 기존 `graph-0.2` namespace는 그대로 두고 새 namespace에서 필요한 승인 버전을 재동기화한다. 이전 읽기 체크포인트는 버전 불일치로 재개하지 않으며 새 요청으로 조회한다. 저장된 초안·승인·operations/hash는 재작성하지 않는다. C의 시험 결과·재생산 2차 타입(#7), 실제 중단/출고 실행, C 화면·Agent 라우팅 통합은 이번 범위가 아니다.
+C 검사는 가상 1차 6종과 2차 3종의 초안·자기 승인 차단·정확한 버전 반영·동기화 실패/재시도와 PostgreSQL/SPARQL/Neo4j 조회 일치를 대상으로 한다. `graph-0.4`는 C 2차 추가를 구분하는 공개 스키마 버전이며 Neo4j 직렬화 형식은 `neo4j-projection-2`를 유지한다. 기존 `graph-0.2`/`graph-0.3` namespace는 그대로 두고 새 namespace에서 필요한 승인 버전을 재동기화한다. 이전 읽기 체크포인트는 버전 불일치로 재개하지 않으며 새 요청으로 조회한다. 저장된 초안·승인·operations/hash는 재작성하지 않는다. 구성별 재생산 계산 수정은 C 담당 범위로 별도 검증하며, 실제 중단/출고 실행과 C 화면·Agent 라우팅 통합은 이번 범위가 아니다.
 
 ## 개발용 사용자 신원과 공통 호스트
 
@@ -153,14 +153,14 @@ python3 -m unittest tests.test_host -v
 
 ## A·B·C 동료 개발의 공통 시작점
 
-현재 팀 기준은 PR #6·#11·#12가 반영된 main `73179a3`의 `graph-0.3`이다. 아래 A/B/C는 업무 패키지 구분이며 시간 조회 A/B나 기본 네 Agent(Supervisor·Product·Knowledge·Quality)와 다르다. 공통 담당자는 [TOOLS의 공통 기반 기준](docs/TOOLS.md#abc-공통-기반-기준)을 관리하고, 동료는 맡은 업무의 지침·입력 해석·처리 흐름·고유 검증·회귀 사례를 개발한다. 구체적인 사람별 담당자는 여기서 지정하지 않는다.
+main `05d55c7`(PR #6·#11·#12·#13 반영)의 공통 기반에서 #7의 C 2차를 `graph-0.4`로 확장한다. 구현·검증 상태는 PROJECT_STATUS를 따른다. 아래 A/B/C는 업무 패키지 구분이며 시간 조회 A/B나 기본 네 Agent(Supervisor·Product·Knowledge·Quality)와 다르다. 공통 담당자는 [TOOLS의 공통 기반 기준](docs/TOOLS.md#abc-공통-기반-기준)을 관리하고, 동료는 맡은 업무의 지침·입력 해석·처리 흐름·고유 검증·회귀 사례를 개발한다. 구체적인 사람별 담당자는 여기서 지정하지 않는다.
 
 | 담당 | 실제 개발 위치와 재사용 경로 | 현재 시작점·검사 |
 | --- | --- | --- |
 | 공통 | `model.py`·`domain_schema.py`·`tbox.py`, `contracts.py`, `host.py`·`identity.py`, `service.py`·`temporal.py`, `harness.py`·`runtime.py`·`paid_budget.py`, `graph_*.py`·`sandbox.py` | [공통 계약](docs/TOOLS.md), [실행 지침](docs/AGENT_RUNTIME.md). 도메인 변경은 `tests.test_domain_graph`, `tests.test_ab_graph_integration`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` 중 영향 범위 검사 |
 | A 생산계획 | [production_planning/](ontologics/production_planning/). `PlanningHost`는 공통 Host를 상속하며 기존 `run_agent` 호환 경로와 고유 결과 계약을 사용 | [A 흐름](docs/PRODUCTION_PLANNING_FLOW.md), `tests.production_planning.test_agent`, `tests.production_planning.test_contract_library` |
-| B 계약·납품 | [order_fulfillment/](ontologics/order_fulfillment/), [B task 예제](examples/order_fulfillment/b_task_workflow.py). 공통 Task/Result 연결과 확정 그래프 읽기 어댑터를 구별 | [B 실행 안내](docs/order_fulfillment/README.md), `python -m examples.order_fulfillment.b_run tasks --output /absolute/new/run`. 현행 실행기는 macOS `sandbox-exec` 전용이며 Windows/WSL 지원은 미검증이다. PostgreSQL/pgvector 실행 파일 위치가 기본값과 다르면 `--pg-bin`을 지정하고, 기존 부모 아래 새 출력 경로를 사용한다. 모델 대역이며 현행 공통 스키마는 루트 TOOLS의 graph-0.3이 기준이다(B 문서의 구 PR 기록과 구별). 옛 `free/live`·`b_host_agent` 저장그래프 실행 경로는 폐기됨 |
-| C 클레임 대응 | [claim_response/schema.py](ontologics/claim_response/schema.py). 현재 6종 schema·공통 저장/승인·RDF/Neo4j 연결이며 업무 Agent·화면은 미구현 | [C 허용 데이터](docs/claim_response/DATA_POLICY.md), `tests.claim_response.test_schema`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` |
+| B 계약·납품 | [order_fulfillment/](ontologics/order_fulfillment/), [B task 예제](examples/order_fulfillment/b_task_workflow.py). 공통 Task/Result 연결과 확정 그래프 읽기 어댑터를 구별 | [B 실행 안내](docs/order_fulfillment/README.md), `python -m examples.order_fulfillment.b_run tasks --output /absolute/new/run`. 현행 실행기는 macOS `sandbox-exec` 전용이며 Windows/WSL 지원은 미검증이다. PostgreSQL/pgvector 실행 파일 위치가 기본값과 다르면 `--pg-bin`을 지정하고, 기존 부모 아래 새 출력 경로를 사용한다. 모델 대역이며 현행 공통 스키마는 루트 TOOLS의 graph-0.4이 기준이다(B 문서의 구 PR 기록과 구별). 옛 `free/live`·`b_host_agent` 저장그래프 실행 경로는 폐기됨 |
+| C 클레임 대응 | [claim_response/schema.py](ontologics/claim_response/schema.py). 현재 1·2차 9종 schema·공통 저장/승인·RDF/Neo4j 연결이며 업무 Agent·화면은 미구현 | [C 허용 데이터](docs/claim_response/DATA_POLICY.md), `tests.claim_response.test_schema`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` |
 
 개발 순서는 **TOOLS의 식별·근거·버전·승인 경계 확인 → 담당 패키지와 실제 실행 경로 확인 → 기존 [typed 연결 예제](#동료의-확장-agent-연결)에서 고유 INPUT/OUTPUT·지침·흐름·검증기 참고 → 담당 기능 구현 → 변경 영향 검사**다. 새 Agent를 등록해야 할 때만 호스트 등록을 추가한다. 공통 모델/provider·도구·누적 한도·격리 파서는 재사용하며 별도 권한·예산·승인·확정 저장을 만들지 않는다.
 

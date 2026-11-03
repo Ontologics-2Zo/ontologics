@@ -165,7 +165,7 @@ class CommonArtifactBoundaryTests(unittest.TestCase):
         expected = main_model()
         with self.subTest(contract='version'):
             self.assertEqual('graph-0.1', expected.SCHEMA_VERSION)
-            self.assertEqual('graph-0.3', model.SCHEMA_VERSION)
+            self.assertEqual('graph-0.4', model.SCHEMA_VERSION)
         with self.subTest(contract='types_fields_references'):
             self.assertLessEqual(set(expected.SCHEMA), set(model.SCHEMA))
             for kind, definition in expected.SCHEMA.items():

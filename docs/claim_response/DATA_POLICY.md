@@ -57,10 +57,11 @@ C 기능은 이 범위 밖의 기록(클레임, 생산라인과 생산 기록, �
 3. 결과는 **의뢰한 보드에만** 받는다(`UNIT_NOT_REQUESTED`). 의뢰와 결과의 사건이 같아야 하고(`CASE_MISMATCH`), 의뢰·보드당 결과는 1개다(`DUPLICATE_IDENTITY`). 시험하지 않은 보드는 결과 행이 없고 미검사로 센다.
 4. `customer_replacement`(고객 교체)는 사건의 신고 보드에만, `stock_replacement`(보관 대체)는 신고 보드가 아닌 보드에만 쓴다(`DISPOSITION_TARGET_MISMATCH`).
 5. **계산 기준.** 제출된 숫자끼리만 비교하지 않고 같은 그래프의 의뢰·결과와 대조한다(`claim_response/schema.py`의 `calculation_basis()`).
-   - 계산 대상 보드: 같은 사건의 모든 `TestRequest.unit_ids` 합집합. 두 의뢰에 같은 보드가 있어도 한 대다. 의뢰가 없으면 거부(`NO_TEST_REQUEST`).
+   - 계산 대상 보드: 같은 사건의 모든 `TestRequest.unit_ids` 합집합 중 **요건의 구성과 같은 보드만**(`ProductUnit.configuration_id` 기준). 두 의뢰에 같은 보드가 있어도 한 대다. 해당 구성의 대상 보드가 없으면 거부(`NO_TEST_REQUEST`).
    - 적용 결과: 같은 사건에서 대상 보드에 대한 모든 `QualityTestResult`(어느 의뢰의 결과든).
    - 보드별 판정: 결과 없음 → 미검사(미결). 같은 결과가 여러 개 → 그 판정 한 번. **서로 다른 결과 → 충돌(미결)이며 최신 결과를 고르지 않는다**(경고 `RESULT_CONFLICT`, 사람 확인).
    - 고객 교체·보관 대체 수는 이 판정에서 센 보드 수와 같아야 하고(`QUANTITY_MISMATCH`), 미결 수는 미검사 + `unresolved` 판정 + 충돌 보드 수와 같아야 한다(`UNRESOLVED_MISMATCH`).
+   - **구성이 섞인 사건**(L과 L1이 한 사건에 있는 경우)은 구성별로 따로 센다. 구성마다 `ReproductionRequirement`를 하나씩 만들며(식별자가 사건+구성), 다른 구성의 교체 수요나 미결 보드가 섞이지 않는다.
    - `test_result_ids`에 같은 보드의 결과를 두 번 넣으면 거부한다(`DUPLICATE_BOARD_RESULT`). 충돌한 결과를 넣어도 거부한다(`RESULT_CONFLICT`).
 6. 재생산 필요량은 `max(0, 고객 교체 + 보관 대체 − 사용할 대체 재고)`이며 0 이상의 정수다(`QUANTITY_MISMATCH`, `INVALID_QUANTITY`).
 7. 미결이 0이면 `confirmed`, 1 이상이면 `lower_bound`(최소 수량)다(`ASSESSMENT_STATE_MISMATCH`). **확인된 교체 수요 없이 미결만 있으면 미정이며 노드를 만들지 않는다**(저장하면 `UNDETERMINED_NOT_STORED`). 미결·미검사를 확정 0대로 저장하지 않는다.

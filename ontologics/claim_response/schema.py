@@ -73,12 +73,21 @@ def _validate_test_result(index, nid, n, error):
 DEMAND = ('customer_replacement', 'stock_replacement')
 
 
-def calculation_basis(index, case_id):
+def board_configuration(index, board):
+    """The configuration of a board, from the existing ProductUnit. None if it cannot be read."""
+    unit = _typed(index, board, 'ProductUnit')
+    return unit.get('configuration_id') if unit else None
+
+
+def calculation_basis(index, case_id, configuration_id=None):
     """Boards and results a ReproductionRequirement of case_id must be computed from.
 
     Target boards: union of unit_ids of every TestRequest of the case in the same graph
-    (a board in two requests is one board). Results: every QualityTestResult of the case
-    for a target board, from any of those requests. Per board:
+    (a board in two requests is one board). With configuration_id, only the boards whose
+    ProductUnit.configuration_id is that configuration: one case can cover several
+    configurations (L and L1), and each is produced separately, so replacement demand and
+    unresolved boards are never shared between them. Results: every QualityTestResult of
+    the case for a target board, from any of those requests. Per board:
       - no result                          -> untested (unresolved)
       - one or several identical results   -> that disposition, counted once
       - results that disagree              -> conflict (unresolved); no result is picked
@@ -88,6 +97,8 @@ def calculation_basis(index, case_id):
     for node in index.values():
         if node.get('type') == 'TestRequest' and node.get('case_id') == case_id and _string_list(node.get('unit_ids')):
             targets.update(node['unit_ids'])
+    if configuration_id is not None:
+        targets = {board for board in targets if board_configuration(index, board) == configuration_id}
     by_board = {}
     for rid, node in index.items():
         if (node.get('type') == 'QualityTestResult' and node.get('case_id') == case_id
@@ -126,9 +137,10 @@ def _validate_reproduction(index, nid, n, error, warnings):
         if (n.get('assessment_state') == 'confirmed') != (values['unresolved_quantity'] == 0):
             error(nid, 'ASSESSMENT_STATE_MISMATCH', 'confirmed needs 0 unresolved; lower_bound needs some')
 
-    basis = calculation_basis(index, n.get('case_id'))
+    basis = calculation_basis(index, n.get('case_id'), n.get('configuration_id'))
     if not basis['targets']:
-        error(nid, 'NO_TEST_REQUEST', 'A reproduction requirement needs a test request of the same case')
+        error(nid, 'NO_TEST_REQUEST', 'A reproduction requirement needs a test request of the same case '
+              'with boards of its configuration')
     for board in sorted(basis['conflicts']):
         warnings.append({'node_id': nid, 'code': 'RESULT_CONFLICT', 'detail': board})
     counted = {kind: sum(1 for d in basis['effective'].values() if d == kind) for kind in DEMAND}
@@ -164,8 +176,11 @@ def _validate_reproduction(index, nid, n, error, warnings):
         unit = _typed(index, board, 'ProductUnit')
         if unit and unit.get('configuration_id') != n.get('configuration_id'):
             error(nid, 'CONFIGURATION_MISMATCH', rid + ' is for another configuration')
+    # Counted per configuration: a result for another configuration is reported above, not counted here.
     listed = {kind: sum(1 for rid in ids if _typed(index, rid, 'QualityTestResult')
-                        and index[rid].get('disposition') == kind) for kind in DEMAND}
+                        and index[rid].get('disposition') == kind
+                        and board_configuration(index, index[rid].get('unit_id')) == n.get('configuration_id'))
+              for kind in DEMAND}
     if not bad and ids and (listed['customer_replacement'] != values['customer_replacement_quantity']
                             or listed['stock_replacement'] != values['stock_replacement_quantity']):
         error(nid, 'QUANTITY_MISMATCH', 'replacement quantities must equal the listed test results')

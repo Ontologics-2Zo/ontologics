@@ -252,6 +252,45 @@ class CPhase2ValidationTests(unittest.TestCase):
         self.remove(REQUEST)
         self.assert_invalid('NO_TEST_REQUEST')
 
+    # ---- Mixed configurations in one case (L and L1): each is counted from its own boards.
+
+    def mixed_case(self):
+        """Adds L1 boards to the same case: C-X001 replaced (stock), C-X002 not tested yet."""
+        self.add(unit('C-X002', OTHER_CONFIG))
+        self.index[REQUEST]['unit_ids'] += ['unit:test-C-X001', 'unit:test-C-X002']
+        self.add(result('C-X001', 'fail', 'stock_replacement'))
+
+    def test_mixed_configurations_do_not_share_replacement_demand(self):
+        self.mixed_case()
+        # The L requirement keeps its own two replacements; the L1 board is not added to it.
+        outcome = validate_graph(self.nodes)
+        self.assertTrue(outcome['valid'], outcome['errors'])
+        self.req.update(stock_replacement_quantity=2, required_good_quantity=2)
+        self.assert_invalid('QUANTITY_MISMATCH')
+
+    def test_mixed_configurations_do_not_share_unresolved_boards(self):
+        self.mixed_case()
+        # C-X002 is untested, but it is an L1 board: the L requirement stays confirmed with 0 unresolved.
+        outcome = validate_graph(self.nodes)
+        self.assertTrue(outcome['valid'], outcome['errors'])
+        self.req.update(unresolved_quantity=1, assessment_state='lower_bound')
+        self.assert_invalid('UNRESOLVED_MISMATCH')
+
+    def test_each_configuration_gets_its_own_requirement(self):
+        self.mixed_case()
+        # L1 side: 0 customer + 1 stock - 0 replacement stock = 1, with C-X002 still unresolved.
+        self.add({'id': 'reproduction:test-l1', 'type': 'ReproductionRequirement', 'origin': 'synthetic',
+                  'evidence': EV, 'case_id': CASE, 'configuration_id': OTHER_CONFIG,
+                  'customer_replacement_quantity': 0, 'stock_replacement_quantity': 1,
+                  'available_replacement_quantity': 0, 'required_good_quantity': 1, 'unresolved_quantity': 1,
+                  'unit': 'piece', 'assessment_state': 'lower_bound',
+                  'test_result_ids': ['test-result:C-X001']})
+        outcome = validate_graph(self.nodes)
+        self.assertTrue(outcome['valid'], outcome['errors'])
+        # The L1 requirement cannot count the L boards either.
+        self.index['reproduction:test-l1'].update(stock_replacement_quantity=2, required_good_quantity=2)
+        self.assert_invalid('QUANTITY_MISMATCH')
+
     def test_replacement_boards_are_checked_when_listed(self):
         for invalid, code in ((['unit:test-C-R001', 'unit:test-C-S002'], 'QUANTITY_MISMATCH'),
                               (['test-result:C-S001'], 'INVALID_REFERENCE'), ([], 'INVALID_REFERENCE'),

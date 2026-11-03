@@ -2,13 +2,16 @@
 
 The 1st-phase tests in test_schema.py are not modified; this file only adds checks.
 C does not run tests or decide dispositions: QualityTestResult rows are what the
-test team returned for requested boards.
+test team returned for requested boards. Definitions are in domain_schema.C2_SCHEMA,
+the rules in claim_response/schema.py (same layout as the 1st phase).
 """
 import copy
 import json
 import unittest
 
-from ontologics.model import C2_TYPES, C_TYPES, ROOT, SCHEMA, graph_jsonld, tbox_turtle, validate_graph
+from ontologics import domain_schema
+from ontologics.domain_schema import C2_TYPES
+from ontologics.model import C_TYPES, ROOT, SCHEMA, graph_jsonld, tbox_turtle, validate_graph
 # Imported as a module so the 1st-phase test class is not collected and run twice from this file.
 from tests.claim_response import test_schema as phase1_tests
 
@@ -92,7 +95,10 @@ class CPhase2ValidationTests(unittest.TestCase):
                           'ContainmentRequest'), C_TYPES[:6])
         self.assertEqual(('TestRequest', 'QualityTestResult', 'ReproductionRequirement'), C2_TYPES)
         self.assertEqual(C2_TYPES, C_TYPES[6:])
-        self.assertEqual(12, len(set(SCHEMA) - set(C_TYPES)))
+        self.assertEqual(12, len(set(SCHEMA) - set(C_TYPES) - set(domain_schema.SCHEMA)))
+        # A/B definitions are unchanged by the C additions.
+        self.assertEqual(11, len(domain_schema.SCHEMA))
+        self.assertFalse(set(C2_TYPES) & (domain_schema.A_TYPES | domain_schema.B_TYPES))
         # The test team's own method and C dispositions are not graph types.
         self.assertNotIn('QualityTestScenario', SCHEMA)
         self.assertNotIn('QualityDisposition', SCHEMA)
@@ -203,9 +209,12 @@ class CPhase2ValidationTests(unittest.TestCase):
                 node[key] = old
 
     def test_jsonld_and_tbox_link_phase2_references(self):
-        rows = {row['id']: row for row in graph_jsonld(self.nodes)['@graph']}
+        graph = graph_jsonld(self.nodes)
+        rows = {row['id']: row for row in graph['@graph']}
         req = rows['urn:ontologics:entity:reproduction:test']
-        self.assertEqual(['urn:ontologics:entity:unit:test-C-R001'], req['replacement_unit_ids'])
+        # Optional replacement_unit_ids stays a checked text list until the shared model has optional list references.
+        self.assertEqual(['unit:test-C-R001'], req['replacement_unit_ids'])
+        self.assertNotIn('replacement_unit_ids', graph['@context'])
         self.assertEqual('urn:ontologics:entity:test-result:C-D001', req['test_result_ids'][0])
         self.assertEqual('urn:ontologics:entity:test-request:test',
                          rows['urn:ontologics:entity:test-result:C-D001']['test_request_id'])
@@ -214,7 +223,7 @@ class CPhase2ValidationTests(unittest.TestCase):
             self.assertIn(f'o:{kind} a owl:Class .', tbox)
         self.assertIn('o:test_request_id a owl:ObjectProperty ; rdfs:range o:TestRequest .', tbox)
         self.assertIn('o:test_result_ids a owl:ObjectProperty ; rdfs:range o:QualityTestResult .', tbox)
-        self.assertIn('o:replacement_unit_ids a owl:ObjectProperty ; rdfs:range o:ProductUnit .', tbox)
+        self.assertNotIn('o:replacement_unit_ids a owl:ObjectProperty', tbox)
 
 
 if __name__ == '__main__':

@@ -26,9 +26,91 @@ TIMES = {'UnitProductionRecord': ('produced_at',), 'ClaimIntake': ('reported_at'
 IDENTITIES = {'ProductionLine': ('company', 'line_code'), 'ClaimIntake': ('customer_name', 'external_claim_id'),
               'UnitProductionRecord': ('unit_id',)}
 
+# 2nd phase (PR #7). The test team decides outcome and disposition; C copies them as returned.
+ENUMS.update({'QualityTestResult': {'outcome': ('fail', 'pass', 'not_reproduced'),
+                                    'disposition': ('customer_replacement', 'stock_replacement', 'release',
+                                                    'hold', 'unresolved')},
+              'ReproductionRequirement': {'assessment_state': ('confirmed', 'lower_bound'), 'unit': ('piece',)}})
+TIMES.update({'TestRequest': ('prepared_at',), 'QualityTestResult': ('observed_at',)})
+# One result per requested board (a board is counted once); one requirement per case and configuration.
+IDENTITIES.update({'QualityTestResult': ('test_request_id', 'unit_id'),
+                   'ReproductionRequirement': ('case_id', 'configuration_id')})
+C2_QUANTITIES = domain_schema.C2_QUANTITIES
+
 
 def _positive_int(value):
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _nonnegative_int(value):
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _typed(index, nid, kind):
+    node = index.get(nid) if isinstance(nid, str) else None
+    return node if node and node.get('type') == kind else None
+
+
+def _validate_test_result(index, nid, n, error):
+    """Results only for requested boards of the same case; replacement kinds match the claimed boards."""
+    request = _typed(index, n.get('test_request_id'), 'TestRequest')
+    unit = n.get('unit_id') if isinstance(n.get('unit_id'), str) else None
+    if request and request.get('case_id') != n.get('case_id'):
+        error(nid, 'CASE_MISMATCH', 'case_id must match the case of test_request_id')
+    if request and _string_list(request.get('unit_ids')) and unit not in request['unit_ids']:
+        error(nid, 'UNIT_NOT_REQUESTED', 'Results are accepted only for boards in the test request')
+    case = _typed(index, n.get('case_id'), 'QualityCase')
+    claimed = set(case['unit_ids']) if case and _string_list(case.get('unit_ids')) else set()
+    # Customer replacements are the claimed boards; stock replacements are never the claimed boards.
+    if case and n.get('disposition') == 'customer_replacement' and unit not in claimed:
+        error(nid, 'DISPOSITION_TARGET_MISMATCH', 'customer_replacement is only for boards in the case')
+    if n.get('disposition') == 'stock_replacement' and unit in claimed:
+        error(nid, 'DISPOSITION_TARGET_MISMATCH', 'stock_replacement is not for the claimed boards')
+
+
+def _validate_reproduction(index, nid, n, error):
+    """required_good_quantity = max(0, customer + stock replacement - available replacement stock)."""
+    values = {key: n.get(key) for key in C2_QUANTITIES}
+    bad = [key for key, value in values.items() if not _nonnegative_int(value)]
+    for key in bad:
+        error(nid, 'INVALID_QUANTITY', key + ' must be a nonnegative integer piece count')
+    if not bad:
+        expected = max(0, values['customer_replacement_quantity'] + values['stock_replacement_quantity']
+                       - values['available_replacement_quantity'])
+        if values['required_good_quantity'] != expected:
+            error(nid, 'QUANTITY_MISMATCH', f'required_good_quantity must be {expected}')
+        if (n.get('assessment_state') == 'confirmed') != (values['unresolved_quantity'] == 0):
+            error(nid, 'ASSESSMENT_STATE_MISMATCH', 'confirmed needs 0 unresolved; lower_bound needs some')
+    ids = n['test_result_ids'] if _string_list(n.get('test_result_ids')) else []
+    counts = {'customer_replacement': 0, 'stock_replacement': 0}
+    for rid in ids:
+        result = _typed(index, rid, 'QualityTestResult')
+        if result is None:
+            continue
+        if result.get('case_id') != n.get('case_id'):
+            error(nid, 'CASE_MISMATCH', rid + ' belongs to another case')
+        if isinstance(result.get('disposition'), str) and result['disposition'] in counts:
+            counts[result['disposition']] += 1
+        unit = _typed(index, result.get('unit_id'), 'ProductUnit')
+        if unit and unit.get('configuration_id') != n.get('configuration_id'):
+            error(nid, 'CONFIGURATION_MISMATCH', rid + ' is for another configuration')
+    if not bad and ids and (counts['customer_replacement'] != values['customer_replacement_quantity']
+                            or counts['stock_replacement'] != values['stock_replacement_quantity']):
+        error(nid, 'QUANTITY_MISMATCH', 'replacement quantities must equal the listed test results')
+    if 'replacement_unit_ids' in n:
+        # Optional text list (see domain_schema); each entry must be a ProductUnit of the same configuration.
+        refs = n['replacement_unit_ids']
+        if not _string_list(refs):
+            error(nid, 'INVALID_REFERENCE', 'replacement_unit_ids must be a nonempty list of unique IDs')
+            return
+        for ref in refs:
+            unit = _typed(index, ref, 'ProductUnit')
+            if unit is None:
+                error(nid, 'INVALID_REFERENCE', 'replacement_unit_ids -> ProductUnit: ' + ref)
+            elif unit.get('configuration_id') != n.get('configuration_id'):
+                error(nid, 'CONFIGURATION_MISMATCH', ref + ' is for another configuration')
+        if not bad and len(refs) != values['available_replacement_quantity']:
+            error(nid, 'QUANTITY_MISMATCH', 'replacement_unit_ids must list available_replacement_quantity boards')
 
 
 def validate_claim_nodes(index, error, warnings):
@@ -66,6 +148,12 @@ def validate_claim_nodes(index, error, warnings):
             intake = index.get(n.get('intake_id')) if isinstance(n.get('intake_id'), str) else None
             if intake and intake.get('type') == 'ClaimIntake' and intake.get('intake_state') != 'confirmed':
                 error(nid, 'INTAKE_NOT_CONFIRMED', 'Quality cases start only from a human-confirmed claim intake')
+        if kind == 'TestRequest' and 'draft_version' in n and not _positive_int(n['draft_version']):
+            error(nid, 'INVALID_FIELD_TYPE', 'draft_version must be a positive integer')
+        if kind == 'QualityTestResult':
+            _validate_test_result(index, nid, n, error)
+        if kind == 'ReproductionRequirement':
+            _validate_reproduction(index, nid, n, error)
         if kind == 'ContainmentRequest':
             if 'draft_version' in n and not _positive_int(n['draft_version']):
                 error(nid, 'INVALID_FIELD_TYPE', 'draft_version must be a positive integer')

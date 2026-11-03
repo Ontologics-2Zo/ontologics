@@ -1,4 +1,4 @@
-"""C phase-1 approvals, graph reads and additive-schema compatibility.
+"""C approvals, graph reads and additive-schema compatibility.
 
 Real PostgreSQL/Neo4j, isolated test schemas/namespaces, public OLIMEX sources
 and existing synthetic fixtures. No production records or model API calls.
@@ -16,18 +16,20 @@ from examples.graph_cq_check import comparable
 from ontologics.demo import CONFIG_L, example_queries, fixture_nodes, must
 from ontologics.domain_schema import C2_TYPES, C_TYPES
 from ontologics.graph_display import DISPLAY_NAMES
+from ontologics.graph_neo4j import Neo4jProjection, ProjectionError
 from ontologics.host import CommonHost
 from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider
 from ontologics.model import digest
 from ontologics.service import Service
 from ontologics.web import USERS
 from tests.claim_response import test_schema as c_fixture
+from tests import test_c_graph_rdf as c_rdf_fixture
 from tests.db import database_for_test
 from tests.test_graph_integration import graph_settings, register_graph_cleanup
 
 
-# The fixture below holds the 1st-phase C records (PR #6). 2nd-phase types (PR #7) are not in it,
-# so their RDF/Neo4j parity is left to a later common fixture instead of being assumed here.
+# Keep the old C1 fixture coverage; the separate C2 path requires nonempty reads
+# for all nine C types rather than comparing empty second-phase result sets.
 C1_TYPES = tuple(kind for kind in C_TYPES if kind not in C2_TYPES)
 
 PRINCIPALS = {
@@ -55,14 +57,26 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
                 namespace=service.graph_views.namespace, version=version).data()
 
     def test_c_exact_approval_graph_parity_display_and_s1_supplement(self):
-        fixture = c_fixture.CPhase1ValidationTests
-        fixture.setUpClass()
-        self.addCleanup(fixture.doClassCleanups)
-        added = copy.deepcopy(fixture.c_nodes)
-        intake = next(n for n in added if n['type'] == 'ClaimIntake')
-        intake.update(claimed_quantity=2, reported_serials=['C-D001', 'C-S001'])
-        case = next(n for n in added if n['type'] == 'QualityCase')
-        case['unit_ids'] = ['unit:test-C-D001', 'unit:test-C-S001']
+        self._assert_c_approval_and_reads(include_phase2=False)
+
+    def test_c2_exact_approval_publication_retry_graph_parity_and_s1_supplement(self):
+        self._assert_c_approval_and_reads(include_phase2=True)
+
+    def _assert_c_approval_and_reads(self, *, include_phase2):
+        base, ab_records = candidates()
+        kinds = C_TYPES if include_phase2 else C1_TYPES
+        if include_phase2:
+            existing = {n['id'] for n in base + ab_records}
+            added = [n for n in c_rdf_fixture.phase2_nodes(self.addCleanup) if n['id'] not in existing]
+        else:
+            fixture = c_fixture.CPhase1ValidationTests
+            fixture.setUpClass()
+            self.addCleanup(fixture.doClassCleanups)
+            added = copy.deepcopy(fixture.c_nodes)
+            intake = next(n for n in added if n['type'] == 'ClaimIntake')
+            intake.update(claimed_quantity=2, reported_serials=['C-D001', 'C-S001'])
+            case = next(n for n in added if n['type'] == 'QualityCase')
+            case['unit_ids'] = ['unit:test-C-D001', 'unit:test-C-S001']
         # Includes both scalar numeric fields and a multi-valued literal list;
         # these valid C values previously failed the common SHACL projection.
         self.assertEqual(1, next(n for n in added if n['id'] == 'containment:test-production-stop')['draft_version'])
@@ -72,8 +86,10 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
         audit = self.open_service(database, settings)
         register_graph_cleanup(self, audit)
         host = CommonHost(DevelopmentIdentityProvider(USERS, enabled=True), database, graph_settings=settings)
-        base, ab_records = candidates()
         must(audit.bootstrap('fixture', base + ab_records, request_key='c-seed'))
+        if include_phase2:
+            # An older ready projection must never substitute for a failed new one.
+            must(audit.graph_views.synchronize('indexer', 1, request_key='c-seed-sync'))
         old_hash = digest(audit._nodes(1))
         operations = [{'op': 'put', 'node': n} for n in added]
         with host.request(DevelopmentContext('dev-alice')) as request:
@@ -96,25 +112,41 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
                 note='Review synthetic C source records', request_key='c-review'))
         self.assertEqual(digest(operations), reviewed['data']['content_hash'])
         self.assertEqual(2, revised['draft_version'])
+        if include_phase2:
+            with patch.object(Neo4jProjection, 'sync',
+                              side_effect=ProjectionError('GRAPH_UNAVAILABLE', 'Injected C2 outage')):
+                pending = must(host.apply_approved(draft['draft_id'], 2, request_key='c-apply'))
+            self.assertEqual(2, pending['data_version'])
+            self.assertEqual('pending', pending['data']['graph_projection']['status'])
+            self.assertIn('GRAPH_PUBLICATION_PENDING', [w['code'] for w in pending['warnings']])
+            self.assertEqual(2, audit._version())
+            self.assert_error(audit.lookup('fixture', kind='ReproductionRequirement'), 'GRAPH_NOT_READY')
+            self.assertTrue(audit.configuration('fixture', CONFIG_L, version=1)['ok'])
+            pending_draft = must(audit.get_draft('fixture', draft['draft_id'], 2))['data']
         applied = must(host.apply_approved(draft['draft_id'], 2, request_key='c-apply'))
         self.assertEqual(2, applied['data_version'])
         self.assertEqual('ready', applied['data']['graph_projection']['status'])
         replay = must(host.apply_approved(draft['draft_id'], 2, request_key='c-apply'))
         self.assertEqual(2, replay['data_version'])
         self.assertIn('IDEMPOTENT_REPLAY', [w['code'] for w in replay['warnings']])
+        if include_phase2:
+            self.assertIn('IDEMPOTENT_REPLAY', [w['code'] for w in applied['warnings']])
+            retried_draft = must(audit.get_draft('fixture', draft['draft_id'], 2))['data']
+            for field in ('operations', 'content_hash', 'review_history', 'author'):
+                self.assertEqual(pending_draft[field], retried_draft[field], field)
 
         readers = {backend: self.open_service(database, replace(settings, backend=backend))
                    for backend in ('postgres', 'rdf', 'neo4j')}
         results = {}
         for backend, reader in readers.items():
             results[backend] = {kind: comparable(must(reader.lookup('fixture', kind=kind, version=2)))
-                                for kind in C1_TYPES}
+                                for kind in kinds}
             results[backend]['export'] = comparable(must(reader.export_graph('fixture', version=2)))
             results[backend]['source'] = comparable(must(reader.lookup('fixture',
                 node_id='source:test-c', version=2)))
         self.assertEqual(results['postgres'], results['rdf'])
         self.assertEqual(results['postgres'], results['neo4j'])
-        for kind in C1_TYPES:
+        for kind in kinds:
             self.assertTrue(results['postgres'][kind]['data'], kind)
             self.assertTrue(all(n['origin'] == 'synthetic' for n in results['postgres'][kind]['data']))
             self.assertIn('evidence:test-c', results['postgres'][kind]['evidence'])
@@ -151,6 +183,12 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
         self.assertEqual(old_hash, digest(audit._nodes(1)))
 
     def test_graph_02_approved_draft_and_old_namespace_are_preserved(self):
+        self._assert_previous_approval_and_namespace('graph-0.2')
+
+    def test_graph_03_c1_approved_draft_and_old_namespace_are_preserved(self):
+        self._assert_previous_approval_and_namespace('graph-0.3')
+
+    def _assert_previous_approval_and_namespace(self, previous_version):
         database = database_for_test(self)
         old_settings = replace(graph_settings(), namespace='c_compat_old')
         old = self.open_service(database, old_settings)
@@ -159,6 +197,11 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
                               graph_settings=old_settings)
         base, ab_records = candidates()
         operations = fixture_nodes()[1]
+        if previous_version == 'graph-0.3':
+            fixture = c_fixture.CPhase1ValidationTests
+            fixture.setUpClass()
+            self.addCleanup(fixture.doClassCleanups)
+            operations = [{'op': 'put', 'node': n} for n in copy.deepcopy(fixture.c_nodes)]
         # The persisted draft format has no schema migration. Construct the
         # previous envelope/projection version while keeping approved facts and
         # operations identical, then switch only the common schema contract.
@@ -168,7 +211,7 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
                    for name in ('model', 'service', 'responses', 'graph_views', 'graph_rdf')]
         with ExitStack() as previous:
             for module in modules:
-                previous.enter_context(patch.object(module, 'SCHEMA_VERSION', 'graph-0.2'))
+                previous.enter_context(patch.object(module, 'SCHEMA_VERSION', previous_version))
             must(old.bootstrap('fixture', base + ab_records, request_key='old-seed'))
             must(old.graph_views.synchronize('indexer', 1, request_key='old-sync'))
             with old_host.request(DevelopmentContext('dev-alice')) as request:

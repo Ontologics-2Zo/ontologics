@@ -1,7 +1,7 @@
 @prefix o: <urn:ontologics:> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.3" .
+o:Ontology a owl:Ontology ; owl:versionInfo "graph-0.4" .
 o:SourceDocument a owl:Class .
 o:Evidence a owl:Class .
 o:ProductModel a owl:Class .

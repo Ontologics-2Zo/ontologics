@@ -14,7 +14,7 @@ from unittest.mock import patch
 from examples.ab_graph_check import candidates
 from examples.graph_cq_check import comparable
 from ontologics.demo import CONFIG_L, example_queries, fixture_nodes, must
-from ontologics.domain_schema import C_TYPES
+from ontologics.domain_schema import C2_TYPES, C_TYPES
 from ontologics.graph_display import DISPLAY_NAMES
 from ontologics.host import CommonHost
 from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider
@@ -25,6 +25,10 @@ from tests.claim_response import test_schema as c_fixture
 from tests.db import database_for_test
 from tests.test_graph_integration import graph_settings, register_graph_cleanup
 
+
+# The fixture below holds the 1st-phase C records (PR #6). 2nd-phase types (PR #7) are not in it,
+# so their RDF/Neo4j parity is left to a later common fixture instead of being assumed here.
+C1_TYPES = tuple(kind for kind in C_TYPES if kind not in C2_TYPES)
 
 PRINCIPALS = {
     'fixture': {'kind': 'human', 'roles': ['seed', 'read']},
@@ -104,13 +108,13 @@ class ClaimGraphIntegrationTests(unittest.TestCase):
         results = {}
         for backend, reader in readers.items():
             results[backend] = {kind: comparable(must(reader.lookup('fixture', kind=kind, version=2)))
-                                for kind in C_TYPES}
+                                for kind in C1_TYPES}
             results[backend]['export'] = comparable(must(reader.export_graph('fixture', version=2)))
             results[backend]['source'] = comparable(must(reader.lookup('fixture',
                 node_id='source:test-c', version=2)))
         self.assertEqual(results['postgres'], results['rdf'])
         self.assertEqual(results['postgres'], results['neo4j'])
-        for kind in C_TYPES:
+        for kind in C1_TYPES:
             self.assertTrue(results['postgres'][kind]['data'], kind)
             self.assertTrue(all(n['origin'] == 'synthetic' for n in results['postgres'][kind]['data']))
             self.assertIn('evidence:test-c', results['postgres'][kind]['evidence'])

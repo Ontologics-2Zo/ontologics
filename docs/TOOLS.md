@@ -54,6 +54,9 @@ C 클레임 대응 Agent가 고객 클레임 → 품질 사건 → 생산라인 
 | QualityCase | intake_id → ClaimIntake(confirmed만), customer_name, reported_at, reported_symptom, unit_ids → ProductUnit 목록 |
 | QualityScope | case_id → QualityCase, production_line_id → ProductionLine, as_of, unit_ids → ProductUnit 목록, scope_state=hold/candidate, 선택 start/end |
 | ContainmentRequest | case_id → QualityCase, scope_id → QualityScope(같은 사건), request_kind=production_stop/shipment_hold, prepared_at, document_ref. production_stop은 production_line_id 필수. production_line_id가 있으면 scope의 생산라인과 같아야 함(`LINE_MISMATCH`, 다른 라인 요청은 자동 허용 안 함). 선택 draft_id/draft_version |
+| TestRequest | case_id → QualityCase, unit_ids → ProductUnit 목록(시험 대상), prepared_at, document_ref. 테스트팀에 보내는 의뢰. 선택 draft_id/draft_version |
+| QualityTestResult | case_id → QualityCase, test_request_id → TestRequest, unit_id → ProductUnit(의뢰한 보드만), outcome=fail/pass/not_reproduced, disposition=customer_replacement/stock_replacement/release/hold/unresolved, observed_at. 테스트팀이 돌려준 보드별 결과와 판정이며 의뢰·보드당 1개. 시험하지 않은 보드는 행이 없다. 선택 note |
+| ReproductionRequirement | case_id → QualityCase, configuration_id → Configuration, 고객 교체·보관 대체·사용할 대체 재고·재생산 필요·미결 수량, unit=piece, assessment_state=confirmed/lower_bound, test_result_ids → QualityTestResult 목록. required_good_quantity = max(0, 고객 교체 + 보관 대체 − 대체 재고). 미정이면 노드를 만들지 않는다. 선택 replacement_unit_ids(ProductUnit ID 문자열 목록), document_ref |
 
 `reported_symptom`은 고객이 신고한 표현일 뿐 확인된 불량이나 원인이 아니다. 목록 참조(`unit_ids`)와 선택 참조는 JSON-LD에서 ID 관계로 직렬화한다. 요청서는 그래프에 문서 참조만 남기며 생성·검토가 송부나 현장 반영을 뜻하지 않는다.
 
@@ -72,7 +75,24 @@ C 관계·숫자·목록 필드의 의미 (RDF·SHACL·Neo4j 매핑 참고):
 
 정상 시험 자료는 `tests/claim_response/test_schema.py`의 `CPhase1ValidationTests.c_nodes`(라인 C-01, 보드 2대, 클레임 1건, 사건·보류 범위·요청서 2건)이다.
 
+C 2차(PR #7) 필드의 의미. 정의는 `domain_schema.C2_SCHEMA`, 규칙은 `claim_response/schema.py`, 시험은 `tests/claim_response/test_schema_phase2.py`:
+
+| 필드 | 타입 | 값 | 의미 | 실패 코드 (시험) |
+| --- | --- | --- | --- | --- |
+| `TestRequest.unit_ids` | 목록 참조 | 비어 있지 않은 고유 `ProductUnit` ID | 테스트팀에 의뢰한 보드 (불량 목록 아님) | `INVALID_REFERENCE` (`test_request_needs_existing_boards_and_a_valid_draft_version`) |
+| `QualityTestResult.test_request_id`, `unit_id` | 참조 | 의뢰에 들어 있는 보드, 같은 사건 | 테스트팀이 결과를 돌려준 보드 | `UNIT_NOT_REQUESTED`, `CASE_MISMATCH`, `DUPLICATE_IDENTITY` (`test_results_only_for_requested_boards_of_the_same_case`, `test_one_result_per_requested_board`) |
+| `QualityTestResult.outcome`, `disposition` | 값 목록 | 위 표의 값 | 테스트팀의 시험 결과와 조치 판정 (C가 정하지 않음) | `INVALID_ENUM`, `DISPOSITION_TARGET_MISMATCH` (`test_value_lists_are_enforced`, `test_customer_and_stock_replacements_target_the_right_boards`) |
+| `ReproductionRequirement`의 수량 5개 | 정수 | 0 이상 (bool 아님) | 고객 교체·보관 대체·사용할 대체 재고·재생산 필요·미결 대수 | `INVALID_QUANTITY`, `QUANTITY_MISMATCH` (`test_quantities_are_nonnegative_integers`, `test_required_good_quantity_follows_the_formula`) |
+| `ReproductionRequirement.test_result_ids` | 목록 참조 | 같은 사건·같은 구성의 `QualityTestResult` | 수량을 센 결과. 고객 교체·보관 대체 수와 판정 수가 같아야 함 | `QUANTITY_MISMATCH`, `CASE_MISMATCH`, `CONFIGURATION_MISMATCH` (`test_replacement_quantities_match_the_listed_results`, `test_results_must_match_the_requirement_configuration`) |
+| `ReproductionRequirement.assessment_state` | 값 목록 | `confirmed`(미결 0) / `lower_bound`(미결 1 이상, 최소 수량) | 수량 확정 여부. 미정은 노드 없음 | `ASSESSMENT_STATE_MISMATCH` (`test_assessment_state_matches_unresolved_quantity`) |
+| `ReproductionRequirement.replacement_unit_ids` | 선택 문자열 목록 | 같은 구성 `ProductUnit` ID, 개수 = 사용할 대체 재고 | 사용할 대체 재고 보드. 공통 목록 참조는 필수 필드라 선택 목록을 표현할 수 없어, 공통에서 선택 목록 참조를 지원하기 전까지 C 규칙이 참조를 검사하는 문자열 목록으로 둠 | `INVALID_REFERENCE`, `CONFIGURATION_MISMATCH`, `QUANTITY_MISMATCH` (`test_replacement_boards_are_checked_when_listed`) |
+| `prepared_at`, `observed_at` | 시각 | UTC offset 필수 | 의뢰서 작성·테스트팀 관측 시각 | `INVALID_TIME` (`test_times_need_offsets`) |
+
+A 요청서의 "이번 재생산 요청량", 고객 희망 기한, 관련 계약은 C → A 한 방향 요청 문서의 내용이며 그래프 필드가 아니다.
+
 C 추적 경로: `ClaimIntake.reported_serials → ProductUnit.serial`(사람 확인 후 `QualityCase.unit_ids`), `UnitProductionRecord.unit_id → ProductUnit`, `UnitProductionRecord.production_line_id → ProductionLine`, `QualityScope.case_id → QualityCase`, `ContainmentRequest.scope_id → QualityScope`.
+
+C 2차 경로: `TestRequest.case_id → QualityCase`, `QualityTestResult.test_request_id → TestRequest`, `QualityTestResult.unit_id → ProductUnit`, `ReproductionRequirement.test_result_ids → QualityTestResult`. 시험 방법·판정은 테스트팀이 정하며 C는 결과를 받아 재생산 필요량만 계산한다. 2차 3종의 RDF·SHACL·Neo4j 표시 연결은 공통 담당 범위로 남겨 두었다.
 
 C 1차 6종은 공통 승인·정확 버전의 RDF/SPARQL/Neo4j 조회를 지원한다. `claimed_quantity`와 선택 `draft_version`은 SHACL에서 1 이상의 정수, `reported_serials`는 비어 있지 않은 문자열의 다중 값으로 검사한다. 목록 순서는 정본 payload로 보존하고 `unit_ids` 관계 목록과 구분한다. 관계·근거·실제/가상 경계와 C 업무 검증을 모두 적용하며 Browser에는 29종 label·이름·색상을 제공한다. 현재 업무 스키마는 `graph-0.3`, Neo4j 저장 형식은 기존 `neo4j-projection-2`다. 구 버전 namespace를 재사용하지 말고 새 namespace에 필요한 승인 버전을 동기화해야 한다. 기존 초안의 operations/hash/승인 기록을 보존하고, 구 스키마 읽기 체크포인트는 재개를 거부한다. 검증은 `tests.test_c_graph_rdf`, `tests.test_c_graph_integration`이며 #7의 시험·재생산 타입은 포함하지 않는다.
 

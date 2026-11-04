@@ -59,7 +59,10 @@ class DashboardTests(web_fixture.WebCase):
         self.assertEqual(20, len(data['groups']['claims']['records']))
         # The selected RDF path returns the same pinned facts, not a second SQL-only summary.
         self.host._graph_settings = GraphSettings(backend='rdf')
-        rdf = self.ok(self.http(self.reader, '/api/dashboard'))
+        # Cold RDF/SHACL projection can exceed the generic HTTP fixture's 15s
+        # on shared CI runners. This is a parity/integrity check, not a latency SLO;
+        # keep a finite test-client wait without changing service budget checks.
+        rdf = self.ok(self.http(self.reader, '/api/dashboard', timeout=60))
         self.assertEqual(data, rdf['data'])
         self.assertEqual(result['evidence'], rdf['evidence'])
         immutable_after = digest({'nodes': audit._nodes(),

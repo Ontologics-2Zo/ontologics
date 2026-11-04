@@ -181,3 +181,21 @@ node.ContainmentRequest {
   diameter: 48px;
   caption: "{browser_caption}";
 }
+
+node.TestRequest {
+  color: #0e7490;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.QualityTestResult {
+  color: #92400e;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}
+
+node.ReproductionRequirement {
+  color: #6d28d9;
+  diameter: 48px;
+  caption: "{browser_caption}";
+}

@@ -88,6 +88,41 @@ STRUCTURED_FIELDS.update({
     'ContainmentRequest': {'draft_version'},
 })
 
+# C claim response, 2nd phase (PR #7): the test request C sends to the test team, the
+# per-board results and dispositions the test team returns, and the reproduction quantity
+# C computes for A. C neither runs tests nor decides dispositions. An undetermined quantity
+# gets no ReproductionRequirement node (never 0). The 1st-phase entries above are unchanged.
+C2_SCHEMA = {
+    'TestRequest': (['case_id', 'unit_ids', 'prepared_at', 'document_ref'], {'case_id': 'QualityCase'}),
+    'QualityTestResult': (['case_id', 'test_request_id', 'unit_id', 'outcome', 'disposition', 'observed_at'],
+                          {'case_id': 'QualityCase', 'test_request_id': 'TestRequest', 'unit_id': 'ProductUnit'}),
+    'ReproductionRequirement': (['case_id', 'configuration_id', 'customer_replacement_quantity',
+                                 'stock_replacement_quantity', 'available_replacement_quantity',
+                                 'required_good_quantity', 'unresolved_quantity', 'unit', 'assessment_state',
+                                 'test_result_ids'],
+                                {'case_id': 'QualityCase', 'configuration_id': 'Configuration'}),
+}
+C2_TYPES = tuple(C2_SCHEMA)
+C_SCHEMA.update(C2_SCHEMA)
+C_TYPES = tuple(C_SCHEMA)
+LIST_REFERENCES.update({'TestRequest': {'unit_ids': 'ProductUnit'},
+                        'ReproductionRequirement': {'test_result_ids': 'QualityTestResult'}})
+OPTIONAL_FIELDS.update({
+    'TestRequest': {'draft_id', 'draft_version'},
+    'QualityTestResult': {'note'},
+    # replacement_unit_ids is optional, so it cannot be a shared list reference (those are
+    # required and nonempty). Until the shared model supports optional list references it is
+    # a text list whose ProductUnit targets are checked by the C rule (claim_response/schema.py).
+    'ReproductionRequirement': {'replacement_unit_ids', 'document_ref'},
+})
+# Quantities are nonnegative integer piece counts; their checks are C rules.
+C2_QUANTITIES = ('customer_replacement_quantity', 'stock_replacement_quantity', 'available_replacement_quantity',
+                 'required_good_quantity', 'unresolved_quantity')
+STRUCTURED_FIELDS.update({
+    'TestRequest': {'unit_ids', 'draft_version'},
+    'ReproductionRequirement': {*C2_QUANTITIES, 'test_result_ids', 'replacement_unit_ids'},
+})
+
 def subset(mapping, kinds):
     """Return detached metadata without changing insertion order or ownership."""
     return deepcopy({kind: value for kind, value in mapping.items() if kind in kinds})

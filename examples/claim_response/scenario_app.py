@@ -23,6 +23,8 @@ import json
 from pathlib import Path
 import re
 import secrets
+import socket
+import time
 import uuid
 
 from decimal import Decimal
@@ -45,6 +47,9 @@ INPUTS = Path(__file__).resolve().parent / 'scenario_inputs'
 UPLOADS = ROOT / 'data/claim_response/uploads'
 DOCS = ROOT / 'artifacts/local/claim_response/app'
 MAX_UPLOAD = 2 * 1024 * 1024
+# A refused POST's unread body is discarded for at most this long and this much (see _linger).
+LINGER_SECONDS = 1.0
+LINGER_BYTES = MAX_UPLOAD * 2
 KST = timezone(timedelta(hours=9))
 DISPOSITIONS = {'customer_replacement': '고객 교체', 'stock_replacement': '보관 대체', 'release': '출고 허용',
                 'hold': '보류', 'unresolved': '미결'}
@@ -552,6 +557,35 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(key, value)
         self.end_headers()
         self.wfile.write(data)
+        if self.command == 'POST' and status >= 400 and not getattr(self, 'body_read', False):
+            self._linger()
+
+    def _linger(self):
+        """Close a refused POST without losing the refusal.
+
+        Refusals happen before the body is read, on purpose. Closing a socket that still holds
+        unread request bytes makes Windows reset the connection, and the client then gets a
+        reset instead of this response (WinError 10053). So: send the response, close only our
+        sending side, and discard what is still arriving for a bounded time and size. The body
+        is never parsed. A declared length is not trusted, so nothing waits for bytes that the
+        client never sends.
+        """
+        self.close_connection = True
+        try:
+            self.wfile.flush()
+            self.connection.shutdown(socket.SHUT_WR)
+            deadline, discarded = time.monotonic() + LINGER_SECONDS, 0
+            while discarded <= LINGER_BYTES:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self.connection.settimeout(remaining)
+                chunk = self.connection.recv(65536)
+                if not chunk:
+                    break
+                discarded += len(chunk)
+        except OSError:
+            pass
 
     def log_message(self, *args):
         pass
@@ -597,6 +631,7 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= MAX_UPLOAD * 2:
                 return self._send(413, {'error': '파일이 비어 있거나 너무 큽니다.'})
             raw = self.rfile.read(length)
+            self.body_read = True
             if len(raw) != length:
                 raise ValueError('incomplete request')
             body = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))

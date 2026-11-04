@@ -1,0 +1,2 @@
+# Preserve synthetic claim sources byte-for-byte so sha256 evidence matches on every OS.
+* -text -whitespace

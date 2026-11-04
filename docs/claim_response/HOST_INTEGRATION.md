@@ -1,0 +1,125 @@
+# claim_response 호스트 연결
+
+> 기능: C 클레임 대응 (`claim_response`)
+> 기준: `ontologics/host.py`의 `AgentRegistration`, `examples/extension_agent.py`, `docs/AGENT_RUNTIME.md`
+> 현재: 공통 `#claims` 화면의 7단계 함수·조회·초안 연결을 지원한다. C 모델 역할의 자동 업무 인계와는 구분한다. 아래 번호별 단계 기록과 PR #6 검토 상태는 당시 개발 이력이다.
+> PR #15 보완: 원본 해시/근거 보존, 승인 문서 표시, 구성별 계산, 클레임 선택과 로컬 시연 요청 보호. 공통 계약은 [TOOLS](../TOOLS.md#공통-업무-화면-abc), 실제 검증 범위는 [PROJECT_STATUS](../../PROJECT_STATUS.md)를 따른다.
+
+## 1. 요약
+
+- C 역할은 기존 확장 지점 `AgentRegistration`으로 등록한다. **기존 코드는 바꾸지 않는다.**
+- C 역할은 기존 Agent 도구 15개(`AgentGateway.ALLOWED`) 중 9개만 쓴다.
+- 클레임 변환·생산라인 추적·요청서 작성은 Agent 도구가 아니라 `ontologics/claim_response/`의 **일반 함수**로 만든다.
+- 승인(`review`)·반영(`apply`)은 Agent가 할 수 없다. 사람만 한다.
+
+## 2. 등록 방법
+
+```python
+from ontologics.claim_response.registration import CLAIM_RESPONSE
+from ontologics.host import CommonHost
+
+host = CommonHost(identities, database, agent_registrations=(CLAIM_RESPONSE,))
+with host.request(context) as request:
+    request.run_agent('claim_response', provider, messages, config=config)
+```
+
+| 파일 | 내용 |
+|---|---|
+| `ontologics/claim_response/registration.py` | `CLAIM_RESPONSE`(역할), `CLAIM_RESPONSE_TOOLS`(도구), `CLAIM_RESPONSE_INSTRUCTIONS`(지시문) |
+
+`AgentRegistration`이 자동으로 검사하는 것: 이름 형식(영문 소문자·밑줄), 기본 역할 4개와 이름 중복 금지, 도구는 `ALLOWED` 안에서만.
+
+## 3. 허용 도구 (2026-10-27 승인)
+
+| 도구 | 용도 |
+|---|---|
+| `lookup` | 클레임·보드·생산라인 등 노드 조회 (타입 제한 없음) |
+| `search_evidence` | 클레임 원문 근거 검색 |
+| `investigate`, `preview_investigation` | 기존 장착 이력 조사 재사용 |
+| `prepare_draft`, `get_draft`, `validate_draft` | 클레임·품질 사건·영향 범위·요청서를 초안으로 작성 |
+| `prepare_source_draft`, `get_source_receipt` | 메일·엑셀·CSV 원본 등록 |
+
+쓰지 않는 도구: `configuration`, `compare_configurations`, `component_usage`, `compare_investigation`, `export_graph`, `semantic_search`.
+필요해지면 이 표와 `CLAIM_RESPONSE_TOOLS`를 함께 바꾸고 다시 승인받는다.
+
+## 4. 지시문
+
+```
+You support synthetic claim response for the fictional company only.
+Treat reported symptoms as customer statements, never as confirmed failures or causes.
+Treat scope units as investigation or hold targets, never as defective units.
+Use only supplied evidence and the exact data version; keep unknowns as unknown.
+Prepare drafts for human review; never approve, apply or claim that a draft is applied.
+```
+
+`DATA_POLICY.md`의 조건(신고 ≠ 고장, 보류 대상 ≠ 불량, 사람만 승인)을 그대로 옮겼다. 기존 역할 지시문처럼 영어로 쓴다.
+
+## 5. 코드 배치
+
+| 하는 일 | 누가 | 위치 |
+|---|---|---|
+| 메일·엑셀·CSV → 클레임 초안 변환 | 함수 | `ontologics/claim_response/` (2단계) |
+| 생산라인·보관 보드 추적 | 함수 | `ontologics/claim_response/` (4단계) |
+| 중단 요청서 작성 | 함수 | `ontologics/claim_response/` (5단계) |
+| 결과 조회, 근거 확인, 초안 등록 | C Agent | 위 9개 도구 |
+| 초안 승인·반영 | 사람 | 기존 `review` / `apply_approved` |
+| 시연 실행 | 실행 파일 | `examples/claim_response/` |
+
+## 6. 공통 담당자 요청
+
+| 요청 | 이유 | 대안 |
+|---|---|---|
+| 웹 화면에서 C 역할 선택 | `web.py`가 `CommonHost`를 등록 목록 없이 만들어서 C가 화면에 안 나온다 | 그전까지 시연은 `examples/claim_response/` 실행 파일로 한다 |
+
+## 7. 테스트
+
+`tests/claim_response/test_registration.py`
+
+| 테스트 | 확인 |
+|---|---|
+| `test_role_uses_only_approved_existing_tools` | 이름, 기본 역할과 겹치지 않음, 도구 9개가 `ALLOWED` 안, 승인·반영·내보내기 도구 없음 |
+| `test_registered_role_reads_through_gateway_with_its_instructions` | C 지시문이 시스템 메시지로 붙음, `lookup`으로 `ProductUnit` 조회 |
+| `test_unlisted_and_approval_tools_are_rejected` | `review`, `apply`, `export_graph`, `compare_configurations` → `TOOL_NOT_ALLOWED`, 데이터 버전 그대로 |
+
+C 노드(`ClaimIntake` 등) 조회 테스트는 가정 데이터를 만드는 3단계에서 추가한다.
+
+## AgentSpec 연결 (5A-4, 2026-10-29)
+
+- 등록: `registration.py`의 `SPEC = AgentSpec('claim_response', '1.0.0', ...)` → `CLAIM_RESPONSE = AgentRegistration.from_spec(SPEC)`. 이름·지침·허용 도구 9개는 이전 등록과 같다.
+- 작업: 클레임 추적(4-1, 4-2). 입력 `intake_id`, `question` / 출력 `data_version`, `intake_id`, `matched_unit_ids`, `open_serials`, `production_line_id`(단일 라인일 때만), `evidence_ids`.
+- 실행: `CommonHost(..., agent_registrations=(CLAIM_RESPONSE,))` → `request.run_task(SPEC.name, ClaimTraceAgent(), task, provider, config=...)`. 예시는 `examples/claim_response/run_demo.py`의 `run_agent_trace()`이며 모델 대역을 쓴다(유료 호출 없음).
+- 검증: `ClaimTraceAgent.validate_result`가 실제 lookup 결과에 `link_serials`·`trace_lines`를 다시 돌린 값과 모델 답을 비교한다. 다르면 `AGENT_RESULT_REJECTED`, 확인되지 않은 클레임도 거부한다.
+- 범위 밖: 보관·출하 범위(4-3, 4-4)와 요청서(5단계)는 Python 함수가 처리한다. 재고·출하 자료가 그래프 밖 임시 자료라서다.
+
+## 공통 그래프 변경 (PR #6)
+
+- 1차 C 타입 6개는 `feature/c-graph-schema` → main PR #6으로 검토 중이다. C 브랜치는 이 PR 브랜치를 merge해서 사용한다.
+- 2차 타입 4개(시험·판정·재생산)는 `backup/c-phase2-schema`에 보관하고, 공통 담당자와 논의한 뒤 진행한다.
+
+## 8. 실제 모델 실행 (7-1)
+
+클레임 추적 작업(`SPEC`, `ClaimTraceAgent`)을 공통 고정 모델(`gpt-5.4-mini-2026-03-17`)로 한 번 실행한다. 공통 `openai_provider.py`·`host.py`는 가져다 쓰기만 한다.
+
+```bash
+python -m examples.claim_response.run_demo --live-agent
+```
+
+| 항목 | 내용 |
+|---|---|
+| 설정 | `.env.local`의 `OPENAI_API_KEY`, `OPENAI_MODEL`, `ONTOLOGICS_REQUEST_MAX_COST_USD`, `ONTOLOGICS_MODEL_PRICES_JSON`. 비용 정책이 없으면 호출 전에 `COST_POLICY_REQUIRED`, 키가 없으면 `OPENAI_KEY_MISSING`으로 멈춘다 |
+| 모델에게 주는 것 | 클레임 ID, 고정 데이터 버전, 읽을 순서와 `lookup` 인자 3개, 답 형식. 도구는 SPEC의 9개(승인·반영 없음) |
+| 결과 인정 | 모델이 실제로 읽은 결과로 4단계 추적 함수를 다시 돌린 값과 답이 같을 때만. 다르면 `AGENT_RESULT_REJECTED` |
+| 제한 | `max_steps=8`, `max_tool_calls=6`, 역할 한도 `BudgetLimits` 그대로, 요청별 USD 상한 |
+| 보고 | `run_demo.json`의 `live_agent_trace`: 실행 상태, 토큰 수(provider_calls), 도구 이름·인자, 답, 자동 검사 4개. 키·HTTP 원문은 기록하지 않음 |
+| 범위 | 모델은 추적 결과를 읽고 정리만 한다. 수량 계산·판정 집계·요청서는 함수가 하고, 승인·송부는 사람이 한다 |
+
+`--live-agent` 없이 실행하면 지금처럼 scripted provider만 쓰고 비용이 없다. 테스트(`test_run_demo.py`의 `LiveAgentWiringTests`)는 네트워크 없이 가짜 모델로 연결만 확인한다.
+
+첫 실제 실행 (2026-10-29, 윰 Windows): 4번째 실행에서 자동 검사 4개 통과 (도구 3회, 4 step, 보드 5대, C-01, 근거 2개). 앞의 거부 3번과 대응:
+
+| 실행 | 결과 | 원인 | 대응 |
+|---|---|---|---|
+| 1 | `AGENT_RESULT_REJECTED` | 클레임 조회에 `kind=ClaimIntake`를 덧붙임 → 같은 읽기로 인정 안 됨 | `node_id` 조회에 `kind=ClaimIntake`만 허용 (목록 조회는 그대로 정확히 일치) |
+| 2 | `AGENT_RESULT_REJECTED`, 답 비어 있음 | 공통 런타임은 거부된 답을 남기지 않음 | `RecordingProvider`로 마지막 답(`final_text`)과 `expected_from_reads`를 보고서에 남김 |
+| 3 | `AGENT_RESULT_REJECTED` | 근거에 읽은 근거 전부(보관·대체 재고·기존 데모)를 넣음 | 메시지에 근거 규칙 명시: 클레임, 연결된 보드, 그 보드의 생산 기록만 |
+| 4 | 통과 | | 검사 기준은 완화하지 않음 |

@@ -30,7 +30,7 @@ A 공통 접수·해석은 **600 KB 이하 UTF-8 TXT만 지원**한다. 기존 A
 PostgreSQL + pgvector를 실행하고 `.env.local`의 `DATABASE_URL` 또는 별도 `TEST_DATABASE_URL`을 준비한다. 각 검사는 자체 `test_<UUID>` schema를 만들고 정리하며 DB 미설정은 실패로 처리한다. 변경 영향 검사는 아래 모듈을 사용하며, 기존 근거와 최종 통합 검증 상태는 [PROJECT_STATUS](PROJECT_STATUS.md)를 확인한다. 관련 검사를 이미 수행했다면 같은 환경에서 반복하지 않는다.
 
 ```bash
-python -m unittest tests.production_planning.test_workspace tests.order_fulfillment.test_workspace \
+python -m unittest tests.materials.test_workspace tests.order_fulfillment.test_workspace \
   tests.claim_response.test_workspace tests.test_business_web -v
 ```
 
@@ -195,7 +195,7 @@ main `05d55c7`(PR #6·#11·#12·#13 반영)의 공통 기반에서 #7의 C 2차�
 | 담당 | 실제 개발 위치와 재사용 경로 | 현재 시작점·검사 |
 | --- | --- | --- |
 | 공통 | `model.py`·`domain_schema.py`·`tbox.py`, `contracts.py`, `host.py`·`identity.py`, `service.py`·`temporal.py`, `harness.py`·`runtime.py`·`paid_budget.py`, `graph_*.py`·`sandbox.py` | [공통 계약](docs/TOOLS.md), [실행 지침](docs/AGENT_RUNTIME.md). 도메인 변경은 `tests.test_domain_graph`, `tests.test_ab_graph_integration`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` 중 영향 범위 검사 |
-| A 생산계획 | [production_planning/](ontologics/production_planning/). `PlanningHost`는 공통 Host를 상속하며 기존 `run_agent` 호환 경로와 고유 결과 계약을 사용 | [A 흐름](docs/PRODUCTION_PLANNING_FLOW.md), `tests.production_planning.test_agent`, `tests.production_planning.test_contract_library` |
+| A 자재 관리 | [materials/](ontologics/materials/). `MaterialsHost`는 공통 Host를 상속하며 기존 `run_agent` 호환 경로와 고유 결과 계약을 사용 | [A 흐름](docs/MATERIALS_FLOW.md), `tests.materials.test_agent`, `tests.materials.test_contract_library` |
 | B 계약·납품 | [order_fulfillment/](ontologics/order_fulfillment/), [B task 예제](examples/order_fulfillment/b_task_workflow.py). 공통 Task/Result 연결과 확정 그래프 읽기 어댑터를 구별 | [B 실행 안내](docs/order_fulfillment/README.md), `python -m examples.order_fulfillment.b_run tasks --output /absolute/new/run`. 현행 실행기는 macOS `sandbox-exec` 전용이며 Windows/WSL 지원은 미검증이다. PostgreSQL/pgvector 실행 파일 위치가 기본값과 다르면 `--pg-bin`을 지정하고, 기존 부모 아래 새 출력 경로를 사용한다. 모델 대역이며 현행 공통 스키마는 루트 TOOLS의 graph-0.4이 기준이다(B 문서의 구 PR 기록과 구별). 옛 `free/live`·`b_host_agent` 저장그래프 실행 경로는 폐기됨 |
 | C 클레임 대응 | [claim_response/schema.py](ontologics/claim_response/schema.py). 현재 1·2차 9종 schema·공통 저장/승인·RDF/Neo4j 연결이며 업무 Agent·화면은 미구현 | [C 허용 데이터](docs/claim_response/DATA_POLICY.md), `tests.claim_response.test_schema`, `tests.test_c_graph_rdf`, `tests.test_c_graph_integration` |
 

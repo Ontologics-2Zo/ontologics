@@ -1,0 +1,95 @@
+{
+  "origin": "synthetic",
+  "version": 1,
+  "company": "주식회사 온톨로직스",
+  "location": "성남 생산센터 공정자재 창고",
+  "as_of": "2026-11-04T09:00:00+09:00",
+  "basis": "회사 공용 재고 검토 기준. 기존 예약과 품질 보류는 서로 겹치지 않으며 보유량에서 각각 제외한다. 이 자료의 예약량에는 이번 추가 요청 60대의 신규 예약을 포함하지 않는다.",
+  "lots": [
+    {
+      "id": "process-stock-lot:HFM-20261104-01",
+      "material_id": "process-material:kester:np560:7048230910",
+      "label": "공정자재 공용 재고 01",
+      "unit": "g",
+      "on_hand": "500",
+      "reserved": "200",
+      "held": "50",
+      "deductions_disjoint": true,
+      "expires_at": null,
+      "expiry_basis": "로트별 사용기한은 별도 확인 후 반영한다.",
+      "evidence_ids": [
+        "evidence:materials:process-stock:HFM-20261104-01"
+      ]
+    },
+    {
+      "id": "process-stock-lot:HFM-20261104-02",
+      "material_id": "process-material:kester:275:2470687601",
+      "label": "공정자재 공용 재고 02",
+      "unit": "g",
+      "on_hand": "453.59237",
+      "reserved": "100",
+      "held": "25",
+      "deductions_disjoint": true,
+      "expires_at": null,
+      "expiry_basis": "로트별 사용기한은 별도 확인 후 반영한다.",
+      "evidence_ids": [
+        "evidence:materials:process-stock:HFM-20261104-02"
+      ]
+    },
+    {
+      "id": "process-stock-lot:HFM-20261104-03",
+      "material_id": "process-material:kester:951",
+      "label": "공정자재 공용 재고 03",
+      "unit": "g",
+      "on_hand": "20",
+      "reserved": "5",
+      "held": "2",
+      "deductions_disjoint": true,
+      "expires_at": null,
+      "expiry_basis": "로트별 사용기한은 별도 확인 후 반영한다.",
+      "evidence_ids": [
+        "evidence:materials:process-stock:HFM-20261104-03"
+      ]
+    },
+    {
+      "id": "process-stock-lot:HFM-20261104-04",
+      "material_id": "process-material:mgchemicals:824",
+      "label": "공정자재 공용 재고 04",
+      "unit": "mL",
+      "on_hand": "1000",
+      "reserved": "200",
+      "held": "100",
+      "deductions_disjoint": true,
+      "expires_at": null,
+      "expiry_basis": "로트별 사용기한은 별도 확인 후 반영한다.",
+      "evidence_ids": [
+        "evidence:materials:process-stock:HFM-20261104-04"
+      ]
+    },
+    {
+      "id": "process-stock-lot:HFM-20261104-05",
+      "material_id": "process-material:kester:sac305:bar",
+      "label": "공정자재 공용 재고 05",
+      "unit": "g",
+      "on_hand": "2000",
+      "reserved": "1000",
+      "held": "0",
+      "deductions_disjoint": true,
+      "expires_at": null,
+      "expiry_basis": "로트별 사용기한은 별도 확인 후 반영한다.",
+      "evidence_ids": [
+        "evidence:materials:process-stock:HFM-20261104-05"
+      ]
+    }
+  ],
+  "internal_metadata": {
+    "quantity_basis": "scenario_assumption",
+    "actual_inventory_observation": false,
+    "reservation_executed": false,
+    "physical_inspection_performed": false,
+    "expiry_verified": false,
+    "source_counts": "ontologics/materials/library_process_materials.py:scenario",
+    "source_counts_policy": "Preserve the existing five material on_hand/reserved/held quantities; no measured inventory or operating history is claimed.",
+    "deduction_semantics": "reserved and held are disjoint existing company commitments, never newly reserved by viewing this fixture."
+  }
+}

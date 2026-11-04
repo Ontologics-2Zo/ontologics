@@ -1,0 +1,1056 @@
+{
+  "format": "synthetic-process-usage-history/1.0",
+  "origin": "synthetic",
+  "version": 1,
+  "as_of": "2026-11-02T00:00:00+00:00",
+  "reference_sha256": "9906490b2c16018048823f363b4db654c747255981d6c5e9fdf94df51ce0eecc",
+  "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+  "source_commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+  "geometry_anchors": [
+    {
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "source_id": "source:process-materials:v1:L",
+      "source_path": "data/sources/process_materials_v1/L.kicad_pcb",
+      "source_sha256": "78bce8140fe7829d7c46c04cf5523d83ac61a5e8bf046e14d38140b1b99e6410",
+      "hand_pins": [
+        {
+          "reference": "BAT1",
+          "pin": "1",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "BAT1",
+          "pin": "2",
+          "drill_mm": "0.9"
+        }
+      ],
+      "wave_pins": [
+        {
+          "reference": "C25",
+          "pin": "1",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "C25",
+          "pin": "2",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "C27",
+          "pin": "2",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "C27",
+          "pin": "1",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "1",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "2",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "3",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "4",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "5",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "6",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "7",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "8",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "9",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "10",
+          "drill_mm": "1"
+        }
+      ],
+      "board_thickness_mm": "1.6",
+      "one_side_area_cm2": "22.28331621",
+      "assumptions": {
+        "wire_core_density_g_cm3": "1",
+        "wave_lead_diameter_mm": "0.6",
+        "fillet_volume_multiplier": "1.3",
+        "ipa_wet_film_mm": "0.1",
+        "ipa_sides": 2,
+        "ipa_wipe_passes": 2,
+        "wire_feed_loss_fraction": "0.05",
+        "already_charged_solder_bath": true,
+        "scope": "가상 작업 범위: BAT1 수작업, C25/C27/LAN_CON1 전기핀 납조. 실제 제조 공정·핀 규격·세정 필요 여부 미확인. 기타 접점과 초기 납조 충전은 이 이력의 산정 범위 밖."
+      }
+    },
+    {
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "source_id": "source:process-materials:v1:L1",
+      "source_path": "data/sources/process_materials_v1/L1.kicad_pcb",
+      "source_sha256": "9262f8e997f68d80c9dc7736381497102c1add64b4ddecb21b2d841867d2f045",
+      "hand_pins": [
+        {
+          "reference": "BAT1",
+          "pin": "1",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "BAT1",
+          "pin": "2",
+          "drill_mm": "0.9"
+        }
+      ],
+      "wave_pins": [
+        {
+          "reference": "C25",
+          "pin": "1",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "C25",
+          "pin": "2",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "C27",
+          "pin": "2",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "C27",
+          "pin": "1",
+          "drill_mm": "0.9"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "1",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "2",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "3",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "4",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "5",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "6",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "7",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "8",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "9",
+          "drill_mm": "1"
+        },
+        {
+          "reference": "LAN_CON1",
+          "pin": "10",
+          "drill_mm": "1"
+        }
+      ],
+      "board_thickness_mm": "1.6",
+      "one_side_area_cm2": "22.28331621",
+      "assumptions": {
+        "wire_core_density_g_cm3": "1",
+        "wave_lead_diameter_mm": "0.6",
+        "fillet_volume_multiplier": "1.3",
+        "ipa_wet_film_mm": "0.1",
+        "ipa_sides": 2,
+        "ipa_wipe_passes": 2,
+        "wire_feed_loss_fraction": "0.05",
+        "already_charged_solder_bath": true,
+        "scope": "가상 작업 범위: BAT1 수작업, C25/C27/LAN_CON1 전기핀 납조. 실제 제조 공정·핀 규격·세정 필요 여부 미확인. 기타 접점과 초기 납조 충전은 이 이력의 산정 범위 밖."
+      }
+    }
+  ],
+  "records": [
+    {
+      "id": "synthetic-usage:L:1:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L:1:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-05",
+      "completed_at": "2026-09-05T08:00:00+00:00",
+      "produced_quantity": 100,
+      "issued": "12.410542",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "1.910542",
+      "drivers": {
+        "feed_mm_per_joint": "2.8",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:1:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L:1:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-05",
+      "completed_at": "2026-09-05T08:00:00+00:00",
+      "produced_quantity": 100,
+      "issued": "252.833163",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "222.833163",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.5"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:1:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L:1:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-05",
+      "completed_at": "2026-09-05T08:00:00+00:00",
+      "produced_quantity": 100,
+      "issued": "22.859936",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "10.859936",
+      "drivers": {
+        "dross_fraction": "0.1",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:2:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L:2:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-15",
+      "completed_at": "2026-09-15T08:00:00+00:00",
+      "produced_quantity": 150,
+      "issued": "13.570514",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "3.070514",
+      "drivers": {
+        "feed_mm_per_joint": "3.0",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:2:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L:2:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-15",
+      "completed_at": "2026-09-15T08:00:00+00:00",
+      "produced_quantity": 150,
+      "issued": "404.359713",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "374.359713",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.8"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:2:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L:2:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-15",
+      "completed_at": "2026-09-15T08:00:00+00:00",
+      "produced_quantity": 150,
+      "issued": "28.586084",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "16.586084",
+      "drivers": {
+        "dross_fraction": "0.12",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:3:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L:3:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-25",
+      "completed_at": "2026-09-25T08:00:00+00:00",
+      "produced_quantity": 200,
+      "issued": "14.730485",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "4.230485",
+      "drivers": {
+        "feed_mm_per_joint": "3.1",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:3:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L:3:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-25",
+      "completed_at": "2026-09-25T08:00:00+00:00",
+      "produced_quantity": 200,
+      "issued": "564.799590",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "534.799590",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "3.0"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:3:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L:3:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-09-25",
+      "completed_at": "2026-09-25T08:00:00+00:00",
+      "produced_quantity": 200,
+      "issued": "34.707138",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "22.707138",
+      "drivers": {
+        "dross_fraction": "0.15",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:4:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L:4:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-05",
+      "completed_at": "2026-10-05T08:00:00+00:00",
+      "produced_quantity": 250,
+      "issued": "15.958691",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "5.458691",
+      "drivers": {
+        "feed_mm_per_joint": "3.2",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:4:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L:4:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-05",
+      "completed_at": "2026-10-05T08:00:00+00:00",
+      "produced_quantity": 250,
+      "issued": "631.649538",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "601.649538",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.7"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:4:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L:4:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-05",
+      "completed_at": "2026-10-05T08:00:00+00:00",
+      "produced_quantity": 250,
+      "issued": "39.890289",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "27.890289",
+      "drivers": {
+        "dross_fraction": "0.13",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:5:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L:5:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-15",
+      "completed_at": "2026-10-15T08:00:00+00:00",
+      "produced_quantity": 300,
+      "issued": "16.436326",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "5.936326",
+      "drivers": {
+        "feed_mm_per_joint": "2.9",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:5:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L:5:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-15",
+      "completed_at": "2026-10-15T08:00:00+00:00",
+      "produced_quantity": 300,
+      "issued": "725.239466",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "695.239466",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.6"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:5:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L:5:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-15",
+      "completed_at": "2026-10-15T08:00:00+00:00",
+      "produced_quantity": 300,
+      "issued": "44.875987",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "32.875987",
+      "drivers": {
+        "dross_fraction": "0.11",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:6:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L:6:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-25",
+      "completed_at": "2026-10-25T08:00:00+00:00",
+      "produced_quantity": 400,
+      "issued": "18.688036",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "8.188036",
+      "drivers": {
+        "feed_mm_per_joint": "3.0",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:6:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L:6:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-25",
+      "completed_at": "2026-10-25T08:00:00+00:00",
+      "produced_quantity": 400,
+      "issued": "1063.945873",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "1033.945873",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.9"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L:6:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L:6:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L-2026-10-25",
+      "completed_at": "2026-10-25T08:00:00+00:00",
+      "produced_quantity": 400,
+      "issued": "57.019369",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "45.019369",
+      "drivers": {
+        "dross_fraction": "0.14",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:1:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:1:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-05",
+      "completed_at": "2026-09-05T08:00:00+00:00",
+      "produced_quantity": 100,
+      "issued": "12.410542",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "1.910542",
+      "drivers": {
+        "feed_mm_per_joint": "2.8",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:1:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:1:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-05",
+      "completed_at": "2026-09-05T08:00:00+00:00",
+      "produced_quantity": 100,
+      "issued": "252.833163",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "222.833163",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.5"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:1:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:1:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-05",
+      "completed_at": "2026-09-05T08:00:00+00:00",
+      "produced_quantity": 100,
+      "issued": "22.859936",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "10.859936",
+      "drivers": {
+        "dross_fraction": "0.1",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:2:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:2:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-15",
+      "completed_at": "2026-09-15T08:00:00+00:00",
+      "produced_quantity": 150,
+      "issued": "13.570514",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "3.070514",
+      "drivers": {
+        "feed_mm_per_joint": "3.0",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:2:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:2:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-15",
+      "completed_at": "2026-09-15T08:00:00+00:00",
+      "produced_quantity": 150,
+      "issued": "404.359713",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "374.359713",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.8"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:2:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:2:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-15",
+      "completed_at": "2026-09-15T08:00:00+00:00",
+      "produced_quantity": 150,
+      "issued": "28.586084",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "16.586084",
+      "drivers": {
+        "dross_fraction": "0.12",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:3:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:3:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-25",
+      "completed_at": "2026-09-25T08:00:00+00:00",
+      "produced_quantity": 200,
+      "issued": "14.730485",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "4.230485",
+      "drivers": {
+        "feed_mm_per_joint": "3.1",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:3:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:3:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-25",
+      "completed_at": "2026-09-25T08:00:00+00:00",
+      "produced_quantity": 200,
+      "issued": "564.799590",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "534.799590",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "3.0"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:3:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:3:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-09-25",
+      "completed_at": "2026-09-25T08:00:00+00:00",
+      "produced_quantity": 200,
+      "issued": "34.707138",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "22.707138",
+      "drivers": {
+        "dross_fraction": "0.15",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:4:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:4:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-05",
+      "completed_at": "2026-10-05T08:00:00+00:00",
+      "produced_quantity": 250,
+      "issued": "15.958691",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "5.458691",
+      "drivers": {
+        "feed_mm_per_joint": "3.2",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:4:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:4:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-05",
+      "completed_at": "2026-10-05T08:00:00+00:00",
+      "produced_quantity": 250,
+      "issued": "631.649538",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "601.649538",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.7"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:4:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:4:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-05",
+      "completed_at": "2026-10-05T08:00:00+00:00",
+      "produced_quantity": 250,
+      "issued": "39.890289",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "27.890289",
+      "drivers": {
+        "dross_fraction": "0.13",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:5:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:5:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-15",
+      "completed_at": "2026-10-15T08:00:00+00:00",
+      "produced_quantity": 300,
+      "issued": "16.436326",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "5.936326",
+      "drivers": {
+        "feed_mm_per_joint": "2.9",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:5:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:5:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-15",
+      "completed_at": "2026-10-15T08:00:00+00:00",
+      "produced_quantity": 300,
+      "issued": "725.239466",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "695.239466",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.6"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:5:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:5:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-15",
+      "completed_at": "2026-10-15T08:00:00+00:00",
+      "produced_quantity": 300,
+      "issued": "44.875987",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "32.875987",
+      "drivers": {
+        "dross_fraction": "0.11",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:6:2470687601",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:6:2470687601",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:275:2470687601",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-25",
+      "completed_at": "2026-10-25T08:00:00+00:00",
+      "produced_quantity": 400,
+      "issued": "18.688036",
+      "returned": "10",
+      "setup_used": "0.5",
+      "simulated_variable_used": "8.188036",
+      "drivers": {
+        "feed_mm_per_joint": "3.0",
+        "hand_joint_count": 2,
+        "estimated_wire_density_g_cm3": "6.464119"
+      },
+      "generation_formula": "π×(0.8/2)²×가정 코어 포함 밀도÷1000×BAT1 2접점×접점당 투입길이×1.05",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:6:824",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:6:824",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:mgchemicals:824",
+      "unit": "mL",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-25",
+      "completed_at": "2026-10-25T08:00:00+00:00",
+      "produced_quantity": 400,
+      "issued": "1063.945873",
+      "returned": "20",
+      "setup_used": "10",
+      "simulated_variable_used": "1033.945873",
+      "drivers": {
+        "wipe_retention_evaporation_factor": "2.9"
+      },
+      "generation_formula": "실제 한 면 면적×2면×가정 젖음두께 0.01cm×2회×천 잔류/증발 계수",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    },
+    {
+      "id": "synthetic-usage:L1:6:bar",
+      "evidence_id": "evidence:synthetic-usage:v1:L1:6:bar",
+      "origin": "synthetic",
+      "status": "completed",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "material_id": "process-material:kester:sac305:bar",
+      "unit": "g",
+      "route_id": "assumed:wave-main-hand-bat-local-clean:v1",
+      "batch_id": "SYN-L1-2026-10-25",
+      "completed_at": "2026-10-25T08:00:00+00:00",
+      "produced_quantity": 400,
+      "issued": "57.019369",
+      "returned": "10",
+      "setup_used": "2",
+      "simulated_variable_used": "45.019369",
+      "drivers": {
+        "dross_fraction": "0.14",
+        "joint_volume_mm3": "13.395752"
+      },
+      "generation_formula": "실제 드릴과 보드 두께/가정 핀으로 산정한 접합체적×7.37÷1000×(1+드로스율)",
+      "basis": "물리모델로 생성한 가상 기록이며 실제 생산/출고/반납/실측 기록이 아님. 모델에서 생성한 이력으로 모델 정확도를 검증할 수 없음."
+    }
+  ],
+  "policy": {
+    "random_used": false,
+    "minimum_batches": 3,
+    "maximum_recent_batches": 6,
+    "statistical_confidence_claimed": false,
+    "actual_inventory_modified": false,
+    "allowance_is_additional_buffer": true
+  },
+  "generator": "ontologics.production_planning.build_usage_history"
+}

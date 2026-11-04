@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 from ontologics import model, tbox
-from ontologics.production_planning import schema as a
+from ontologics.materials import schema as a
 from ontologics.order_fulfillment import schema as b
 
 
@@ -76,7 +76,7 @@ class SharedTboxTests(unittest.TestCase):
         self.assertEqual(demo.tbox_turtle(), tbox.build_tbox())
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / 'shared.ttl'
-            for module in ('ontologics.tbox', 'ontologics.production_planning.export_tbox'):
+            for module in ('ontologics.tbox', 'ontologics.materials.export_tbox'):
                 command = [sys.executable, '-m', module, '--output', str(target)]
                 target.write_text('old reviewed content')
                 check = subprocess.run(command + ['--check'], capture_output=True, text=True)

@@ -158,13 +158,13 @@ class WebApplication:
         return bound
 
     def planning(self, action, body):
-        from .production_planning.workspace import PlanningWorkspace
-        from .production_planning.library_review import REGISTRATION
+        from .materials.workspace import MaterialsWorkspace
+        from .materials.library_review import REGISTRATION
         # Shared cache survives browser-bound copies; user context is passed on
         # every call and is never captured as a mutable process-wide identity.
         with self.workspace_lock:
             if 'planning' not in self.workspaces:
-                self.workspaces['planning'] = PlanningWorkspace(self.host, self.context,
+                self.workspaces['planning'] = MaterialsWorkspace(self.host, self.context,
                     provider_factory=self.provider_factory, model=self.model)
             workspace = self.workspaces['planning']
         if action != 'interpret':
@@ -548,7 +548,7 @@ def main():
         from .graph_views import GraphSettings
         graph_settings = GraphSettings.from_environment(
             env_file=args.graph_env_file or args.env_file, backend=args.graph_backend)
-        from .production_planning.library_review import REGISTRATION as PLANNING_REGISTRATION
+        from .materials.library_review import REGISTRATION as PLANNING_REGISTRATION
         app = WebApplication(CommonHost(identities, database, agent_registrations=(PLANNING_REGISTRATION,), embedding_provider=embeddings,
                                        sandbox_client=sandbox_client, cost_policy=cost_policy,
                                        graph_settings=graph_settings), DevelopmentContext('dev-' + args.user),

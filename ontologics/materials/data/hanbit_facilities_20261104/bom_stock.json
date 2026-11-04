@@ -1,0 +1,2220 @@
+{
+  "origin": "synthetic",
+  "label": "온톨로직스 성수 자재창고 보유 재고",
+  "scope": {
+    "company": "주식회사 온톨로직스",
+    "location": "성수 자재창고",
+    "as_of": "2026-11-04T09:00:00+09:00",
+    "unit": "piece",
+    "component_lots": {
+      "component:olimex-L-wroom:f7dd4274752b775b": [
+        "ONT-BOM-20261104-001"
+      ],
+      "component:olimex-L-wroom:22cfbeec176731d1": [
+        "ONT-BOM-20261104-002"
+      ],
+      "component:olimex-L-wroom:758bd0e3fc90fb51": [
+        "ONT-BOM-20261104-003"
+      ],
+      "component:olimex-L-wroom:49a5cdaa2352d8cf": [
+        "ONT-BOM-20261104-004"
+      ],
+      "component:olimex-L-wroom:9286d077e335ae2d": [
+        "ONT-BOM-20261104-005"
+      ],
+      "component:olimex-L-wroom:7e7b047ff0528a6c": [
+        "ONT-BOM-20261104-006"
+      ],
+      "component:olimex-L-wroom:569d0c0150a080ab": [
+        "ONT-BOM-20261104-007"
+      ],
+      "component:olimex-L-wroom:8ce484fa0cb952ff": [
+        "ONT-BOM-20261104-008"
+      ],
+      "component:olimex-L-wroom:a10fe57acbdf747f": [
+        "ONT-BOM-20261104-009"
+      ],
+      "component:olimex-L-wroom:b7eaecb240814a76": [
+        "ONT-BOM-20261104-010"
+      ],
+      "component:olimex-L-wroom:95a88ef15198f33d": [
+        "ONT-BOM-20261104-011"
+      ],
+      "component:olimex-L-wroom:d817bad88786f840": [
+        "ONT-BOM-20261104-012"
+      ],
+      "component:olimex-L-wroom:ef1027219a3ac001": [
+        "ONT-BOM-20261104-013"
+      ],
+      "component:olimex-L-wroom:e113bd9b6e74dc1d": [
+        "ONT-BOM-20261104-014"
+      ],
+      "component:olimex-L-wroom:b1322c68fa249a73": [
+        "ONT-BOM-20261104-015"
+      ],
+      "component:olimex-L-wroom:b54efadfabf26664": [
+        "ONT-BOM-20261104-016"
+      ],
+      "component:olimex-L-wroom:bdc19e445a4955d8": [
+        "ONT-BOM-20261104-017"
+      ],
+      "component:olimex-L-wroom:a39f8e8d3a8a9f86": [
+        "ONT-BOM-20261104-018"
+      ],
+      "component:olimex-L-wroom:669bb51b7ca5231c": [
+        "ONT-BOM-20261104-019"
+      ],
+      "component:olimex-L-wroom:8254be4cab9e3348": [
+        "ONT-BOM-20261104-020"
+      ],
+      "component:olimex-L-wroom:e2b33ba3e46a67ba": [
+        "ONT-BOM-20261104-021"
+      ],
+      "component:olimex-L-wroom:7111debdde133589": [
+        "ONT-BOM-20261104-022"
+      ],
+      "component:olimex-L-wroom:181fc4ac0d9ccb7e": [
+        "ONT-BOM-20261104-023"
+      ],
+      "component:olimex-L-wroom:e9b77afb17df5ee8": [
+        "ONT-BOM-20261104-024"
+      ],
+      "component:olimex-L-wroom:56607d18417ed0b1": [
+        "ONT-BOM-20261104-025"
+      ],
+      "component:olimex-L-wroom:685f50d22b80aaa2": [
+        "ONT-BOM-20261104-026"
+      ],
+      "component:olimex-L-wroom:da53871a0965b0e8": [
+        "ONT-BOM-20261104-027"
+      ],
+      "component:olimex-L-wroom:debb9d32bd317b20": [
+        "ONT-BOM-20261104-028"
+      ],
+      "component:olimex-L-wroom:39c29737a8fa4401": [
+        "ONT-BOM-20261104-029"
+      ],
+      "component:olimex-L-wroom:88c267f530095797": [
+        "ONT-BOM-20261104-030"
+      ],
+      "component:olimex-L-wroom:6e37b726526f7136": [
+        "ONT-BOM-20261104-031"
+      ],
+      "component:olimex-L-wroom:a2129222a94167ea": [
+        "ONT-BOM-20261104-032"
+      ],
+      "component:olimex-L-wroom:8260c630e99e7cf3": [
+        "ONT-BOM-20261104-033"
+      ],
+      "component:olimex-L-wroom:351cd96325e5f3ff": [
+        "ONT-BOM-20261104-034"
+      ],
+      "component:olimex-L-wroom:30f0b2757a0560a9": [
+        "ONT-BOM-20261104-035"
+      ],
+      "component:olimex-L-wroom:eabfe128d77dab13": [
+        "ONT-BOM-20261104-036"
+      ],
+      "component:olimex-L-wroom:237bd249e89f8321": [
+        "ONT-BOM-20261104-037"
+      ],
+      "component:olimex-L-wroom:8148cc332f5a88a7": [
+        "ONT-BOM-20261104-038"
+      ],
+      "component:olimex-L-wroom:4a68f907b867d5b5": [
+        "ONT-BOM-20261104-039"
+      ],
+      "component:olimex-L-wroom:6cef5854424c60dc": [
+        "ONT-BOM-20261104-040"
+      ],
+      "component:olimex-L-wroom:40df93d256a3a3fd": [
+        "ONT-BOM-20261104-041"
+      ],
+      "component:olimex-L-wroom:55df03401c1f863b": [
+        "ONT-BOM-20261104-042"
+      ],
+      "component:olimex-L-wroom:103d6923e37648dd": [
+        "ONT-BOM-20261104-043"
+      ],
+      "component:olimex-L-wroom:3c11ac7780b0504e": [
+        "ONT-BOM-20261104-044"
+      ],
+      "component:olimex-L-wroom:2aae2265b7aae746": [
+        "ONT-BOM-20261104-045"
+      ],
+      "component:olimex-L-wroom:257f4e3ccf5057b0": [
+        "ONT-BOM-20261104-046"
+      ],
+      "component:olimex-L-wroom:32d420c6c802a2c2": [
+        "ONT-BOM-20261104-047"
+      ],
+      "component:olimex-L-wroom:2c67ac65e591a82a": [
+        "ONT-BOM-20261104-048"
+      ],
+      "component:olimex-L-wroom:6400473eb53dc6b9": [
+        "ONT-BOM-20261104-049"
+      ],
+      "component:olimex-L-wroom:4badf8778fca3457": [
+        "ONT-BOM-20261104-050"
+      ],
+      "component:olimex-L-wroom:a9b10290dd82b83f": [
+        "ONT-BOM-20261104-051"
+      ],
+      "component:olimex-L-wroom:1e30514f2d2d8200": [
+        "ONT-BOM-20261104-052"
+      ],
+      "component:olimex-L-wroom:85825cbd428dd5b6": [
+        "ONT-BOM-20261104-053"
+      ],
+      "component:olimex-L-wroom:a0761096f9d69b2b": [
+        "ONT-BOM-20261104-054"
+      ],
+      "component:olimex-L-wroom:290c4bac4fbfc968": [
+        "ONT-BOM-20261104-055"
+      ],
+      "component:olimex-L-wroom:d9adde23e9a54992": [
+        "ONT-BOM-20261104-056"
+      ],
+      "component:olimex-L-wroom:267a54d3f588f243": [
+        "ONT-BOM-20261104-057"
+      ],
+      "component:olimex-L-wroom:75ddc7fbb11d0b31": [
+        "ONT-BOM-20261104-058"
+      ],
+      "component:olimex-L-wroom:f7cda05f330bc6f3": [
+        "ONT-BOM-20261104-059"
+      ],
+      "component:olimex-L-wroom:cacb66e047733080": [
+        "ONT-BOM-20261104-060"
+      ],
+      "component:olimex-L1-wroom:35335677b228a6d2": [
+        "ONT-BOM-20261104-061"
+      ],
+      "component:olimex-L-wroom:77be1300069a66c9": [
+        "ONT-BOM-20261104-062"
+      ],
+      "component:olimex-L-wroom:cbc20044c54cc1bc": [
+        "ONT-BOM-20261104-063"
+      ],
+      "component:olimex-L-wroom:0a98284a611832bb": [
+        "ONT-BOM-20261104-064"
+      ]
+    },
+    "coverage_basis": "가상 업무 자료의 64개 재고 품목별 단일 로트 전량을 포함한다. 확인된 실장 BOM 품목만 대상으로 하며 미확인 NA/NS/Opened 품목의 재고와 소요량은 확정하지 않는다."
+  },
+  "snapshots": [
+    {
+      "source_ref": "HFM-20261104-bom-stock-observation-01",
+      "stock_scope": {
+        "company": "주식회사 온톨로직스",
+        "location": "성수 자재창고",
+        "as_of": "2026-11-04T09:00:00+09:00"
+      },
+      "stocks": [
+        {
+          "id": "HFM-BOM-OBS-20261104-001",
+          "component_id": "component:olimex-L-wroom:f7dd4274752b775b",
+          "lot_id": "ONT-BOM-20261104-001",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-002",
+          "component_id": "component:olimex-L-wroom:22cfbeec176731d1",
+          "lot_id": "ONT-BOM-20261104-002",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-003",
+          "component_id": "component:olimex-L-wroom:758bd0e3fc90fb51",
+          "lot_id": "ONT-BOM-20261104-003",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-004",
+          "component_id": "component:olimex-L-wroom:49a5cdaa2352d8cf",
+          "lot_id": "ONT-BOM-20261104-004",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-005",
+          "component_id": "component:olimex-L-wroom:9286d077e335ae2d",
+          "lot_id": "ONT-BOM-20261104-005",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-006",
+          "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+          "lot_id": "ONT-BOM-20261104-006",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-007",
+          "component_id": "component:olimex-L-wroom:569d0c0150a080ab",
+          "lot_id": "ONT-BOM-20261104-007",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-008",
+          "component_id": "component:olimex-L-wroom:8ce484fa0cb952ff",
+          "lot_id": "ONT-BOM-20261104-008",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-009",
+          "component_id": "component:olimex-L-wroom:a10fe57acbdf747f",
+          "lot_id": "ONT-BOM-20261104-009",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-010",
+          "component_id": "component:olimex-L-wroom:b7eaecb240814a76",
+          "lot_id": "ONT-BOM-20261104-010",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-011",
+          "component_id": "component:olimex-L-wroom:95a88ef15198f33d",
+          "lot_id": "ONT-BOM-20261104-011",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-012",
+          "component_id": "component:olimex-L-wroom:d817bad88786f840",
+          "lot_id": "ONT-BOM-20261104-012",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-013",
+          "component_id": "component:olimex-L-wroom:ef1027219a3ac001",
+          "lot_id": "ONT-BOM-20261104-013",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-014",
+          "component_id": "component:olimex-L-wroom:e113bd9b6e74dc1d",
+          "lot_id": "ONT-BOM-20261104-014",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-015",
+          "component_id": "component:olimex-L-wroom:b1322c68fa249a73",
+          "lot_id": "ONT-BOM-20261104-015",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-016",
+          "component_id": "component:olimex-L-wroom:b54efadfabf26664",
+          "lot_id": "ONT-BOM-20261104-016",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-017",
+          "component_id": "component:olimex-L-wroom:bdc19e445a4955d8",
+          "lot_id": "ONT-BOM-20261104-017",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-018",
+          "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+          "lot_id": "ONT-BOM-20261104-018",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-019",
+          "component_id": "component:olimex-L-wroom:669bb51b7ca5231c",
+          "lot_id": "ONT-BOM-20261104-019",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-020",
+          "component_id": "component:olimex-L-wroom:8254be4cab9e3348",
+          "lot_id": "ONT-BOM-20261104-020",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-021",
+          "component_id": "component:olimex-L-wroom:e2b33ba3e46a67ba",
+          "lot_id": "ONT-BOM-20261104-021",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-022",
+          "component_id": "component:olimex-L-wroom:7111debdde133589",
+          "lot_id": "ONT-BOM-20261104-022",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-023",
+          "component_id": "component:olimex-L-wroom:181fc4ac0d9ccb7e",
+          "lot_id": "ONT-BOM-20261104-023",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-024",
+          "component_id": "component:olimex-L-wroom:e9b77afb17df5ee8",
+          "lot_id": "ONT-BOM-20261104-024",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-025",
+          "component_id": "component:olimex-L-wroom:56607d18417ed0b1",
+          "lot_id": "ONT-BOM-20261104-025",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-026",
+          "component_id": "component:olimex-L-wroom:685f50d22b80aaa2",
+          "lot_id": "ONT-BOM-20261104-026",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-027",
+          "component_id": "component:olimex-L-wroom:da53871a0965b0e8",
+          "lot_id": "ONT-BOM-20261104-027",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-028",
+          "component_id": "component:olimex-L-wroom:debb9d32bd317b20",
+          "lot_id": "ONT-BOM-20261104-028",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-029",
+          "component_id": "component:olimex-L-wroom:39c29737a8fa4401",
+          "lot_id": "ONT-BOM-20261104-029",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-030",
+          "component_id": "component:olimex-L-wroom:88c267f530095797",
+          "lot_id": "ONT-BOM-20261104-030",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-031",
+          "component_id": "component:olimex-L-wroom:6e37b726526f7136",
+          "lot_id": "ONT-BOM-20261104-031",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-032",
+          "component_id": "component:olimex-L-wroom:a2129222a94167ea",
+          "lot_id": "ONT-BOM-20261104-032",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-033",
+          "component_id": "component:olimex-L-wroom:8260c630e99e7cf3",
+          "lot_id": "ONT-BOM-20261104-033",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 1000,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-1000"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-034",
+          "component_id": "component:olimex-L-wroom:351cd96325e5f3ff",
+          "lot_id": "ONT-BOM-20261104-034",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-035",
+          "component_id": "component:olimex-L-wroom:30f0b2757a0560a9",
+          "lot_id": "ONT-BOM-20261104-035",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-036",
+          "component_id": "component:olimex-L-wroom:eabfe128d77dab13",
+          "lot_id": "ONT-BOM-20261104-036",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-037",
+          "component_id": "component:olimex-L-wroom:237bd249e89f8321",
+          "lot_id": "ONT-BOM-20261104-037",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-038",
+          "component_id": "component:olimex-L-wroom:8148cc332f5a88a7",
+          "lot_id": "ONT-BOM-20261104-038",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-039",
+          "component_id": "component:olimex-L-wroom:4a68f907b867d5b5",
+          "lot_id": "ONT-BOM-20261104-039",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-040",
+          "component_id": "component:olimex-L-wroom:6cef5854424c60dc",
+          "lot_id": "ONT-BOM-20261104-040",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 100,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "ic-100"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-041",
+          "component_id": "component:olimex-L-wroom:40df93d256a3a3fd",
+          "lot_id": "ONT-BOM-20261104-041",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 100,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "ic-100"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-042",
+          "component_id": "component:olimex-L-wroom:55df03401c1f863b",
+          "lot_id": "ONT-BOM-20261104-042",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "connector-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-043",
+          "component_id": "component:olimex-L-wroom:103d6923e37648dd",
+          "lot_id": "ONT-BOM-20261104-043",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-044",
+          "component_id": "component:olimex-L-wroom:3c11ac7780b0504e",
+          "lot_id": "ONT-BOM-20261104-044",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 100,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "module-100"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-045",
+          "component_id": "component:olimex-L-wroom:2aae2265b7aae746",
+          "lot_id": "ONT-BOM-20261104-045",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "magnetic-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-046",
+          "component_id": "component:olimex-L-wroom:257f4e3ccf5057b0",
+          "lot_id": "ONT-BOM-20261104-046",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "connector-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-047",
+          "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+          "lot_id": "ONT-BOM-20261104-047",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 80,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "ethernet-80"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-048",
+          "component_id": "component:olimex-L-wroom:2c67ac65e591a82a",
+          "lot_id": "ONT-BOM-20261104-048",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-049",
+          "component_id": "component:olimex-L-wroom:6400473eb53dc6b9",
+          "lot_id": "ONT-BOM-20261104-049",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-050",
+          "component_id": "component:olimex-L-wroom:4badf8778fca3457",
+          "lot_id": "ONT-BOM-20261104-050",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-051",
+          "component_id": "component:olimex-L-wroom:a9b10290dd82b83f",
+          "lot_id": "ONT-BOM-20261104-051",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-052",
+          "component_id": "component:olimex-L-wroom:1e30514f2d2d8200",
+          "lot_id": "ONT-BOM-20261104-052",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "connector-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-053",
+          "component_id": "component:olimex-L-wroom:85825cbd428dd5b6",
+          "lot_id": "ONT-BOM-20261104-053",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "connector-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-054",
+          "component_id": "component:olimex-L-wroom:a0761096f9d69b2b",
+          "lot_id": "ONT-BOM-20261104-054",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "special-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-055",
+          "component_id": "component:olimex-L-wroom:290c4bac4fbfc968",
+          "lot_id": "ONT-BOM-20261104-055",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "passive-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-056",
+          "component_id": "component:olimex-L-wroom:d9adde23e9a54992",
+          "lot_id": "ONT-BOM-20261104-056",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "connector-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-057",
+          "component_id": "component:olimex-L-wroom:267a54d3f588f243",
+          "lot_id": "ONT-BOM-20261104-057",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-058",
+          "component_id": "component:olimex-L-wroom:75ddc7fbb11d0b31",
+          "lot_id": "ONT-BOM-20261104-058",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-059",
+          "component_id": "component:olimex-L-wroom:f7cda05f330bc6f3",
+          "lot_id": "ONT-BOM-20261104-059",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 100,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "ic-100"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-060",
+          "component_id": "component:olimex-L-wroom:cacb66e047733080",
+          "lot_id": "ONT-BOM-20261104-060",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 200,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "connector-200"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-061",
+          "component_id": "component:olimex-L1-wroom:35335677b228a6d2",
+          "lot_id": "ONT-BOM-20261104-061",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 20,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "poe-20"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-062",
+          "component_id": "component:olimex-L-wroom:77be1300069a66c9",
+          "lot_id": "ONT-BOM-20261104-062",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 20,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "poe-20"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-063",
+          "component_id": "component:olimex-L-wroom:cbc20044c54cc1bc",
+          "lot_id": "ONT-BOM-20261104-063",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 100,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "ic-100"
+        },
+        {
+          "id": "HFM-BOM-OBS-20261104-064",
+          "component_id": "component:olimex-L-wroom:0a98284a611832bb",
+          "lot_id": "ONT-BOM-20261104-064",
+          "unit": "piece",
+          "quantity_state": "known",
+          "availability_basis": "on_hand_less_reserved_and_held",
+          "deductions_disjoint": true,
+          "on_hand_quantity": 500,
+          "reserved_quantity": 0,
+          "held_quantity": 0,
+          "quantity_basis_id": "discrete-500"
+        }
+      ],
+      "sha256": "8b85bb20700a74bb7bff4b12e15a89e60f30bf66d442cc68ae23421482cb0f72"
+    }
+  ],
+  "internal_metadata": {
+    "source_id": "source:materials:bom-stock:HFM-20261104-01",
+    "dataset_id": "hanbit-facilities-20261104",
+    "configurations": [
+      "config:esp32-poe:L:WROOM",
+      "config:esp32-poe:L1:WROOM"
+    ],
+    "catalog": {
+      "path": "data/catalog.json",
+      "sha256": "9884378d9879aab8175512c8c6758360715552bb403e7fb86d88af074dd0775c",
+      "source_ids": [
+        "source:olimex-L-wroom",
+        "source:olimex-L1-wroom"
+      ],
+      "use": "제품 구성·부품 표기·패키지·실장 상태·대당 수량·원본 근거만 참조하며 회사 보유 재고의 사실 근거로 사용하지 않는다."
+    },
+    "source_hash_basis": "snapshots[0].sha256 is the digest of canonical inline observation content before adding sha256. The manifest separately records the SHA-256 of this complete JSON file.",
+    "quantity_policy": "수량은 업무 시연을 위한 명시적인 소포장·분할 릴 보유 가정이다. 제조사 표준 포장·MOQ·실제 구매·공급사·실사·검수·사용기한을 주장하지 않는다. 난수나 주문 수량의 일괄 배수로 만들지 않는다.",
+    "quantity_rules": {
+      "module-100": {
+        "on_hand_quantity": 100,
+        "basis": "ESP32 모듈 소포장 보유분 100개 가정"
+      },
+      "ethernet-80": {
+        "on_hand_quantity": 80,
+        "basis": "이더넷 PHY 소포장 잔량 80개 가정"
+      },
+      "poe-20": {
+        "on_hand_quantity": 20,
+        "basis": "개정별 PoE 제어 IC 소포장 잔량 20개 가정; 다른 품번과 합치지 않음"
+      },
+      "ic-100": {
+        "on_hand_quantity": 100,
+        "basis": "기타 U 위치 IC의 소포장 보유분 100개 가정"
+      },
+      "passive-1000": {
+        "on_hand_quantity": 1000,
+        "basis": "다수 사용 소형 수동소자의 분할 릴 보유분 1,000개 가정"
+      },
+      "passive-500": {
+        "on_hand_quantity": 500,
+        "basis": "정밀 저항·저항 어레이·일부 커패시터의 분할 릴 보유분 500개 가정"
+      },
+      "magnetic-500": {
+        "on_hand_quantity": 500,
+        "basis": "페라이트 비드 분할 릴 보유분 500개 가정"
+      },
+      "discrete-500": {
+        "on_hand_quantity": 500,
+        "basis": "다이오드·LED·트랜지스터의 분할 릴 보유분 500개 가정"
+      },
+      "special-200": {
+        "on_hand_quantity": 200,
+        "basis": "인덕터·고전압/전해 커패시터·보호소자·크리스털의 별도 소포장 보유분 200개 가정"
+      },
+      "connector-200": {
+        "on_hand_quantity": 200,
+        "basis": "커넥터·소켓·스위치의 품목별 분할 포장 보유분 200개 가정"
+      }
+    },
+    "ledger_policy": "새 격리 A 저장소의 초기 재고 관측이다. 기존 운영 저장소의 예약·입고·보류·출고를 이관하거나 소거하지 않는다. reserved_quantity와 held_quantity는 이 가상 관측 범위에서 0으로 가정한다.",
+    "identity_policy": "library_inventory_identity.seed_company_test_links와 같은 정확한 전체 표기+패키지별 2개 구성 ID 정렬 규칙을 적용한다. 첫 ID가 공용 SKU 기준이다. 제조사 동일성·전기적 호환성·대체품 승인이 아니다.",
+    "installation_policy": "Register seed_company_test_links in the new isolated A schema, then pass this identical complete payload to LibraryStock.store for both configurations. Do not combine two per-configuration quantities or register inventory in the existing operational schema.",
+    "catalog_rows": [
+      {
+        "stock_component_id": "component:olimex-L-wroom:f7dd4274752b775b",
+        "name": "0.03R/1%/R1206",
+        "package": "R1206",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:f7dd4274752b775b",
+          "component:olimex-L1-wroom:e9e08c05ba492dac"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-3",
+          "bom:esp32-poe:L:WROOM:row-3"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-3",
+          "evidence:olimex-L1-wroom:row-3"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:22cfbeec176731d1",
+        "name": "100k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:22cfbeec176731d1",
+          "component:olimex-L1-wroom:106486e70d5025b1"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-20",
+          "bom:esp32-poe:L:WROOM:row-20"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-20",
+          "evidence:olimex-L1-wroom:row-20"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:758bd0e3fc90fb51",
+        "name": "100nF/100V/10%/X7R/C0603",
+        "package": "C0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:758bd0e3fc90fb51",
+          "component:olimex-L1-wroom:241e76a41af65013"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-32",
+          "bom:esp32-poe:L:WROOM:row-33"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-33",
+          "evidence:olimex-L1-wroom:row-32"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:49a5cdaa2352d8cf",
+        "name": "100nF/16V/10%/X7R/C0402",
+        "package": "C0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:49a5cdaa2352d8cf",
+          "component:olimex-L1-wroom:b0791c9509ac978f"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-31",
+          "bom:esp32-poe:L:WROOM:row-32"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-32",
+          "evidence:olimex-L1-wroom:row-31"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:9286d077e335ae2d",
+        "name": "10R/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:9286d077e335ae2d",
+          "component:olimex-L1-wroom:d9a87d789dbf8d38"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-5",
+          "bom:esp32-poe:L:WROOM:row-5"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-5",
+          "evidence:olimex-L1-wroom:row-5"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+        "name": "10k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:7e7b047ff0528a6c",
+          "component:olimex-L1-wroom:e0c1d5f6d4d6d9c5"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-14",
+          "bom:esp32-poe:L:WROOM:row-14"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-14",
+          "evidence:olimex-L1-wroom:row-14"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:569d0c0150a080ab",
+        "name": "12.1k/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:569d0c0150a080ab",
+          "component:olimex-L1-wroom:ec2d082725e5f8cb"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-15",
+          "bom:esp32-poe:L:WROOM:row-15"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-15",
+          "evidence:olimex-L1-wroom:row-15"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:8ce484fa0cb952ff",
+        "name": "12pF/50V/5%/COG/C0402",
+        "package": "C0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:8ce484fa0cb952ff",
+          "component:olimex-L1-wroom:b2365e2c8df6eb37"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-27",
+          "bom:esp32-poe:L:WROOM:row-28"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-28",
+          "evidence:olimex-L1-wroom:row-27"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:a10fe57acbdf747f",
+        "name": "130k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:a10fe57acbdf747f"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L:WROOM:row-21"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-21"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:b7eaecb240814a76",
+        "name": "15uF/100V/20%/RM2.5/ 6.3x11mm(Farnell:1281844)",
+        "package": "CPOL-RM2.5mm_ 6.3x11mm_PTH",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:b7eaecb240814a76",
+          "component:olimex-L1-wroom:b780a09d59b8b88d"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-35",
+          "bom:esp32-poe:L:WROOM:row-36"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-36",
+          "evidence:olimex-L1-wroom:row-35"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:95a88ef15198f33d",
+        "name": "180k/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:95a88ef15198f33d",
+          "component:olimex-L1-wroom:54539515645cd2c4"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-21",
+          "bom:esp32-poe:L:WROOM:row-22"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-22",
+          "evidence:olimex-L1-wroom:row-21"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:d817bad88786f840",
+        "name": "1N5819S4(SOD-123)",
+        "package": "SOD-123",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:d817bad88786f840",
+          "component:olimex-L1-wroom:57900a39f58eee56"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-40",
+          "bom:esp32-poe:L:WROOM:row-41"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-41",
+          "evidence:olimex-L1-wroom:row-40"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:ef1027219a3ac001",
+        "name": "1N5822/SS34/SMA",
+        "package": "SMA",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:ef1027219a3ac001",
+          "component:olimex-L1-wroom:4df3981616f31979"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-41",
+          "bom:esp32-poe:L:WROOM:row-42"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-42",
+          "evidence:olimex-L1-wroom:row-41"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:e113bd9b6e74dc1d",
+        "name": "1k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:e113bd9b6e74dc1d",
+          "component:olimex-L1-wroom:6a81b6e085abd790"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-8",
+          "bom:esp32-poe:L:WROOM:row-8"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-8",
+          "evidence:olimex-L1-wroom:row-8"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:b1322c68fa249a73",
+        "name": "1nF/2000V/10%/X7R/C1206",
+        "package": "C1206",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:b1322c68fa249a73",
+          "component:olimex-L1-wroom:915357c7ed9e73f6"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-30",
+          "bom:esp32-poe:L:WROOM:row-31"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-31",
+          "evidence:olimex-L1-wroom:row-30"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:b54efadfabf26664",
+        "name": "1nF/50V/10%/X7R/C0402",
+        "package": "C0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:b54efadfabf26664",
+          "component:olimex-L1-wroom:52da6792b5eebef6"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-29",
+          "bom:esp32-poe:L:WROOM:row-30"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-30",
+          "evidence:olimex-L1-wroom:row-29"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:bdc19e445a4955d8",
+        "name": "1uF/10V/20%/X5R/C0603",
+        "package": "C0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:bdc19e445a4955d8",
+          "component:olimex-L1-wroom:6c8995d4883b89ba"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-33",
+          "bom:esp32-poe:L:WROOM:row-34"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-34",
+          "evidence:olimex-L1-wroom:row-33"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+        "name": "2.2k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+          "component:olimex-L1-wroom:e4e985036e069f73"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-9",
+          "bom:esp32-poe:L:WROOM:row-9"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-9",
+          "evidence:olimex-L1-wroom:row-9"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:669bb51b7ca5231c",
+        "name": "2.2uF/6.3V/10%/X5R/C0603",
+        "package": "C0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:669bb51b7ca5231c",
+          "component:olimex-L1-wroom:f45fcc7f84930920"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-34",
+          "bom:esp32-poe:L:WROOM:row-35"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-35",
+          "evidence:olimex-L1-wroom:row-34"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:8254be4cab9e3348",
+        "name": "2.2uH/1.5A/DCR=72mR/ 20%/3.00x3.00x1.50mm/ CD32(NR3015T2R2M)",
+        "package": "CD32",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:8254be4cab9e3348",
+          "component:olimex-L1-wroom:e3012ef809f64b00"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-25",
+          "bom:esp32-poe:L:WROOM:row-26"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-26",
+          "evidence:olimex-L1-wroom:row-25"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:e2b33ba3e46a67ba",
+        "name": "220R/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:e2b33ba3e46a67ba",
+          "component:olimex-L1-wroom:5e32072213918046"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-7",
+          "bom:esp32-poe:L:WROOM:row-7"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-7",
+          "evidence:olimex-L1-wroom:row-7"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:7111debdde133589",
+        "name": "220k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:7111debdde133589",
+          "component:olimex-L1-wroom:b7e89ecc876c1662"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-22",
+          "bom:esp32-poe:L:WROOM:row-23"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-23",
+          "evidence:olimex-L1-wroom:row-22"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:181fc4ac0d9ccb7e",
+        "name": "22uF/6.3V/20%/X5R/C0603",
+        "package": "C0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:181fc4ac0d9ccb7e",
+          "component:olimex-L1-wroom:1ba427ee813e6cda"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-36",
+          "bom:esp32-poe:L:WROOM:row-37"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-37",
+          "evidence:olimex-L1-wroom:row-36"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:e9b77afb17df5ee8",
+        "name": "24.9k/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:e9b77afb17df5ee8",
+          "component:olimex-L1-wroom:a7002ba836053bfb"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-16",
+          "bom:esp32-poe:L:WROOM:row-16"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-16",
+          "evidence:olimex-L1-wroom:row-16"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:56607d18417ed0b1",
+        "name": "27pF/50V/5%/C0G/C0402",
+        "package": "C0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:56607d18417ed0b1",
+          "component:olimex-L1-wroom:2e6ca85114642823"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-28",
+          "bom:esp32-poe:L:WROOM:row-29"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-29",
+          "evidence:olimex-L1-wroom:row-28"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:685f50d22b80aaa2",
+        "name": "30.1k/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:685f50d22b80aaa2",
+          "component:olimex-L1-wroom:40563a84222eac72"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-17",
+          "bom:esp32-poe:L:WROOM:row-17"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-17",
+          "evidence:olimex-L1-wroom:row-17"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:da53871a0965b0e8",
+        "name": "33uH/2.1A/DCR=0.1R/20%/ DBS135(PD3316MT330)",
+        "package": "DBS135",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:da53871a0965b0e8",
+          "component:olimex-L1-wroom:85c852f141871bcc"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-26",
+          "bom:esp32-poe:L:WROOM:row-27"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-27",
+          "evidence:olimex-L1-wroom:row-26"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:debb9d32bd317b20",
+        "name": "4.42k/1%/1/16W/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:debb9d32bd317b20",
+          "component:olimex-L1-wroom:66f6e032686e2821"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-11",
+          "bom:esp32-poe:L:WROOM:row-11"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-11",
+          "evidence:olimex-L1-wroom:row-11"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:39c29737a8fa4401",
+        "name": "4.7R/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:39c29737a8fa4401",
+          "component:olimex-L1-wroom:b6ec545b31d251e7"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-4",
+          "bom:esp32-poe:L:WROOM:row-4"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-4",
+          "evidence:olimex-L1-wroom:row-4"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:88c267f530095797",
+        "name": "4.7k/R2512",
+        "package": "R2512",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:88c267f530095797",
+          "component:olimex-L1-wroom:2edcfdd586ad9b72"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-12",
+          "bom:esp32-poe:L:WROOM:row-12"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-12",
+          "evidence:olimex-L1-wroom:row-12"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:6e37b726526f7136",
+        "name": "470k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:6e37b726526f7136",
+          "component:olimex-L1-wroom:cdd5400bda153a2c"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-23",
+          "bom:esp32-poe:L:WROOM:row-24"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-24",
+          "evidence:olimex-L1-wroom:row-23"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:a2129222a94167ea",
+        "name": "470uF/10V/20%/Low_ESR/ RM2.5/6.0x11mm",
+        "package": "CPOL-RM2.5mm_ 6.3x11mm_PTH",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:a2129222a94167ea",
+          "component:olimex-L1-wroom:1e20b2b8386253f8"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-38",
+          "bom:esp32-poe:L:WROOM:row-39"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-39",
+          "evidence:olimex-L1-wroom:row-38"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:8260c630e99e7cf3",
+        "name": "47k/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:8260c630e99e7cf3",
+          "component:olimex-L1-wroom:042b672f9fc33b84"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-18",
+          "bom:esp32-poe:L:WROOM:row-18"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-18",
+          "evidence:olimex-L1-wroom:row-18"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:351cd96325e5f3ff",
+        "name": "47uF/6.3V/20%/X5R/C0805",
+        "package": "C_0805_5MIL_DWS",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:351cd96325e5f3ff",
+          "component:olimex-L1-wroom:e2e332fb2cdeb72e"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-37",
+          "bom:esp32-poe:L:WROOM:row-38"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-38",
+          "evidence:olimex-L1-wroom:row-37"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:30f0b2757a0560a9",
+        "name": "49.9R/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:30f0b2757a0560a9",
+          "component:olimex-L1-wroom:e577d90b3670762d"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-6",
+          "bom:esp32-poe:L:WROOM:row-6"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-6",
+          "evidence:olimex-L1-wroom:row-6"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:eabfe128d77dab13",
+        "name": "49.9k/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:eabfe128d77dab13",
+          "component:olimex-L1-wroom:865268a90ee16c83"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-19",
+          "bom:esp32-poe:L:WROOM:row-19"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-19",
+          "evidence:olimex-L1-wroom:row-19"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:237bd249e89f8321",
+        "name": "5.23k/1%/R0402",
+        "package": "R0402",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:237bd249e89f8321",
+          "component:olimex-L1-wroom:993ea019f5fb1a05"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-13",
+          "bom:esp32-poe:L:WROOM:row-13"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-13",
+          "evidence:olimex-L1-wroom:row-13"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:8148cc332f5a88a7",
+        "name": "BAT54C(SOT23-3)",
+        "package": "SOT23-3",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:8148cc332f5a88a7",
+          "component:olimex-L1-wroom:fdf337533eee6861"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-39",
+          "bom:esp32-poe:L:WROOM:row-40"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-40",
+          "evidence:olimex-L1-wroom:row-39"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:4a68f907b867d5b5",
+        "name": "BC817-40(SOT23)",
+        "package": "SOT23",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:4a68f907b867d5b5",
+          "component:olimex-L1-wroom:5604ee2caf3422fd"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-48",
+          "bom:esp32-poe:L:WROOM:row-49"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-49",
+          "evidence:olimex-L1-wroom:row-48"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:6cef5854424c60dc",
+        "name": "BL4054B-42TPRN(SOT23-5)",
+        "package": "SOT-23-5",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:6cef5854424c60dc",
+          "component:olimex-L1-wroom:2188fc8889690436"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-51",
+          "bom:esp32-poe:L:WROOM:row-52"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-52",
+          "evidence:olimex-L1-wroom:row-51"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:40df93d256a3a3fd",
+        "name": "CH340T(SSOP20W)",
+        "package": "SSOP-20W",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:40df93d256a3a3fd",
+          "component:olimex-L1-wroom:7688b5839b6e5c1a"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-52",
+          "bom:esp32-poe:L:WROOM:row-53"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-53",
+          "evidence:olimex-L1-wroom:row-52"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:55df03401c1f863b",
+        "name": "DW02S",
+        "package": "DW02S",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:55df03401c1f863b",
+          "component:olimex-L1-wroom:11feec46d83c940c"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-60",
+          "bom:esp32-poe:L:WROOM:row-61"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-61",
+          "evidence:olimex-L1-wroom:row-60"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:103d6923e37648dd",
+        "name": "ESDS314DBVR(SOT-23-5)",
+        "package": "SOT-23-5",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:103d6923e37648dd",
+          "component:olimex-L1-wroom:68d3e166e3fc4782"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-44",
+          "bom:esp32-poe:L:WROOM:row-45"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-45",
+          "evidence:olimex-L1-wroom:row-44"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:3c11ac7780b0504e",
+        "name": "ESP32-WROOM-32E",
+        "package": "ESP32-WROVER (WROOM)- UNIVERSAL_ MODULE",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:3c11ac7780b0504e",
+          "component:olimex-L1-wroom:1a1da3b2219f6a56"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-53",
+          "bom:esp32-poe:L:WROOM:row-54"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-54",
+          "evidence:olimex-L1-wroom:row-53"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:2aae2265b7aae746",
+        "name": "FB0805/600R/2A",
+        "package": "L0805",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:2aae2265b7aae746",
+          "component:olimex-L1-wroom:e9623b6b430eefcf"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-24",
+          "bom:esp32-poe:L:WROOM:row-25"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-25",
+          "evidence:olimex-L1-wroom:row-24"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:257f4e3ccf5057b0",
+        "name": "IT1185AU2",
+        "package": "IT1185AU2",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:257f4e3ccf5057b0",
+          "component:olimex-L1-wroom:2ae370de38585896"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-59",
+          "bom:esp32-poe:L:WROOM:row-60"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-60",
+          "evidence:olimex-L1-wroom:row-59"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+        "name": "LAN8710A-EZC(QFN32)",
+        "package": "QFN32",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:32d420c6c802a2c2",
+          "component:olimex-L1-wroom:13b3a09341fd15ef"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-54",
+          "bom:esp32-poe:L:WROOM:row-55"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-55",
+          "evidence:olimex-L1-wroom:row-54"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:2c67ac65e591a82a",
+        "name": "LED/GREEN/0603",
+        "package": "LED_0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:2c67ac65e591a82a",
+          "component:olimex-L1-wroom:f1b4d7938850ddc9"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-46",
+          "bom:esp32-poe:L:WROOM:row-47"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-47",
+          "evidence:olimex-L1-wroom:row-46"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:6400473eb53dc6b9",
+        "name": "LED/RED/0603",
+        "package": "LED_0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:6400473eb53dc6b9",
+          "component:olimex-L1-wroom:2fa7c2eed24883a9"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-45",
+          "bom:esp32-poe:L:WROOM:row-46"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-46",
+          "evidence:olimex-L1-wroom:row-45"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:4badf8778fca3457",
+        "name": "LED/YELLOW/0603",
+        "package": "LED_0603",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:4badf8778fca3457",
+          "component:olimex-L1-wroom:14ccafb7d517f975"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-47",
+          "bom:esp32-poe:L:WROOM:row-48"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-48",
+          "evidence:olimex-L1-wroom:row-47"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:a9b10290dd82b83f",
+        "name": "LMUN2211LT1G(SOT-23)",
+        "package": "SOT23",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:a9b10290dd82b83f",
+          "component:olimex-L1-wroom:6bf77ac5a1dc1617"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-49",
+          "bom:esp32-poe:L:WROOM:row-50"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-50",
+          "evidence:olimex-L1-wroom:row-49"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:1e30514f2d2d8200",
+        "name": "MISB-SWMM-5B-LF(USB_MICRO)",
+        "package": "MISB-SWMM-5B_LF",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:1e30514f2d2d8200",
+          "component:olimex-L1-wroom:5261abcc753e5c70"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-61",
+          "bom:esp32-poe:L:WROOM:row-62"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-62",
+          "evidence:olimex-L1-wroom:row-61"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:85825cbd428dd5b6",
+        "name": "P-B-V-10-LF",
+        "package": "GBH-254-SMT-10",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:85825cbd428dd5b6",
+          "component:olimex-L1-wroom:1c655e8a294c0f8b"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-64",
+          "bom:esp32-poe:L:WROOM:row-65"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-65",
+          "evidence:olimex-L1-wroom:row-64"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:a0761096f9d69b2b",
+        "name": "Q12MHz/20pF/10ppm/4P/3.2x2.5mm",
+        "package": "TSX-3.2x2.5mm",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:a0761096f9d69b2b",
+          "component:olimex-L1-wroom:551516d52c83adf5"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-58",
+          "bom:esp32-poe:L:WROOM:row-59"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-59",
+          "evidence:olimex-L1-wroom:row-58"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:290c4bac4fbfc968",
+        "name": "RA1206_(4X0603)_4B8_2.2k",
+        "package": "RA1206",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:290c4bac4fbfc968",
+          "component:olimex-L1-wroom:d35f7841f2f5908e"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-10",
+          "bom:esp32-poe:L:WROOM:row-10"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-10",
+          "evidence:olimex-L1-wroom:row-10"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:d9adde23e9a54992",
+        "name": "RJP-003TC1(LPJ4112CNL)",
+        "package": "RJP-003TC1 (LPJ4112CNL)",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:d9adde23e9a54992",
+          "component:olimex-L1-wroom:b9370387e789bf3b"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-62",
+          "bom:esp32-poe:L:WROOM:row-63"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-63",
+          "evidence:olimex-L1-wroom:row-62"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:267a54d3f588f243",
+        "name": "SMAJ58A/SMA",
+        "package": "SMA",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:267a54d3f588f243",
+          "component:olimex-L1-wroom:1d656ef96a569531"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-43",
+          "bom:esp32-poe:L:WROOM:row-44"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-44",
+          "evidence:olimex-L1-wroom:row-43"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:75ddc7fbb11d0b31",
+        "name": "SS510/100V/5A/0.85V/ DO214AB(SMC)",
+        "package": "DO214AB(SMC)",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:75ddc7fbb11d0b31",
+          "component:olimex-L1-wroom:dbf00e04e6f0b33d"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-42",
+          "bom:esp32-poe:L:WROOM:row-43"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-43",
+          "evidence:olimex-L1-wroom:row-42"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:f7cda05f330bc6f3",
+        "name": "SY8089AAAC(SOT23-5)",
+        "package": "SOT-23-5",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:f7cda05f330bc6f3",
+          "component:olimex-L1-wroom:582f5945f1091c68"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-55",
+          "bom:esp32-poe:L:WROOM:row-56"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-56",
+          "evidence:olimex-L1-wroom:row-55"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:cacb66e047733080",
+        "name": "TFC-9P-1.7H(ATFFS150A01BR016)",
+        "package": "uSD(TFC-9P-1.xH)",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:cacb66e047733080",
+          "component:olimex-L1-wroom:3f46569ddb729e30"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-63",
+          "bom:esp32-poe:L:WROOM:row-64"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-64",
+          "evidence:olimex-L1-wroom:row-63"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L1-wroom:35335677b228a6d2",
+        "name": "TPS2375D(SO-8)",
+        "package": "SOIC-8",
+        "catalog_component_ids": [
+          "component:olimex-L1-wroom:35335677b228a6d2"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-56"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L1-wroom:row-56"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:77be1300069a66c9",
+        "name": "TPS2376D(SO-8)",
+        "package": "SOIC-8",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:77be1300069a66c9"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L:WROOM:row-57"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-57"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:cbc20044c54cc1bc",
+        "name": "TX4138(ESOIC-8)",
+        "package": "ESOIC-8",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:cbc20044c54cc1bc",
+          "component:olimex-L1-wroom:499b1115973506d8"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-57",
+          "bom:esp32-poe:L:WROOM:row-58"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-58",
+          "evidence:olimex-L1-wroom:row-57"
+        ]
+      },
+      {
+        "stock_component_id": "component:olimex-L-wroom:0a98284a611832bb",
+        "name": "WPM2015-3/TR",
+        "package": "SOT23",
+        "catalog_component_ids": [
+          "component:olimex-L-wroom:0a98284a611832bb",
+          "component:olimex-L1-wroom:78be1c99fdb9bda5"
+        ],
+        "bom_item_ids": [
+          "bom:esp32-poe:L1:WROOM:row-50",
+          "bom:esp32-poe:L:WROOM:row-51"
+        ],
+        "bom_evidence_ids": [
+          "evidence:olimex-L-wroom:row-51",
+          "evidence:olimex-L1-wroom:row-50"
+        ]
+      }
+    ],
+    "unconfirmed_bom_item_ids": [
+      "bom:esp32-poe:L1:WROOM:row-67",
+      "bom:esp32-poe:L1:WROOM:row-69",
+      "bom:esp32-poe:L1:WROOM:row-70",
+      "bom:esp32-poe:L1:WROOM:row-71",
+      "bom:esp32-poe:L1:WROOM:row-72",
+      "bom:esp32-poe:L1:WROOM:row-73",
+      "bom:esp32-poe:L1:WROOM:row-74",
+      "bom:esp32-poe:L1:WROOM:row-75",
+      "bom:esp32-poe:L1:WROOM:row-76",
+      "bom:esp32-poe:L1:WROOM:row-77",
+      "bom:esp32-poe:L1:WROOM:row-78",
+      "bom:esp32-poe:L1:WROOM:row-81",
+      "bom:esp32-poe:L:WROOM:row-68",
+      "bom:esp32-poe:L:WROOM:row-71",
+      "bom:esp32-poe:L:WROOM:row-72",
+      "bom:esp32-poe:L:WROOM:row-73",
+      "bom:esp32-poe:L:WROOM:row-74",
+      "bom:esp32-poe:L:WROOM:row-75",
+      "bom:esp32-poe:L:WROOM:row-76",
+      "bom:esp32-poe:L:WROOM:row-77",
+      "bom:esp32-poe:L:WROOM:row-78",
+      "bom:esp32-poe:L:WROOM:row-79",
+      "bom:esp32-poe:L:WROOM:row-82"
+    ]
+  }
+}

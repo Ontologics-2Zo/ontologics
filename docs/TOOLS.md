@@ -15,7 +15,7 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 | 신원·사람 승인 | IdentityProvider → CommonHost → 요청 사용자/초안 작성자. 다른 사람의 정확 초안 버전 승인 → 호스트 반영. 의존 변경 묶음·자기 승인 금지·멱등 유지 | Agent가 actor/reviewer/권한을 지정하거나 승인·확정 DB 쓰기를 실행하지 않음 |
 | 시간·실행 한도·격리 | S1 A 시점/B 장착 구간 겹침 `[start,end)`는 `temporal.py`. 같은 요청의 하위 역할·재시도·임베딩도 공통 budget/deadline/cost 사용. 접수 원본은 기존 Sandbox | 역할별 시간 판정·별도 예산 생성·파서 우회 금지. 강제 종료 복구·실제 인증·운영 격리 완료와 구별 |
 
-기존 코드의 상속은 재사용 수단이며 운영 권한을 상속하는 허가가 아니다. A `PlanningHost`와 B Host/Service 어댑터도 공통 신원·승인·저장 경계를 유지한다. 신규 typed 역할의 최소 실행은 [README](../README.md#동료의-확장-agent-연결)의 두 기존 예제를 사용한다. A의 현행 `run_agent`, B typed task/확정 그래프 읽기, C schema-only의 차이는 [실행 지침](AGENT_RUNTIME.md#abc-업무-패키지와-공통-실행-경계)에 명시한다.
+기존 코드의 상속은 재사용 수단이며 운영 권한을 상속하는 허가가 아니다. A `MaterialsHost`와 B Host/Service 어댑터도 공통 신원·승인·저장 경계를 유지한다. 신규 typed 역할의 최소 실행은 [README](../README.md#동료의-확장-agent-연결)의 두 기존 예제를 사용한다. A의 현행 `run_agent`, B typed task/확정 그래프 읽기, C schema-only의 차이는 [실행 지침](AGENT_RUNTIME.md#abc-업무-패키지와-공통-실행-경계)에 명시한다.
 
 **아직 공동 결정이 필요한 연결:** B·C I02의 생산 작업 식별과 I04의 보드별 재고·출하 소속/목록 완전성/유효 시점은 미합의다. 현행 C는 `production_work_id`를 `PRODUCTION_WORK_UNSUPPORTED`로 거부한다. `ClaimIntake.delivery_reference`는 외부 문서 문자열이며 내부 Shipment/DeliveryRound ID로 해석하지 않는다. FinishedGoodsStock·Shipment에 임의로 `unit_ids`를 추가하거나 부분 목록으로 전체 수량을 계산하지 않는다. [C 정책](claim_response/DATA_POLICY.md)과 [B·C 협의 원문](order_fulfillment/B_C_INTEGRATION_TEAM_HANDOFF.md)을 함께 본다. 원문의 작성 당시 상태와 현재 graph-0.4 공통 저장 지원은 구분하며, #7의 시험·재생산 3종은 아래 공통 그래프 계약을 따르며 실제 중단 실행은 포함하지 않는다.
 
@@ -115,20 +115,20 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 
 ### 공유 T-box 생성 계약
 
-`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.production_planning.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 현재 공통 정의를 사용하는 호환 출력이다. 역할별 provenance를 합치는 공유 파일은 공식 생성기로 작성한다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
+`python -m ontologics.tbox`가 공식 생성 명령이며 `--check`는 쓰기 없이 일치를 검사한다. A의 기존 `python -m ontologics.materials.export_tbox`도 같은 결과를 만든다. B `schema_export.tbox_turtle()`는 현재 공통 정의를 사용하는 호환 출력이다. 역할별 provenance를 합치는 공유 파일은 공식 생성기로 작성한다. `demo --export-graph` 역시 공식 생성기를 사용하고 기존 인계 JSON-LD context를 보존한다. 동일 키의 context가 다르면 파일 작성 전에 거부한다.
 
 `model.SCHEMA`가 공통 기준이다. A/B 메타데이터는 중립 `domain_schema.py`에서 한 번 정의하며 역할별 schema의 선언을 대조한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 생성기 호출 자체로 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
 
 공통 실행 버전은 `graph-0.4`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
 
-검사: `python -m unittest tests.test_tbox tests.production_planning.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
+검사: `python -m unittest tests.test_tbox tests.materials.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
 
 ### A/B 신규 업무 타입의 공통 저장·조회
 
 `Contract`, `ContractItem`, `DeliveryRound`, `ComponentStockSnapshot`, `FulfillmentSnapshot`, `FinishedGoodsStock`, `ProductionWork`, `ProductionObservation`, `Allocation`, `Shipment`, `DeliveryCondition`은 기존 `prepare_draft → validate_draft → 사람 review → 호스트 apply_approved` 경로로 저장한다. 신규 타입도 synthetic·원본 hash·Evidence·참조·업무 규칙 검증을 거친다. 업무 역할 A/B와 S1 시간 조건 A/B는 다른 구분이다.
 
 - 공통 스키마와 함께 사용하는 A `schema.validate_node_rules`의 재고 규칙, B `schema_validation`·`fulfillment_validation`·`production_validation`·`delivery_validation`의 사실 검증은 공개 도메인 계약이다. 이 규칙의 의미 변경은 역할 내부 지침 수정과 달리 공통 검토·회귀가 필요하다.
-- A `PlanningService/PlanningHost`는 공통 저장·승인을 상속한다. A/B 전체 그래프 검증과 JSON-LD는 공통 정의를 사용한다. B 7개 업무 조회는 `_read_nodes`를 사용하여 선택 backend와 승인 버전을 유지한다. B 계산 규칙 자체는 기존 역할 코드에 남긴다.
+- A `MaterialsService/MaterialsHost`는 공통 저장·승인을 상속한다. A/B 전체 그래프 검증과 JSON-LD는 공통 정의를 사용한다. B 7개 업무 조회는 `_read_nodes`를 사용하여 선택 backend와 승인 버전을 유지한다. B 계산 규칙 자체는 기존 역할 코드에 남긴다.
 - `Allocation.stock_id/production_work_id`는 키 생략 가능한 선택 관계이며 정확히 하나가 필요하다. 명시적 null은 오류다. `FulfillmentSnapshot.round_ids`는 순서를 보존하는 참조 목록, `confirmations`는 JSON 객체다. A 재고 unknown/null과 0을 구분한다.
 - S1 JSON 접수는 기존 보드·로트·장착·이력 범위·입출고 5종만 허용한다. 신규 업무 타입은 이력 접수로 우회하지 않는다. A의 별도 수요 확인/창고/일정 테이블·산출 문서는 자동으로 승인된 공통 사실이 되지 않는다.
 - `ProductionObservation`의 good/defective 수량은 가상 입력의 누계 기록이다. 저장 승인은 실제 검사·불량 원인·안전 판정이나 생산/출하 실행 승인이 아니다. Shipment만으로 Installation을 생성하지 않는다.
@@ -410,7 +410,7 @@ with host.request(DevelopmentContext('dev-alice')) as request:
 | `POST /api/quality` | `{queries:{A,B},version,question,before_version?}`. 조회 조건·버전 필수. 비교 때 before_version과 version을 각각 이전/이후 데이터 버전으로 사용. 실제 Quality 도구 실행·동일 조건 직접 결과를 대조해 `data.consistency=matched`인 설명만 성공 반환 |
 | `GET /api/workspace` | read 권한. 최신 버전의 초안 최대 100건을 `data.drafts`로 반환(draft_id/version/status/author/reviewer/base_version/applied_data_version). 영속 DB의 업무 재개 목록이며 조사 대화 기록 목록은 아님 |
 | `GET /api/dashboard` | read 권한·서버 신원으로 공통 실행 감사와 한도를 적용. 단일 현재 승인 버전의 `graph_counts`와 `groups.planning/fulfillment/claims`(kinds/total/limit/truncated/records)를 반환. 각 그룹은 종류·ID순 최대 20개 원본 노드로 근거·origin을 보존. `draft_counts/draft_total`은 초안별 최신 버전 전체 집계, `drafts`는 최근 최대 `draft_limit=100`개. 등록 레코드 수이며 생산량·납품 완료량·불량률이 아니다. 선택된 RDF/Neo4j 조회 실패·미공개 버전이면 전체 응답을 실패시키며 다른 backend/버전으로 대체하지 않음. 기존 workspace·Agent 도구 계약·승인 원장은 변경하지 않음 |
-| `POST /api/planning/{action}` | 기존 A 계약 업무 9개 액션. `search/get/planning/materials`는 read, `register/interpret`는 draft, `review/connect/materials-calculate`는 review. 서버 신원·공통 한도·동일 DB를 사용. 원문 대조와 계산 저장은 그래프 승인이 아님. 액션별 정확한 필드는 [A adapter](../ontologics/production_planning/workspace.py)의 `FIELDS` |
+| `POST /api/planning/{action}` | 기존 A 계약 업무 9개 액션. `search/get/planning/materials`는 read, `register/interpret`는 draft, `review/connect/materials-calculate`는 review. 서버 신원·공통 한도·동일 DB를 사용. 원문 대조와 계산 저장은 그래프 승인이 아님. 액션별 정확한 필드는 [A adapter](../ontologics/materials/workspace.py)의 `FIELDS` |
 | `POST /api/fulfillment/query` | `{action,arguments}`. read 권한. 기존 B `delivery_round/fulfillment_status/delivery_forecast/response_plan/production_completion` 조회. 모든 조회에 정확한 version, 시간 조회에 offset 있는 as_of를 전달. 선택 graph backend와 공통 실행 기록·한도 유지 |
 | `POST /api/business/draft` | `{domain,action,payload,base_version,source_text,authored_at,notice,synthetic_confirmed,request_key,draft_id?,expected_version?}`. draft 권한. domain=`fulfillment/claims`와 서버가 정한 역할 builder만 사용. 제출 원문·필드를 해시로 보존하고 공통 초안만 생성. 응답 data의 draft_id/draft_version/validation/registration(record_ids/source/evidence_id)을 기존 `/api/review`로 인계 |
 | `POST /api/sources/intake` | `{filename,content_base64}`. draft 권한. 실제 바이트 해시를 manifest의 L/L1 WROOM ODS와 대조하고 제출 바이트를 파싱. `data.receipt_id/source/revision/configuration_id/rows/unknown_count/operations_count/base_version/verification` 반환. 미승인 후보 |
@@ -427,9 +427,9 @@ C 조회 `POST /api/claims/query`는 `{action,arguments}`에서 명시적인 `ve
 
 C 파일 기반 `intake_file/trace_case/containment/test_request/test_results/reproduction`도 같은 `/api/business/draft`를 사용한다. 서버 내부 `BusinessProposal`만 원본 바이트·SourceDocument/Evidence·레코드별 근거를 전달하며 HTTP 입력으로 이 객체나 source 경로를 받지 않는다. 공통 계층은 `data/receipts/business-file-<sha>.<ext>`에 무변경 보존하고 기존 근거와 함께 정확한 초안 버전으로 저장한다. 기존 list 반환 builder와 API 입력은 호환된다. 구성별 재생산은 기존 C 스키마 계산 기준을 재사용하며 미정 구성·대체 후보 모순은 확인 요청으로 차단한다. `reproduction_document.documents/requirements`는 여러 구성의 승인 결과를 모두 포함한다. 로컬 시연 자동승인은 기본 OFF이며 실제 인증·두 사람 검토로 간주하지 않는다.
 
-역할별 계산·입력 검증은 [A workspace](../ontologics/production_planning/workspace.py), [B workspace](../ontologics/order_fulfillment/workspace.py), [C workspace](../ontologics/claim_response/workspace.py)에 둔다. [business_drafts.py](../ontologics/business_drafts.py)는 B/C의 제출 원문·필드와 가상 자료 구분을 보존한 뒤 기존 `_save_draft`를 호출한다. 공개 Agent 도구 허용 목록에 승인이나 이 화면 전용 등록 API를 추가하지 않는다. 화면/HTTP가 주입하는 신원과 정확한 데이터 버전은 그대로 공통 호스트의 책임이다.
+역할별 계산·입력 검증은 [A workspace](../ontologics/materials/workspace.py), [B workspace](../ontologics/order_fulfillment/workspace.py), [C workspace](../ontologics/claim_response/workspace.py)에 둔다. [business_drafts.py](../ontologics/business_drafts.py)는 B/C의 제출 원문·필드와 가상 자료 구분을 보존한 뒤 기존 `_save_draft`를 호출한다. 공개 Agent 도구 허용 목록에 승인이나 이 화면 전용 등록 API를 추가하지 않는다. 화면/HTTP가 주입하는 신원과 정확한 데이터 버전은 그대로 공통 호스트의 책임이다.
 
-- **A:** `search → get → interpret → review → planning → connect → materials → materials-calculate`. 새로운 계약은 `register`로 먼저 접수한다. 기존 `ContractLibrary/LibraryReview/LibraryPlanning/LibraryMaterials`를 재사용하며 계산식이나 예약 차감을 다시 구현하지 않는다. 공통 웹과 같은 DB/schema에 저장된 `pp_*` 원본·재고만 읽는다. A 저장소와 공통 그래프 계약 노드는 자동 변환하지 않으며 다른 schema의 자료를 복사하지 않는다. 원문 대조는 A 준비기록이고 그래프 승인·생산 실행이 아니다.
+- **A:** `search → get → interpret → review → planning → connect → materials → materials-calculate`. 새로운 계약은 `register`로 먼저 접수한다. 기존 `ContractLibrary/LibraryReview/LibraryProductReview/LibraryMaterials`를 재사용하며 계산식이나 예약 차감을 다시 구현하지 않는다. 공통 웹과 같은 DB/schema에 저장된 `pp_*` 원본·재고만 읽는다. A 저장소와 공통 그래프 계약 노드는 자동 변환하지 않으며 다른 schema의 자료를 복사하지 않는다. 원문 대조는 A 준비기록이고 그래프 승인·생산 실행이 아니다.
 - **B:** `production_progress`는 진행 중인 작업의 생산/정상/불량 **누계**를 새 `ProductionObservation` ID로 제안하고 해당 작업의 정상 완료 누계를 함께 보완한다. 기존 기준 시각 이후 기록은 `snapshot_as_of`와 9개 `confirmations`의 명시적 참/거짓을 함께 제출한다. 임의 완전성 확인이나 정상 완료→재고 생성은 하지 않는다. `split_allocation`은 출하가 연결되지 않은 기존 재고 배정만 분할하며 첫 배정 ID·전체 합계를 보존한다. `split_shipments`는 선택한 재고와 납품 회차에 새 배정·출하 ID들을 제안한다. 재고/회차 초과, 중복, 구성·시간·근거 검증은 기존 전체 그래프 검증과 승인에서 수행한다. 실제 출하 실행·이미 출하한 배정 재분할·부분 인수는 지원하지 않는다.
 - **C:** `intake`는 가상 고객 신고를 `needs_review` 접수 초안으로 저장한다. 별도 승인 뒤 `confirm_case`로 신고 일련번호와 사람이 대조한 보드를 선택하면 접수 상태 변경과 사건을 묶은 새 초안이 된다. 다시 별도 사람 승인 후 반영한다. 신고→사건 연결을 고장·원인 확정이나 시험·생산 중단으로 해석하지 않는다. 이 기본 수동 흐름과 함께 위 파일 기반 단계도 지원한다. C의 보드별 생산 작업/재고 소속 미합의 경계는 그대로 유지한다.
 
@@ -452,7 +452,7 @@ POST /api/business/draft
 
 A 응답의 `data.result.components`는 `q/D/A/S`(대당 소요/필요/가용/부족)를 제공하고 미확인은 null로 남긴다. B 응답은 선택한 승인 버전의 현황·근거·미확인과 조건부 예상을 구분한다. C 응답은 초안 ID·정확 버전·검증 결과이며 승인 완료가 아니다. B 변경안도 같은 공통 초안 입력 바깥 구조를 쓰며 액션별 `payload`는 B adapter와 화면 입력을 따른다.
 
-공통 AI 패널은 기존 네 역할을 유지한다. A의 명시적 원문 해석 외에 B/C의 새로운 폼을 Supervisor가 자동 수행하는 것으로 연결하지 않았다. 승인된 업무 노드 설명은 기존 Knowledge 조회를 재사용한다. 대표 실모델 연결 확인은 범용 품질·검색 정확도·자동 업무 인계 완료를 뜻하지 않는다. 테스트 접점은 `tests.production_planning.test_workspace`, `tests.order_fulfillment.test_workspace`, `tests.claim_response.test_workspace`, `tests.test_business_web`이며 최종 수행 상태는 PROJECT_STATUS를 따른다.
+공통 AI 패널은 기존 네 역할을 유지한다. A의 명시적 원문 해석 외에 B/C의 새로운 폼을 Supervisor가 자동 수행하는 것으로 연결하지 않았다. 승인된 업무 노드 설명은 기존 Knowledge 조회를 재사용한다. 대표 실모델 연결 확인은 범용 품질·검색 정확도·자동 업무 인계 완료를 뜻하지 않는다. 테스트 접점은 `tests.materials.test_workspace`, `tests.order_fulfillment.test_workspace`, `tests.claim_response.test_workspace`, `tests.test_business_web`이며 최종 수행 상태는 PROJECT_STATUS를 따른다.
 
 
 AI 초안 경로는 `get_source_receipt → prepare_source_draft → validate_draft`의 정확한 인자·순서를 강제한다. 직접 source_draft와 같은 요청 키를 사용한다. 성공은 `action=draft_prepared`와 draft/draft_record를 반환하며 승인 상태와 구별한다. 저장 후 모델·검증 기록 실패는 HTTP 오류와 `draft_saved_model_failed`에 저장된 ID/버전을 함께 반환한다. 같은 요청을 재시도해도 중복 초안을 만들지 않는다.

@@ -20,6 +20,7 @@ from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider,
 from ontologics.openai_provider import (
     ENDPOINT, INPUT_TOKEN_RESERVATION_FLOOR, MODEL, OpenAISettings)
 from ontologics.order_fulfillment.openai_provider import OpenAIProvider
+from ontologics.order_fulfillment.schema import SCHEMA as B_SCHEMA
 from ontologics.paid_budget import CostLedger, CostPolicy
 from ontologics.runtime import ModelConfig
 from ontologics.service import DomainError
@@ -31,10 +32,10 @@ ROLE_LIMITS = BudgetLimits(max_model_calls=24, max_tool_calls=6,
 SUBJECT = 'b-input-reader'
 
 
-def _comparison_text_format(task, messages):
-    """Offer CQ06 only pinned catalog evidence already observed in this run.
+def _catalog_text_format(task, messages, *, name):
+    """Offer only pinned catalog evidence already observed in this run.
 
-    B input provenance remains in input_sources_by_side, outside the common
+    B input provenance remains in the host-bound input sources, outside the common
     confirmed citation list. The common host still validates the raw response.
     """
     reads = [dict(name='lookup', result=json.loads(message['content']))
@@ -43,24 +44,49 @@ def _comparison_text_format(task, messages):
     ids = catalog_evidence(task.data()['catalog_nodes'], task.context.data_version, reads)
     if not ids:
         return None
-    return dict(type='json_schema', name='b_comparison', strict=True, schema=dict(
+    properties = dict(data_version=dict(type='integer'), answer_ko=dict(type='string'),
+        evidence_ids=dict(type='array', items=dict(type='string', enum=ids)))
+    if name == 'b_intake_candidate':
+        # Describe candidate fields, never supply the expected extracted values.
+        # Candidate evidence remains bound by B, separately from common citations.
+        candidates = []
+        for kind in ('Contract', 'ContractItem', 'DeliveryRound'):
+            fields = dict(id=dict(type='string'), type=dict(type='string', enum=[kind]),
+                          origin=dict(type='string', enum=['synthetic']))
+            fields.update({field: dict(type='integer' if field == 'quantity' else 'string')
+                           for field in B_SCHEMA[kind][0]})
+            candidates.append(dict(type='object', additionalProperties=False,
+                                   required=list(fields), properties=fields))
+        issue_fields = {field: dict(type='string')
+                        for field in ('field', 'code', 'message', 'locator')}
+        properties.update(
+            extraction=dict(type='object', additionalProperties=False,
+                required=['status', 'nodes', 'issues'], properties=dict(
+                    status=dict(type='string', enum=['ready', 'needs_confirmation', 'invalid']),
+                    nodes=dict(type='array', items=dict(anyOf=candidates)),
+                    issues=dict(type='array', items=dict(anyOf=[dict(type='string'),
+                        dict(type='object', additionalProperties=False,
+                             required=list(issue_fields), properties=issue_fields)])))),
+            input_state=dict(type='string', enum=['unregistered']),
+            synthetic=dict(type='boolean', enum=[True]),
+            needs_human_review=dict(type='boolean', enum=[True]))
+    return dict(type='json_schema', name=name, strict=True, schema=dict(
         type='object', additionalProperties=False,
-        required=['data_version', 'answer_ko', 'evidence_ids'], properties=dict(
-            data_version=dict(type='integer'), answer_ko=dict(type='string'),
-            evidence_ids=dict(type='array', items=dict(type='string', enum=ids)))))
+        required=list(properties), properties=properties))
 
 
-class _ComparisonProvider(OpenAIProvider):
-    def __init__(self, settings, tools, *, task, opener=None):
+class _CatalogEvidenceProvider(OpenAIProvider):
+    def __init__(self, settings, tools, *, task, name, opener=None):
         super().__init__(settings, tools, opener=opener, require_initial_lookup=True)
         self.task = task
+        self.name = name
         self._final_format = None
 
     def public_config(self):
         return dict(super().public_config(), final_evidence_policy='observed-catalog-v1')
 
     def __call__(self, *, model, messages):
-        self._final_format = _comparison_text_format(self.task, messages)
+        self._final_format = _catalog_text_format(self.task, messages, name=self.name)
         return super().__call__(model=model, messages=messages)
 
     def _text_format(self):
@@ -152,11 +178,8 @@ def execute_case(host, case, task, role, *, settings, budget, opener=None):
     if not isinstance(budget, ExecutionBudget):
         raise ValueError('Pass the shared host-owned ExecutionBudget')
     module, agent, _ = role
-    if module.SPEC.name == 'b_comparison':
-        provider = _ComparisonProvider(settings, module.SPEC.requested_tools, task=task, opener=opener)
-    else:
-        provider = OpenAIProvider(settings, module.SPEC.requested_tools, opener=opener,
-                                  require_initial_lookup=True)
+    provider = _CatalogEvidenceProvider(settings, module.SPEC.requested_tools,
+        task=task, name=module.SPEC.name, opener=opener)
     def observed_provider(*, model, messages):
         value = provider(model=model, messages=messages)
         # Preserve normalized output before common context/result validation,

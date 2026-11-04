@@ -73,7 +73,7 @@ def main():
         print('Task10 fresh sandbox; log: '+str(out),flush=True)
         if args.serve:
             # A child isolates process environment; its finally closes all three schemas.
-            command=[sys.executable,'-c','from examples.production_planning_ui import serve; serve('+str(args.port)+')']
+            command=[sys.executable,'-c','from examples.materials_ui import serve; serve('+str(args.port)+')']
             child=subprocess.Popen(command,cwd=REPO,env=env,start_new_session=True)
             try:code=child.wait()
             except KeyboardInterrupt:

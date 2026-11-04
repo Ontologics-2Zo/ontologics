@@ -1,0 +1,20 @@
+[
+  {
+    "id": "purchasing-main",
+    "name": "김서윤 과장 · 구매팀 견적 접수",
+    "email": "seoyun.kim@ontologics.test",
+    "origin": "synthetic"
+  },
+  {
+    "id": "purchasing-parts",
+    "name": "박준호 대리 · 전자부품 구매",
+    "email": "junho.park@ontologics.test",
+    "origin": "synthetic"
+  },
+  {
+    "id": "purchasing-process",
+    "name": "이수진 대리 · 공정자재 구매",
+    "email": "sujin.lee@ontologics.test",
+    "origin": "synthetic"
+  }
+]

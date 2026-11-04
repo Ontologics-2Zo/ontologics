@@ -1,0 +1,49 @@
+{
+  "scope": "Two reviewed synthetic mail examples only; expected baseline and anchors are never model input.",
+  "cases": [
+    {
+      "mail_path": "data/order_fulfillment/examples/demo_normal_800_mail.md",
+      "mail_sha256": "276450e29cfb01b33d98f14769dccf47bc4a5f794c54d774a31bb8c6c2b1fc6d",
+      "baseline_path": "data/order_fulfillment/examples/demo_normal_800.md",
+      "baseline_sha256": "c4a6cddc67133a7e3270c967994b0f31aed3ed1c9f100da26f940124fb84ea2f",
+      "anchors": {
+        "contract_number": "B-DEMO-NORMAL-800",
+        "company": "공급사는 DEMO-B이며",
+        "customer_name": "가상고객사 B 구매 담당입니다",
+        "product_name": "최종 제품은 OLIMEX ESP32-POE",
+        "revision": "설계 개정 L,",
+        "variant": "WROOM 구성으로 확정",
+        "line_number": "계약 항목 번호는 1번",
+        "quantity": "최종 계약 수량은 완성 보드 800개",
+        "unit": "수량 단위는 개(piece)",
+        "round_number": "계약상 납품 약속은 1회차",
+        "round_quantity": "회차 약속 수량은 계약 전량인 800개",
+        "due_at": "2026년 10월 30일 오후 4시 정각, 한국 시간(KST, UTC+09:00)",
+        "due_basis": "고객 창고 도착 기준",
+        "destination": "수령 장소는 가상고객사 B 제2수령창고입니다"
+      }
+    },
+    {
+      "mail_path": "data/order_fulfillment/examples/demo_risk_800_mail.md",
+      "mail_sha256": "4652bf1c2a3bb8f93dd907e14aa996aecb45cab6798380da00f0946b77a9c5fd",
+      "baseline_path": "data/order_fulfillment/examples/demo_risk_800.md",
+      "baseline_sha256": "b8c281a37444b57ca1dc467e310d3bfcaf31dad6f7efcd3d4d8f8d15e38b200a",
+      "anchors": {
+        "contract_number": "B-DEMO-RISK-800",
+        "company": "공급사는 DEMO-B이며",
+        "customer_name": "가상고객사 B 구매 담당입니다",
+        "product_name": "최종 제품은 OLIMEX ESP32-POE",
+        "revision": "설계 개정 L,",
+        "variant": "WROOM 구성으로 확정",
+        "line_number": "계약 항목 번호는 1번",
+        "quantity": "최종 계약 수량은 완성 보드 800개",
+        "unit": "수량 단위는 개(piece)",
+        "round_number": "계약상 납품 약속은 1회차",
+        "round_quantity": "회차 약속 수량은 계약 전량인 800개",
+        "due_at": "2026년 10월 30일 오후 3시 정각, 한국 시간(KST, UTC+09:00)",
+        "due_basis": "고객 창고 도착 기준",
+        "destination": "수령 장소는 가상고객사 B 제2수령창고입니다"
+      }
+    }
+  ]
+}

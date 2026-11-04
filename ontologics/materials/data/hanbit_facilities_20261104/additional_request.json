@@ -1,0 +1,18 @@
+{
+  "request_id": "MREQ-HFM-20261104-001",
+  "revision": 1,
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "baseline_evidence_id": "evidence:materials:plan:HFM-20261104-01",
+  "contract_item_id": "contract-item:HFM-2026-1104-01-01",
+  "quantity": 60,
+  "unit": "piece",
+  "need_date": "2026-11-27",
+  "need_basis": "production_complete",
+  "requester": "한빛시설관리 주식회사 시설운영팀 김도현",
+  "requested_at": "2026-11-04T10:30:00+09:00",
+  "reason": "통합운영센터의 추가 설치 구역 3개소에 구역별 20대씩 배치하기 위한 정상 완제품 60대(3 × 20)입니다. 기존 계약 HFM-2026-1104-01의 12개소 × 15대 = 180대와 구분되는 신규 구역이며, 기존 180대 및 다른 유효 추가 요청에 포함되지 않은 수요입니다. 기존 180대를 60대로 수정하거나 기존 사용 계획을 다시 합산하는 요청이 아닙니다.",
+  "conditions_state": "unchanged",
+  "conditions_note": "ESP32-POE Rev L WROOM 및 기존 계약의 BOM 지정 부품 기준을 유지합니다. 구매자 사전 서면 승인 없는 부품 대체는 적용하지 않습니다. 필요일 2026-11-27은 추가 60대의 생산 완료 요청일이며 출고일 또는 고객 도착일이 아닙니다. 추가 물량의 금액·출고·도착 일정은 별도 발주서 또는 변경계약서로 확정하며 기존 180대의 계약 조건은 그대로 유지합니다.",
+  "relation": "additional",
+  "origin": "synthetic"
+}

@@ -18,6 +18,8 @@ QUERY_ARGUMENTS = {
     'delivery_forecast': {'delivery_round_id', 'as_of', 'version'},
     'response_plan': {'delivery_round_id', 'as_of', 'version'},
     'production_completion': {'production_work_id', 'delivery_round_id', 'as_of', 'version'},
+    'compare_response_plan': {'delivery_round_id', 'before_as_of', 'after_as_of',
+                              'before_version', 'after_version'},
 }
 TIMES = {'planned_departure_at', 'departed_at', 'expected_arrival_at', 'arrived_at'}
 

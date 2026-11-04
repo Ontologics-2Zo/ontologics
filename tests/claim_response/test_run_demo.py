@@ -175,9 +175,12 @@ class ScenarioAppTests(unittest.TestCase):
         case.confirm_claim()
         if case.state == 'containment_ready':
             case.approve_containment()
+            case.make_test_request()
             case.send_test_request()
             for name in results:
                 case.upload_results(name, (INPUTS / name).read_bytes())
+                if case.state == 'results_ready':
+                    case.compute_reproduction()
             if case.state == 'reproduction_ready':
                 case.approve_reproduction()
         return case, {e['title']: dict(e['rows']) for e in case.events}

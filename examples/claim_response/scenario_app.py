@@ -54,10 +54,15 @@ NEXT = {
     'claim_converted': ('approve_claim', '변환 내용 확인 후 등록', '원본과 변환 결과가 같은지 보고 등록합니다. (검토자로서 승인)'),
     'claim_registered': ('confirm_claim', '고객 클레임으로 확인', '조사 대상 클레임으로 확인합니다. 확인 후 보드·라인 추적이 시작됩니다.'),
     'containment_ready': ('approve_containment', '중단 요청서 검토 승인', '두 요청서를 읽고 승인합니다. 송부는 승인과 별개로 사람이 직접 합니다.'),
+    'test_request_pending': ('make_test_request', '테스트 의뢰서 만들기',
+                             '승인된 조사 범위의 보드를 시험 대상으로 의뢰서를 만듭니다. 시험 방법과 판정은 테스트팀이 정합니다.'),
     'test_request_ready': ('send_test_request', '테스트팀에 송부했음으로 기록', '의뢰서를 테스트팀에 직접 보낸 뒤 누르세요. 시스템은 보내지 않습니다.'),
     'awaiting_results': ('upload_results', '테스트팀 결과 파일 올리기', '테스트팀이 돌려준 결과 CSV(보드, 시험 결과, 조치 판정, 관측 시각, 비고)를 올리세요.'),
     'results_blocked': ('upload_results', '고친 결과 파일 다시 올리기', '표시된 행을 테스트팀과 확인해 고친 파일을 올리세요. 아무것도 저장되지 않았습니다.'),
-    'reproduction_ready': ('approve_reproduction', 'A 요청서 검토 승인', '재생산 수량과 근거를 확인하고 승인합니다. 송부는 사람이 직접 합니다.'),
+    'results_ready': ('compute_reproduction', '재생산 수량 계산',
+                      '테스트팀 판정을 세어 재생산 필요 수량을 계산하고 A 요청서를 만듭니다. 판정은 바꾸지 않습니다.'),
+    'reproduction_ready': ('approve_reproduction', '재생산 요건 검토·그래프 반영',
+                           '수량과 근거를 확인하고 승인합니다. 승인하면 재생산 요건이 공통 그래프에 올라가고 A가 조회해 가져갑니다.'),
 }
 
 
@@ -73,6 +78,7 @@ class ClaimCase:
         # The time a person presses the button (KST). Tests may pass a fixed clock.
         self.clock = clock or (lambda: datetime.now(KST).isoformat(timespec='seconds'))
         self.live = live  # live_agent_settings() result for the real model, None for the scripted stand-in
+        self.scenario = None  # set when the claim comes from the waiting list, so its results can be offered
         self.state, self.events, self.s, self.svc = 'start', [], {}, None
 
     # ------------------------------------------------------------------ helpers
@@ -292,6 +298,11 @@ class ClaimCase:
         self._event('중단 요청서 승인', [('그래프 버전', applied['data_version']),
                                     ('문서 검토 상태', f"{REVIEW_LABELS['applied']} ({count}개 문서 갱신)"),
                                     ('송부 상태', '미송부 (사람이 직접 송부)')])
+        self.state = 'test_request_pending'
+
+    def make_test_request(self):
+        self._require('test_request_pending')
+        s = self.s
         s['t_test'] = self.clock()
         test = prepare_test_request(s['case'], s['line'], s['hold'], prepared_at=s['t_test'],
                                     external_claim_id=s['intake']['external_claim_id'], configuration_id=s['configuration'],
@@ -351,8 +362,14 @@ class ClaimCase:
         counts = results['counts']
         rows = [('파일', Path(filename).name), ('시험 / 미검사', f"{counts['tested']}대 / {counts['untested']}대"),
                 ('조치 판정 (테스트팀)', ' · '.join(f"{DISPOSITIONS[k]} {counts[k]}" for k in DISPOSITIONS if k in counts) or '없음')]
-        self._event('테스트팀 결과 받음', rows, note='판정은 파일에 적힌 그대로 옮겼습니다.')
+        self._event('테스트팀 결과 받음', rows, note='판정은 파일에 적힌 그대로 옮겼습니다. 수량 계산은 다음 단계입니다.')
         s['results'] = results
+        self.state = 'results_ready'
+
+    def compute_reproduction(self):
+        self._require('results_ready')
+        s = self.s
+        results = s['results']
         replacement = c_operations_replacement(load_operations())
         reproduction = reproduction_requirement(s['case'], s['test']['node'], results['nodes'],
                                                 replacement, configuration_id=s['configuration'])
@@ -378,7 +395,8 @@ class ClaimCase:
             self._event('재생산 수량', rows, tone='warn', note='미결 보드의 판정이 나오면 새 결과로 다시 계산합니다.')
         else:
             request = self._reproduction_request(reproduction, review_status=status)
-            rows.append(('A 요청서', REVIEW_LABELS.get(status, status) + ' · 미송부'))
+            rows.append(('A 전달 방법', '공통 그래프의 ReproductionRequirement를 A가 조회 (승인하면 반영)'))
+            rows.append(('요청서 사본', REVIEW_LABELS.get(status, status) + ' · 사람이 읽는 사본, 송부용 아님'))
             self._event('재생산 수량·A 요청서', rows, tone='ok' if r['state'] == 'confirmed' else 'warn',
                         documents=request['documents'])
         self.s['reproduction'] = reproduction
@@ -396,11 +414,36 @@ class ClaimCase:
         if required is not None:
             refreshed = self._reproduction_request(s['reproduction'], review_status='applied')
             self._refresh(refreshed['documents'])
-        self._event('검토 완료', [('그래프 버전', applied['data_version']),
-                                  ('문서 검토 상태', REVIEW_LABELS['applied'] if required is not None else '해당 문서 없음'),
-                                  ('최종 답', '재생산 미정 · A 요청서 없음' if required is None else f'재생산 {required}대 · A 요청서 송부 대기 (사람)')])
+        node = (s['reproduction'].get('node') or {}) if required is not None else {}
+        self._event('그래프 반영 완료', [
+            ('그래프 버전', applied['data_version']),
+            ('A가 가져갈 기록', '만들지 않음 (미정은 0으로 저장하지 않음)' if required is None
+             else f"ReproductionRequirement · {node.get('id', '')}"),
+            ('A 조회 방법', '해당 없음' if required is None
+             else f"lookup(kind='ReproductionRequirement', version={applied['data_version']})"),
+            ('요청서 사본', '해당 문서 없음' if required is None else REVIEW_LABELS['applied'] + ' · 사람이 읽는 사본'),
+            ('최종 답', '재생산 미정 · 그래프에 요건 없음 (확정 전)' if required is None
+             else f'재생산 {required}대 · 그래프 반영 완료 · A 조회 가능')])
         self.state = 'done'
         self.close()
+
+    # ---- Intake from the waiting list. The claim files are already on the server, so one click
+    # runs conversion, registration and confirmation. Those three need no human judgement: the
+    # trace only follows recorded links. Every later step stays a separate human decision.
+    def intake_claim(self, filename):
+        path = claim_path(filename)
+        self.scenario = path.name.split('_', 1)[0]
+        self.upload_claim(path.name, path.read_bytes())
+        for step in ('approve_claim', 'confirm_claim'):
+            try:
+                getattr(self, step)()
+            except ActionError:
+                return  # stopped on purpose (blocked conversion, trace needs a person)
+
+    def apply_results(self, filename):
+        """Take one of the test team's result files that is already on the server."""
+        path = result_path(self.scenario, filename)
+        self.upload_results(path.name, path.read_bytes())
 
     def view(self):
         action = NEXT.get(self.state)
@@ -411,11 +454,78 @@ class ClaimCase:
 
 # ---------------------------------------------------------------------- local web server
 CURRENT = {'case': ClaimCase(), 'live': None}
-ACTIONS = {'approve_claim', 'confirm_claim', 'approve_containment', 'send_test_request', 'approve_reproduction'}
+ACTIONS = {'approve_claim', 'confirm_claim', 'approve_containment', 'make_test_request', 'send_test_request',
+           'compute_reproduction', 'approve_reproduction'}
 
 
 def input_files():
     return sorted(p.name for p in INPUTS.iterdir() if p.suffix.lower() in ('.eml', '.xlsx', '.csv')) if INPUTS.is_dir() else []
+
+
+# The claim files waiting on the server. Shown as a list so a person picks a claim instead of
+# browsing for a file; the preview below is the real conversion result, not a hand-written label.
+WAITING = {}
+
+
+def claim_files():
+    if not INPUTS.is_dir():
+        return []
+    return sorted(p for p in INPUTS.iterdir()
+                  if p.suffix.lower() in ('.eml', '.xlsx', '.csv') and '테스트팀_결과' not in p.name)
+
+
+def claim_path(filename):
+    for path in claim_files():
+        if path.name == filename:
+            return path
+    raise ActionError('목록에 없는 클레임 파일입니다.')
+
+
+def result_files(scenario):
+    """The test team's result files for one scenario; a corrected file comes after the first one."""
+    if not scenario or not INPUTS.is_dir():
+        return []
+    return sorted((p for p in INPUTS.iterdir() if p.name.startswith(scenario + '_') and '테스트팀_결과' in p.name),
+                  key=lambda p: ('수정본' in p.name, p.name))
+
+
+def result_path(scenario, filename):
+    for path in result_files(scenario):
+        if path.name == filename:
+            return path
+    raise ActionError('이 클레임의 결과 파일 목록에 없습니다.')
+
+
+def arrived_results(case):
+    """Result files shown at the results step, with their text so a person can read before taking them."""
+    rows = []
+    for path in result_files(getattr(case, 'scenario', None)):
+        text = path.read_text(encoding='utf-8')
+        rows.append({'file': path.name, 'lines': max(0, len(text.splitlines()) - 1), 'text': text})
+    return rows
+
+
+def waiting_claims():
+    """One row per waiting claim, converted once and cached by file name and modification time."""
+    rows = []
+    for path in claim_files():
+        key = (path.name, path.stat().st_mtime_ns)
+        if key not in WAITING:
+            try:
+                report = convert_claim(path, collected_at=datetime.now(KST).isoformat(timespec='seconds'))['report']
+                claim = report['claim']
+                WAITING[key] = {
+                    'file': path.name, 'format': report['format'],
+                    'external_claim_id': claim.get('external_claim_id'), 'customer_name': claim.get('customer_name'),
+                    'reported_at': claim.get('reported_at'), 'reported_symptom': claim.get('reported_symptom'),
+                    'requested_due_date': claim.get('requested_due_date'),
+                    'quantity': report['claimed_quantity'],
+                    'serials': [u['serial'] for u in report['unit_candidates']],
+                    'problem': '; '.join(i['code'] for i in report['issues']) or None}
+            except ValueError as exc:
+                WAITING[key] = {'file': path.name, 'format': path.suffix.lstrip('.'), 'problem': str(exc)}
+        rows.append(WAITING[key])
+    return rows
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -438,7 +548,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/':
             return self._send(200, PAGE, 'text/html; charset=utf-8')
         if self.path == '/api/case':
-            return self._send(200, dict(CURRENT['case'].view(), inputs=input_files()))
+            return self._send(200, dict(CURRENT['case'].view(), inputs=input_files(), claims=waiting_claims(), results=arrived_results(CURRENT['case'])))
         match = re.fullmatch(r'/docs/([0-9A-Za-z._-]+\.md)', self.path)
         if match and (DOCS / match.group(1)).is_file():
             return self._send(200, (DOCS / match.group(1)).read_bytes(), 'text/markdown; charset=utf-8',
@@ -459,6 +569,10 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/api/new':
                 case.close()
                 CURRENT['case'] = ClaimCase(live=CURRENT['live'])
+            elif self.path == '/api/intake_claim':
+                case.intake_claim(str(body.get('file') or ''))
+            elif self.path == '/api/apply_results':
+                case.apply_results(str(body.get('file') or ''))
             elif self.path in ('/api/upload_claim', '/api/upload_results'):
                 content = base64.b64decode(body.get('content') or '', validate=True)
                 getattr(case, self.path.rsplit('/', 1)[1])(body.get('filename'), content)
@@ -467,10 +581,12 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 return self._send(404, {'error': 'NOT_FOUND'})
         except ActionError as exc:
-            return self._send(409, dict(CURRENT['case'].view(), error=str(exc), inputs=input_files()))
+            return self._send(409, dict(CURRENT['case'].view(), error=str(exc), inputs=input_files(),
+                                        claims=waiting_claims(), results=arrived_results(CURRENT['case'])))
         except Exception as exc:  # show it on the page instead of a blank screen
-            return self._send(500, dict(CURRENT['case'].view(), error=f'{type(exc).__name__}: {exc}', inputs=input_files()))
-        return self._send(200, dict(CURRENT['case'].view(), inputs=input_files()))
+            return self._send(500, dict(CURRENT['case'].view(), error=f'{type(exc).__name__}: {exc}',
+                                        inputs=input_files(), claims=waiting_claims(), results=arrived_results(CURRENT['case'])))
+        return self._send(200, dict(CURRENT['case'].view(), inputs=input_files(), claims=waiting_claims(), results=arrived_results(CURRENT['case'])))
 
 
 PAGE = r'''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -490,6 +606,14 @@ button{font:inherit;cursor:pointer}.newbtn{width:100%;border:1px solid var(--lin
 main{padding:22px 26px 80px;max-width:960px}
 .action{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:18px}
 .action h2{margin:0 0 4px;font-size:17px}.action p{margin:0 0 12px;color:var(--mute)}
+ul.inbox{list-style:none;margin:0 0 12px;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+ul.inbox li{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:11px 13px;border-top:1px solid var(--line);background:var(--bg)}
+ul.inbox li:first-child{border-top:0}ul.inbox b{font-weight:600}
+ul.inbox .sym{margin-top:2px}ul.inbox .meta{color:var(--mute);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.fmt{display:inline-block;border:1px solid var(--line);border-radius:5px;padding:0 5px;font-size:11px;color:var(--mute);margin-left:4px}
+ul.inbox .primary{padding:7px 14px;flex:0 0 auto}
+ul.inbox li.file{display:block}ul.inbox li.file .head{display:flex;gap:12px;align-items:center;justify-content:space-between}
+ul.inbox details{margin-top:8px}
 .primary{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 18px;font-weight:600}
 .primary:disabled{opacity:.5;cursor:default}.drop{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .err{background:var(--badbg);color:var(--bad);border-radius:8px;padding:8px 12px;margin-bottom:12px}
@@ -503,17 +627,20 @@ pre{margin:0;padding:10px;white-space:pre-wrap;font:12px/1.5 ui-monospace,Consol
 .end{border-radius:10px;padding:14px;font-weight:600;margin-bottom:18px}.end.ok{background:var(--okbg);color:var(--ok)}.end.bad{background:var(--badbg);color:var(--bad)}
 @media (max-width:760px){.wrap{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}main{padding:16px}dl{grid-template-columns:1fr}}
 </style></head><body><div class="wrap"><aside><h1>C 클레임 대응</h1>
-<p>사용자처럼 파일을 올리고 검토·확인 버튼을 누르며 진행합니다. 가상 데이터이며 아무것도 송부하지 않습니다. 클레임 추적은 실제 모델이 한 번 더 수행하고 함수 계산과 대조합니다.</p>
+<p>들어온 클레임을 골라 접수하고, 검토·확인 버튼을 누르며 진행합니다. 가상 데이터이며 아무것도 송부하지 않습니다. 클레임 추적은 실제 모델이 한 번 더 수행하고 함수 계산과 대조합니다.</p>
 <ol class="track" id="track"></ol><button class="newbtn" onclick="act('new')">새 클레임 시작</button>
 <div class="files" id="files"></div></aside><main id="main"></main></div>
 <script>
-const STEPS=[['upload_claim','클레임 접수'],['approve_claim','변환 확인·등록'],['confirm_claim','클레임 확인·추적'],['approve_containment','중단 요청서 검토'],
-['send_test_request','테스트 의뢰 송부'],['upload_results','테스트팀 결과'],['approve_reproduction','재생산·A 요청서 검토']];
+const STEPS=[['upload_claim','클레임 접수'],['approve_claim','변환 확인·등록'],['confirm_claim','클레임 확인·추적'],
+['approve_containment','중단 요청서 검토'],['make_test_request','테스트 의뢰서 작성'],['send_test_request','테스트 의뢰 송부'],
+['upload_results','테스트팀 결과'],['compute_reproduction','재생산 수량 계산'],['approve_reproduction','재생산 요건 반영']];
 let view=null,busy=false;const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function load(){view=await (await fetch('/api/case')).json();render();}
 async function act(name,payload){if(busy)return;busy=true;render();
  const r=await fetch('/api/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})});
  view=await r.json();busy=false;render();window.scrollTo({top:0,behavior:'smooth'});}
+function intake(i){const c=(view.claims||[])[i];if(c)act('intake_claim',{file:c.file});}
+function takeResults(i){const r=(view.results||[])[i];if(r)act('apply_results',{file:r.file});}
 function upload(name){const f=document.getElementById('file').files[0];if(!f)return;const rd=new FileReader();
  rd.onload=()=>act(name,{filename:f.name,content:rd.result.split(',')[1]});rd.readAsDataURL(f);}
 function render(){if(!view)return;const cur=view.next?view.next.action:null,idx=STEPS.findIndex(s=>s[0]===cur);
@@ -521,11 +648,29 @@ function render(){if(!view)return;const cur=view.next?view.next.action:null,idx=
  document.getElementById('track').innerHTML=STEPS.map((s,i)=>{let c='';if(view.state==='done'||(idx>i&&idx>=0))c='done';
   if(i===idx)c='now';if(stopped&&i===2)c='stop';if(stopped&&i<2)c='done';return `<li class="${c}">${i+1}. ${s[1]}</li>`;}).join('');
  document.getElementById('files').innerHTML='<p>시나리오 입력 파일<br>examples/claim_response/scenario_inputs/</p>'+(view.inputs||[]).map(f=>`<code>${esc(f)}</code>`).join('');
- let action='';if(view.error)action+=`<div class="err">${esc(view.error)}</div>`;
- if(view.next){const n=view.next,isUp=n.action.startsWith('upload');
-  action+=`<div class="action"><h2>${esc(n.label)}</h2><p>${esc(n.help)}</p>${isUp?`<div class="drop"><input type="file" id="file" accept="${n.action==='upload_claim'?'.eml,.xlsx,.csv':'.csv'}">
-  <button class="primary" ${busy?'disabled':''} onclick="upload('${n.action}')">${busy?'처리 중…':'올리기'}</button></div>`:
-  `<button class="primary" ${busy?'disabled':''} onclick="act('${n.action}')">${busy?'처리 중…':esc(n.label)}</button>`}</div>`;}
+ let action='';
+ if(view.error)action+=`<div class="err">${esc(view.error)}</div>`;
+ if(view.next){const n=view.next,isUp=n.action.startsWith('upload'),inbox=n.action==='upload_claim';
+  const picker=`<div class="drop"><input type="file" id="file" accept="${inbox?'.eml,.xlsx,.csv':'.csv'}">
+   <button class="primary" ${busy?'disabled':''} onclick="upload('${n.action}')">${busy?'처리 중…':'올리기'}</button></div>`;
+  const arrived=n.action==='upload_results'?(view.results||[]):[];
+  let body;
+  if(arrived.length){const list=arrived.map((r,i)=>`<li class="file"><div class="head"><div><b>${esc(r.file)}</b>
+    <div class="meta">보드 ${esc(r.lines)}행 · 테스트팀이 돌려준 파일</div></div>
+    <button class="primary" ${busy?'disabled':''} onclick="takeResults(${i})">${busy?'처리 중…':'올리기'}</button></div>
+    <details><summary>보기</summary><pre>${esc(r.text)}</pre></details></li>`).join('');
+   body=`<ul class="inbox">${list}</ul><details><summary>파일로 직접 올리기</summary><div style="padding:10px 12px">${picker}</div></details>`;}
+  else if(inbox){const list=(view.claims||[]).map((c,i)=>`<li><div><b>${esc(c.external_claim_id||c.file)}</b> · ${esc(c.customer_name||'')}${c.quantity?' · '+esc(c.quantity)+'대':''} <span class="fmt">${esc(c.format)}</span>
+    <div class="sym">${esc(c.reported_symptom||c.problem||'')}</div>
+    <div class="meta">신고 ${esc(c.reported_at||'')}${c.requested_due_date?' · 희망 기한 '+esc(c.requested_due_date):''} · ${esc(c.file)}</div></div>
+    <button class="primary" ${busy?'disabled':''} onclick="intake(${i})">${busy?'처리 중…':'접수'}</button></li>`).join('');
+   body=(list?`<ul class="inbox">${list}</ul>`:'<p>대기 중인 클레임 파일이 없습니다.</p>')
+    +`<details><summary>파일로 직접 올리기</summary><div style="padding:10px 12px">${picker}</div></details>`;}
+  else body=isUp?picker:`<button class="primary" ${busy?'disabled':''} onclick="act('${n.action}')">${busy?'처리 중…':esc(n.label)}</button>`;
+  const title=inbox?'들어온 클레임':(arrived.length?'테스트팀 결과 도착':esc(n.label));
+  const help=inbox?'접수할 클레임을 고르세요. 변환·등록·확인과 보드·생산라인 추적까지 이어서 진행합니다.'
+   :(arrived.length?'테스트팀이 돌려준 결과입니다. 내용을 보고 올리면 판정을 그대로 읽어 재생산 수량을 계산합니다.':esc(n.help));
+  action+=`<div class="action"><h2>${title}</h2><p>${help}</p>${body}</div>`;}
  if(view.state==='done'){const last=view.events[view.events.length-1];const fin=(last.rows.find(r=>r[0]==='최종 답')||[])[1];action+=`<div class="end ok">완료 · ${esc(fin)}</div>`;}
  if(stopped)action+=`<div class="end bad">사람 확인이 필요해 여기서 멈췄습니다. "새 클레임 시작"으로 고친 클레임을 올리세요.</div>`;
  const evs=view.events.map((e,i)=>`<div class="ev ${e.tone}"><h3><span class="no">#${i+1}</span>${esc(e.title)}</h3>

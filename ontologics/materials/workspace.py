@@ -14,9 +14,20 @@ from .contract_library import ContractLibrary
 from .library_review import LibraryReview, REGISTRATION
 from .library_product_review import LibraryProductReview
 from .library_materials import LibraryMaterials
+from .library_process_materials import LibraryProcessMaterials
+from .library_process_rfq import LibraryProcessRFQ
+from .request_workflow import RequestWorkflow
+from .workspace_review import WorkspaceReview
 
 
 FIELDS = {
+    'product-inventory': ('quantity',),
+    'process-requirement-preview': ('configuration_id', 'quantity', 'allowance_percent'),
+    'combined-review': ('configuration_id', 'quantity', 'allowance_percent', 'request_key'),
+    'contract-combined-review': ('contract_id', 'item_index', 'link_id', 'quantity', 'reason', 'allowance_percent', 'request_key'),
+    'request-inbox': (),
+    'request-seen': ('evidence_id',),
+    'request-review': ('evidence_id', 'data_version', 'allowance_percent', 'request_key'),
     'search': ('query', 'offset'),
     'get': ('contract_id',),
     'register': ('title', 'counterparty', 'filename', 'content_base64', 'request_key'),
@@ -48,13 +59,19 @@ def _text_original(filename, encoded):
 
 
 class MaterialsWorkspace:
-    def __init__(self, host, setup_context, *, provider_factory=None, model=None):
+    def __init__(self, host, setup_context, *, provider_factory=None, model=None, request_host=None):
         self.host = host
         self.library = ContractLibrary(host, setup_context)
         factory = None if provider_factory is None else lambda: provider_factory(REGISTRATION.allowed_tools)
         self.review = LibraryReview(self.library, setup_context, factory, model)
         self.planning = LibraryProductReview(self.review, setup_context)
         self.materials = LibraryMaterials(self.planning, setup_context)
+        self.process_materials = LibraryProcessMaterials(host, setup_context)
+        self.process_rfq = LibraryProcessRFQ(self.process_materials, setup_context)
+        from .workspace_source import configured_request_host
+        request_host = request_host or configured_request_host(host)
+        self.requests = RequestWorkflow(self.materials, self.process_rfq, setup_context, request_host)
+        self.combined = WorkspaceReview(self.materials, self.process_rfq, setup_context)
 
     def dispatch(self, context, action, body):
         if action not in FIELDS:
@@ -64,7 +81,21 @@ class MaterialsWorkspace:
         # budget. A database query is not a new independently funded request.
         with self.host.request(context) as session:
             session._budget.consume('tool')
-            if action == 'search':
+            if action == 'product-inventory':
+                result = self.materials.inventory(context, **body)
+            elif action == 'process-requirement-preview':
+                result = self.process_rfq.preview(context, **body)
+            elif action == 'combined-review':
+                result = self.combined.review(context, **body)
+            elif action == 'contract-combined-review':
+                result = self.combined.contract_review(context, **body)
+            elif action == 'request-inbox':
+                result = self.requests.inbox(context)
+            elif action == 'request-seen':
+                result = self.requests.seen(context, **body)
+            elif action == 'request-review':
+                result = self.requests.review(context, **body)
+            elif action == 'search':
                 result = self.library.search(context, **body)
             elif action == 'get':
                 result = self.library.get(context, **body)
@@ -92,7 +123,7 @@ class MaterialsWorkspace:
             elif action == 'connect':
                 result = self.planning.connect(context, **body)
             elif action == 'materials':
-                result = self.materials.get(context, **body)
+                result = self.combined.contract_state(context, **body)
             else:
                 result = self.materials.calculate(context, **body)
             session._budget.check()

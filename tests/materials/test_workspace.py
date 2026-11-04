@@ -129,6 +129,98 @@ class MaterialsWorkspaceTests(unittest.TestCase):
         denied = self.app.dispatch(self.alice, 'search', {'query':'', 'offset':0})
         self.assertEqual('FORBIDDEN', denied['errors'][0]['code'])
 
+    def seed_material_stock(self, cid='config:esp32-poe:L:WROOM'):
+        from ontologics.materials.library_stock import company_stock_scenario
+        with self.host.request(self.alice) as session:
+            detail = session.call('configuration', {'configuration_id': cid})['data']
+            stock = company_stock_scenario(detail, session._service.now())
+        self.assertTrue(self.app.materials.stock.store(self.alice, cid, stock, 'stock')['ok'])
+        self.assertTrue(self.app.process_materials.seed_scenario(self.alice, 'process')['ok'])
+
+    def test_product_combined_review_uses_one_quantity_and_preserves_unknowns_and_graph(self):
+        before = self.fact_hash()
+        args = dict(configuration_id='config:esp32-poe:L:WROOM', quantity=200,
+                    allowance_percent='10', request_key='combined')
+        self.assertIn('combined-review', __import__('ontologics.materials.workspace', fromlist=['FIELDS']).FIELDS)
+        no_stock = self.dispatch('combined-review', args)
+        self.assertTrue(all(r['A'] is None and r['S'] is None for r in no_stock['payload']['bom']['components']))
+        self.assertEqual([], no_stock['payload']['rfq']['lines'])
+        self.assertTrue(no_stock['payload']['rfq']['excluded'])
+        self.seed_material_stock()
+        saved = self.dispatch('combined-review', dict(args, request_key='stocked'))
+        p = saved['payload']
+        self.assertEqual(200, p['quantity'])
+        self.assertEqual(200, p['bom']['planned_input_quantity'])
+        self.assertEqual(200, p['process_basis']['quantity'])
+        self.assertTrue(p['rfq']['lines'])
+        self.assertTrue(any(r['kind']=='process' for r in p['rfq']['lines']))
+        self.assertTrue(any(r['kind']=='bom' for r in p['rfq']['lines']))
+        self.assertTrue(all(r['shortage'] is not None for r in p['rfq']['lines']))
+        self.assertFalse(p['rfq']['sent'])
+        self.assertFalse(p['rfq']['stock_reserved'])
+        self.assertEqual(saved, self.dispatch('combined-review', dict(args, request_key='stocked')))
+        self.assertEqual(before, self.fact_hash())
+        denied = self.app.dispatch(self.reader, 'combined-review', dict(args, request_key='reader'))
+        self.assertEqual('FORBIDDEN', denied['errors'][0]['code'])
+        for quantity in [True, -1, 1.5, 10000001]:
+            with self.assertRaises(DomainError):
+                self.app.dispatch(self.alice, 'combined-review', dict(args, quantity=quantity, request_key='invalid'))
+        inventory = self.dispatch('product-inventory', {'quantity': 30})
+        self.assertEqual(30, inventory['quantity'])
+        self.assertTrue(inventory['products'])
+        preview = self.dispatch('process-requirement-preview', {k:v for k,v in args.items() if k!='request_key'})
+        self.assertEqual(p['process'], preview['lines'])
+        self.assertEqual([], self.dispatch('request-inbox', {})['requests'])
+
+    def test_contract_combined_review_binds_saved_link_and_rejects_old_link(self):
+        self.assertIn('contract-combined-review', __import__('ontologics.materials.workspace', fromlist=['FIELDS']).FIELDS)
+        cid = self.reviewed_contract()
+        plan = self.dispatch('planning', {'contract_id': cid})
+        candidate = next(r for r in plan['items'][0]['candidates'] if r['exact'])
+        self.dispatch('connect', dict(contract_id=cid, interpretation_id=plan['interpretation_id'],
+            review_id=plan['review_id'], data_version=plan['data_version'], item_index=0,
+            configuration_id=candidate['configuration_id'], request_key='connect'))
+        material = self.dispatch('materials', {'contract_id':cid,'item_index':0})
+        self.seed_material_stock(candidate['configuration_id'])
+        args = dict(contract_id=cid,item_index=0,link_id=material['link']['id'],quantity=7,
+                    reason='계약 7대 검토',allowance_percent='10',request_key='contract-combined')
+        before = self.fact_hash()
+        p = self.dispatch('contract-combined-review', args)['payload']
+        self.assertEqual(cid, p['contract_id'])
+        self.assertEqual(args['link_id'], p['link_id'])
+        self.assertEqual(7, p['bom']['planned_input_quantity'])
+        self.assertEqual(7, p['process_basis']['quantity'])
+        self.assertIn(cid, p['rfq']['text'])
+        reopened = self.dispatch('materials', {'contract_id':cid, 'item_index':0})
+        self.assertIn('combined_saved', reopened)
+        self.assertEqual(p, reopened['combined_saved']['payload'])
+        self.assertTrue(reopened['combined_current'])
+        self.assertFalse(reopened['combined_stock_changed'])
+        self.assertEqual(before, self.fact_hash())
+        # A fixture reservation for this same contract remains available to its
+        # own plan review, but is deducted from an independent product review.
+        from ontologics.model import canonical
+        component = next(r for r in p['bom']['components'] if r['A'] is not None and r['A'] >= 3)
+        reservation = {'lines': [{'component_id': component['component_id'], 'reserve': 3}]}
+        with self.host.request(self.alice) as session:
+            session._service.db.execute('''INSERT INTO pp_material_reservations
+                VALUES(%s,%s,0,%s,%s,'active',%s,%s,NULL,NULL)''',
+                ('fixture-own-reservation', cid, canonical(reservation), digest(reservation),
+                 session.context['actor'], session._service.now()))
+        own = self.dispatch('contract-combined-review', dict(args, request_key='own-reserved'))['payload']
+        other = self.dispatch('combined-review', dict(configuration_id=candidate['configuration_id'],
+            quantity=7, allowance_percent='10', request_key='independent'))['payload']
+        find = lambda payload: next(r for r in payload['bom']['components'] if r['component_id']==component['component_id'])['A']
+        self.assertEqual(component['A'], find(own))
+        self.assertEqual(component['A'] - 3, find(other))
+        with self.host.request(self.alice) as session:
+            self.assertEqual(1, session._service.db.execute('SELECT count(*) AS n FROM pp_material_reservations').fetchone()['n'])
+        with self.assertRaises(DomainError) as error:
+            self.app.dispatch(self.alice, 'contract-combined-review', dict(args, link_id='old', request_key='stale'))
+        self.assertEqual('STALE_REVISION', error.exception.code)
+        denied = self.app.dispatch(self.reader, 'contract-combined-review', dict(args, request_key='reader'))
+        self.assertEqual('FORBIDDEN', denied['errors'][0]['code'])
+
 
 if __name__ == '__main__':
     unittest.main()

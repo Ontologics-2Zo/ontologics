@@ -18,7 +18,7 @@ from .library_rfq import LibraryRFQ
 STATIC=Path(__file__).with_name('library_static')
 
 class LibraryApplication(WebApplication):
-    def __init__(self,host,context,provider_factory=None,model=None):
+    def __init__(self,host,context,provider_factory=None,model=None,request_host=None):
         super().__init__(host,context)
         self.library=ContractLibrary(host,context)
         self.review=LibraryReview(self.library,context,provider_factory,model)
@@ -38,7 +38,19 @@ class LibraryApplication(WebApplication):
         self.process_materials=LibraryProcessMaterials(host,context)
         from .library_process_rfq import LibraryProcessRFQ
         self.process_rfq=LibraryProcessRFQ(self.process_materials,context)
+        from .request_workflow import RequestWorkflow
+        self.requests=RequestWorkflow(self.materials,self.process_rfq,context,request_host)
     def dispatch(self,path,body=None):
+        if path=='/api/tools/contracts/request-inbox':
+            exact_keys(body,())
+            return self.requests.inbox(self.context)
+        if path=='/api/tools/contracts/request-seen':
+            exact_keys(body,('evidence_id',))
+            return self.requests.seen(self.context,**body)
+        if path=='/api/tools/contracts/request-review':
+            exact_keys(body,('evidence_id','data_version','allowance_percent','request_key'))
+            return self.requests.review(self.context,**body)
+
         if path=='/api/tools/contracts/process-requirement-preview':
             exact_keys(body,('configuration_id','quantity','allowance_percent'))
             return self.process_rfq.preview(self.context,**body)
@@ -219,7 +231,7 @@ class LibraryApplication(WebApplication):
 class LibraryHandler(Handler):
     def handle_method(self,method):
         path=urlsplit(self.path)
-        files={'/':'index.html','/library.js':'app.js','/library.css':'style.css','/process-rfq.js':'process_rfq.js'}
+        files={'/':'index.html','/library.js':'app.js','/library.css':'style.css','/process-rfq.js':'process_rfq.js','/request-inbox.js':'request_inbox.js'}
         if method=='GET' and path.path in files and not path.query:
             from ..service import DomainError
             try:
@@ -245,6 +257,10 @@ def main():
     parser.add_argument('--schema',default='a_contract_library')
     parser.add_argument('--seed-process-stock',action='store_true',help='사용자 승인 가상 공정 재고를 최초 한 번 등록하고 기존 기록은 보존')
     parser.add_argument('--seed-stock-links',action='store_true',help='L/L1의 동일 표기·패키지를 회사 테스트 재고 품목으로 명시적으로 연결')
+    parser.add_argument('--request-schema',help='공유 요청 그래프의 PostgreSQL schema; 생략하면 현재 저장소')
+    parser.add_argument('--request-database-env')
+    parser.add_argument('--request-graph-env')
+    parser.add_argument('--request-graph-namespace')
     args=parser.parse_args()
     from ..database import environment_values
     from ..graph_views import GraphSettings
@@ -257,7 +273,19 @@ def main():
     settings=DatabaseSettings.from_environment(schema=args.schema)
     host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),settings,agent_registrations=(REGISTRATION,),cost_policy=policy,
                     graph_settings=GraphSettings.from_environment(environ=values))
-    app=LibraryApplication(host,DevelopmentContext('dev-alice'),lambda:OpenAIProvider(provider_settings,REGISTRATION.allowed_tools),provider_settings.model)
+    request_host=None
+    if args.request_schema:
+        from dataclasses import replace
+        # Explicit source files are isolated from the A workspace's DATABASE_URL.
+        source_db=DatabaseSettings.from_environment(schema=args.request_schema,env_file=args.request_database_env,
+            environ={} if args.request_database_env else None)
+        source_graph=GraphSettings.from_environment(env_file=args.request_graph_env,
+            environ={} if args.request_graph_env else None)
+        if args.request_graph_namespace:source_graph=replace(source_graph,namespace=args.request_graph_namespace)
+        request_host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),source_db,graph_settings=source_graph)
+    elif args.request_database_env or args.request_graph_env or args.request_graph_namespace:
+        parser.error('별도 요청 저장소는 --request-schema를 함께 지정하세요.')
+    app=LibraryApplication(host,DevelopmentContext('dev-alice'),lambda:OpenAIProvider(provider_settings,REGISTRATION.allowed_tools),provider_settings.model,request_host=request_host)
     if args.seed_process_stock:
         result=app.process_materials.seed_scenario(app.context,'process-material-stock-demo-v1')
         if not result['ok']:raise ValueError('공정 자재 가상 재고 초기화에 실패했습니다.')

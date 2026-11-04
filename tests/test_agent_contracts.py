@@ -134,7 +134,7 @@ class AgentContractTests(unittest.TestCase):
             failed=request.run_task(self.spec.name,role,task,provider,config=config)
         run_id=failed['runtime']['run_id']
         original_config=self.audit.db.execute('SELECT config FROM runtime_runs WHERE id=%s',(run_id,)).fetchone()['config']
-        for variant in ('provider','prompt','instructions','schema','tools','validator','graph_schema','missing_graph_schema','checkpoint_schema'):
+        for variant in ('provider','prompt','instructions','schema','tools','validator','graph_schema','graph_schema_03','missing_graph_schema','checkpoint_schema'):
             self.audit.db.execute('UPDATE runtime_runs SET config=%s WHERE id=%s',(original_config,run_id))
             altered=self.spec
             role.prompt='Read the pinned graph.'
@@ -146,11 +146,13 @@ class AgentContractTests(unittest.TestCase):
             if variant=='schema': altered=replace(self.spec,output_schema=PayloadSchema(self.spec.output_schema.fields+(FieldSpec('extra','string',False),)))
             if variant=='tools': altered=replace(self.spec,requested_tools=frozenset({'configuration'}))
             if variant=='validator': role.validate_result=lambda value, task, results: True
-            if variant in ('checkpoint_schema','graph_schema','missing_graph_schema'):
+            if variant in ('checkpoint_schema','graph_schema','graph_schema_03','missing_graph_schema'):
                 row=self.audit.db.execute('SELECT config FROM runtime_runs WHERE id=%s',(run_id,)).fetchone()
                 stored=json.loads(row['config'])
                 if variant=='graph_schema':
                     stored['read_checkpoint']['graph_schema_version']='graph-0.1'
+                elif variant=='graph_schema_03':
+                    stored['read_checkpoint']['graph_schema_version']='graph-0.3'
                 elif variant=='missing_graph_schema':
                     stored['read_checkpoint'].pop('graph_schema_version',None)
                 else:

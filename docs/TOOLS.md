@@ -10,18 +10,18 @@ Python 3.10+ 내부 함수가 기준이다. 모든 경로는 저장소 루트 �
 | --- | --- | --- |
 | 제품·부품·보드·로트 식별 | 제품 정의/개정/구성/실물을 구분. `model.py`·`domain_schema.py`의 공통 ID·참조를 재사용. 원본 범위의 부품 ID, 회사·일련번호의 보드, 회사·공급처·부품·로트 의미 유지 | 새 ID 대응·자동 품목 병합·새 참조 의미는 역할 내부 판단으로 추가하지 않음 |
 | 원본 근거·미확인 | SourceDocument → Evidence → 사실. 원본 path/hash/license/locator와 real/synthetic 유지. 새 근거는 새 ID, 정정은 새 초안 | 모델 설명·검색 유사도·가상 기록을 확인된 실장·불량·안전·실제 운영으로 승격하지 않음 |
-| 버전·저장·조회 | PostgreSQL snapshots가 정본. `graph-0.3`은 29종의 스키마 계약, 데이터 vN은 저장소별 반영 이력. RDF/Neo4j는 동일 승인 버전·내용 검증 후 공개 | 새 타입은 공통 schema·T-box·검증·호환성 검토. 일반 데이터 승인마다 SCHEMA_VERSION을 올리지 않음 |
+| 버전·저장·조회 | PostgreSQL snapshots가 정본. `graph-0.4`은 32종의 스키마 계약, 데이터 vN은 저장소별 반영 이력. RDF/Neo4j는 동일 승인 버전·내용 검증 후 공개 | 새 타입은 공통 schema·T-box·검증·호환성 검토. 일반 데이터 승인마다 SCHEMA_VERSION을 올리지 않음 |
 | Agent 입출력·도구 | `contracts.py`의 AgentSpec/Task/Result·EvidenceRef·AgentError, `RequestSession.run_task()`. 도구의 허용 인자·결과·오류와 역할 payload 구분 | 공개 필드·타입·도구 허용 목록 변경은 공통 검토. 역할 내부 스키마/흐름은 해당 담당자가 수정 |
 | 신원·사람 승인 | IdentityProvider → CommonHost → 요청 사용자/초안 작성자. 다른 사람의 정확 초안 버전 승인 → 호스트 반영. 의존 변경 묶음·자기 승인 금지·멱등 유지 | Agent가 actor/reviewer/권한을 지정하거나 승인·확정 DB 쓰기를 실행하지 않음 |
 | 시간·실행 한도·격리 | S1 A 시점/B 장착 구간 겹침 `[start,end)`는 `temporal.py`. 같은 요청의 하위 역할·재시도·임베딩도 공통 budget/deadline/cost 사용. 접수 원본은 기존 Sandbox | 역할별 시간 판정·별도 예산 생성·파서 우회 금지. 강제 종료 복구·실제 인증·운영 격리 완료와 구별 |
 
 기존 코드의 상속은 재사용 수단이며 운영 권한을 상속하는 허가가 아니다. A `MaterialsHost`와 B Host/Service 어댑터도 공통 신원·승인·저장 경계를 유지한다. 신규 typed 역할의 최소 실행은 [README](../README.md#동료의-확장-agent-연결)의 두 기존 예제를 사용한다. A의 현행 `run_agent`, B typed task/확정 그래프 읽기, C schema-only의 차이는 [실행 지침](AGENT_RUNTIME.md#abc-업무-패키지와-공통-실행-경계)에 명시한다.
 
-**아직 공동 결정이 필요한 연결:** B·C I02의 생산 작업 식별과 I04의 보드별 재고·출하 소속/목록 완전성/유효 시점은 미합의다. 현행 C는 `production_work_id`를 `PRODUCTION_WORK_UNSUPPORTED`로 거부한다. `ClaimIntake.delivery_reference`는 외부 문서 문자열이며 내부 Shipment/DeliveryRound ID로 해석하지 않는다. FinishedGoodsStock·Shipment에 임의로 `unit_ids`를 추가하거나 부분 목록으로 전체 수량을 계산하지 않는다. [C 정책](claim_response/DATA_POLICY.md)과 [B·C 협의 원문](order_fulfillment/B_C_INTEGRATION_TEAM_HANDOFF.md)을 함께 본다. 원문의 작성 당시 상태와 현재 graph-0.3 공통 저장 지원은 구분하며, #7의 시험·재생산 및 실제 중단 실행을 이번 기준에 자동 포함하지 않는다.
+**아직 공동 결정이 필요한 연결:** B·C I02의 생산 작업 식별과 I04의 보드별 재고·출하 소속/목록 완전성/유효 시점은 미합의다. 현행 C는 `production_work_id`를 `PRODUCTION_WORK_UNSUPPORTED`로 거부한다. `ClaimIntake.delivery_reference`는 외부 문서 문자열이며 내부 Shipment/DeliveryRound ID로 해석하지 않는다. FinishedGoodsStock·Shipment에 임의로 `unit_ids`를 추가하거나 부분 목록으로 전체 수량을 계산하지 않는다. [C 정책](claim_response/DATA_POLICY.md)과 [B·C 협의 원문](order_fulfillment/B_C_INTEGRATION_TEAM_HANDOFF.md)을 함께 본다. 원문의 작성 당시 상태와 현재 graph-0.4 공통 저장 지원은 구분하며, #7의 시험·재생산 3종은 아래 공통 그래프 계약을 따르며 실제 중단 실행은 포함하지 않는다.
 
 ## 그래프·저장·시간
 
-[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. 기존 12종과 [domain_schema.py](../ontologics/domain_schema.py)의 A 생산계획/B 계약·납품 신규 11종과 C 클레임 1차 6종(총 29종)을 `graph-0.3`으로 관리한다. 역할 schema 모듈은 같은 정의의 호환 사본을 제공한다. [공유 생성기](../ontologics/tbox.py)가 [T-box](../ontology/tbox.ttl)를 생성하며 [graph_rdf.py](../ontologics/graph_rdf.py)는 같은 메타데이터로 RDF·SHACL·SPARQL을 연결한다. [catalog.json](../data/catalog.json)은 실제 원본 정규화, [initial_graph.jsonld](../data/initial_graph.jsonld)는 기존 S1/S2 인계용 A-box(데모 버전 3)이며 신규 업무 사실을 자동 추가하지 않는다. PostgreSQL `snapshots.nodes` JSONB가 승인 버전의 정본이고 RDF/Neo4j는 그 조회 표현이다.
+[model.py](../ontologics/model.py)의 `SCHEMA`·허용 필드·검증 함수가 실행 계약이다. 기존 12종과 [domain_schema.py](../ontologics/domain_schema.py)의 A 생산계획/B 계약·납품 신규 11종과 C 클레임 1차 6종과 2차 3종(총 32종)을 `graph-0.4`으로 관리한다. 역할 schema 모듈은 같은 정의의 호환 사본을 제공한다. [공유 생성기](../ontologics/tbox.py)가 [T-box](../ontology/tbox.ttl)를 생성하며 [graph_rdf.py](../ontologics/graph_rdf.py)는 같은 메타데이터로 RDF·SHACL·SPARQL을 연결한다. [catalog.json](../data/catalog.json)은 실제 원본 정규화, [initial_graph.jsonld](../data/initial_graph.jsonld)는 기존 S1/S2 인계용 A-box(데모 버전 3)이며 신규 업무 사실을 자동 추가하지 않는다. PostgreSQL `snapshots.nodes` JSONB가 승인 버전의 정본이고 RDF/Neo4j는 그 조회 표현이다.
 
 모든 노드는 `id`, `type`, `origin`, `evidence`를 가진다. `origin`은 `real` 또는 `synthetic`이고 `evidence`는 Evidence ID 목록이다. SourceDocument/Evidence 외의 사실은 근거가 필수다.
 
@@ -54,6 +54,9 @@ C 클레임 대응 Agent가 고객 클레임 → 품질 사건 → 생산라인 
 | QualityCase | intake_id → ClaimIntake(confirmed만), customer_name, reported_at, reported_symptom, unit_ids → ProductUnit 목록 |
 | QualityScope | case_id → QualityCase, production_line_id → ProductionLine, as_of, unit_ids → ProductUnit 목록, scope_state=hold/candidate, 선택 start/end |
 | ContainmentRequest | case_id → QualityCase, scope_id → QualityScope(같은 사건), request_kind=production_stop/shipment_hold, prepared_at, document_ref. production_stop은 production_line_id 필수. production_line_id가 있으면 scope의 생산라인과 같아야 함(`LINE_MISMATCH`, 다른 라인 요청은 자동 허용 안 함). 선택 draft_id/draft_version |
+| TestRequest | case_id → QualityCase, unit_ids → ProductUnit 목록(시험 대상), prepared_at, document_ref. 테스트팀에 보내는 의뢰. 선택 draft_id/draft_version |
+| QualityTestResult | case_id → QualityCase, test_request_id → TestRequest, unit_id → ProductUnit(의뢰한 보드만), outcome=fail/pass/not_reproduced, disposition=customer_replacement/stock_replacement/release/hold/unresolved, observed_at. 테스트팀이 돌려준 보드별 결과와 판정이며 의뢰·보드당 1개. 시험하지 않은 보드는 행이 없다. 선택 note |
+| ReproductionRequirement | case_id → QualityCase, configuration_id → Configuration, 고객 교체·보관 대체·사용할 대체 재고·재생산 필요·미결 수량, unit=piece, assessment_state=confirmed/lower_bound, test_result_ids → QualityTestResult 목록. required_good_quantity = max(0, 고객 교체 + 보관 대체 − 대체 재고). 미정이면 노드를 만들지 않는다. 선택 replacement_unit_ids(ProductUnit ID 문자열 목록), document_ref |
 
 `reported_symptom`은 고객이 신고한 표현일 뿐 확인된 불량이나 원인이 아니다. 목록 참조(`unit_ids`)와 선택 참조는 JSON-LD에서 ID 관계로 직렬화한다. 요청서는 그래프에 문서 참조만 남기며 생성·검토가 송부나 현장 반영을 뜻하지 않는다.
 
@@ -72,9 +75,27 @@ C 관계·숫자·목록 필드의 의미 (RDF·SHACL·Neo4j 매핑 참고):
 
 정상 시험 자료는 `tests/claim_response/test_schema.py`의 `CPhase1ValidationTests.c_nodes`(라인 C-01, 보드 2대, 클레임 1건, 사건·보류 범위·요청서 2건)이다.
 
+C 2차(PR #7) 필드의 의미. 정의는 `domain_schema.C2_SCHEMA`, 규칙은 `claim_response/schema.py`, 시험은 `tests/claim_response/test_schema_phase2.py`:
+
+| 필드 | 타입 | 값 | 의미 | 실패 코드 (시험) |
+| --- | --- | --- | --- | --- |
+| `TestRequest.unit_ids` | 목록 참조 | 비어 있지 않은 고유 `ProductUnit` ID | 테스트팀에 의뢰한 보드 (불량 목록 아님) | `INVALID_REFERENCE` (`test_request_needs_existing_boards_and_a_valid_draft_version`) |
+| `QualityTestResult.test_request_id`, `unit_id` | 참조 | 의뢰에 들어 있는 보드, 같은 사건 | 테스트팀이 결과를 돌려준 보드 | `UNIT_NOT_REQUESTED`, `CASE_MISMATCH`, `DUPLICATE_IDENTITY` (`test_results_only_for_requested_boards_of_the_same_case`, `test_one_result_per_requested_board`) |
+| `QualityTestResult.outcome`, `disposition` | 값 목록 | 위 표의 값 | 테스트팀의 시험 결과와 조치 판정 (C가 정하지 않음) | `INVALID_ENUM`, `DISPOSITION_TARGET_MISMATCH` (`test_value_lists_are_enforced`, `test_customer_and_stock_replacements_target_the_right_boards`) |
+| `ReproductionRequirement`의 수량 5개 | 정수 | 0 이상 (bool 아님) | 고객 교체·보관 대체·사용할 대체 재고·재생산 필요·미결 대수 | `INVALID_QUANTITY`, `QUANTITY_MISMATCH` (`test_quantities_are_nonnegative_integers`, `test_required_good_quantity_follows_the_formula`) |
+| `ReproductionRequirement.test_result_ids` | 목록 참조 | 같은 사건·같은 구성의 `QualityTestResult` | 수량을 센 결과. 고객 교체·보관 대체 수와 판정 수가 같아야 함 | `QUANTITY_MISMATCH`, `CASE_MISMATCH`, `CONFIGURATION_MISMATCH` (`test_replacement_quantities_match_the_listed_results`, `test_results_must_match_the_requirement_configuration`) |
+| `ReproductionRequirement.assessment_state` | 값 목록 | `confirmed`(미결 0) / `lower_bound`(미결 1 이상, 최소 수량) | 수량 확정 여부. 미정은 노드 없음 | `ASSESSMENT_STATE_MISMATCH`, `UNDETERMINED_NOT_STORED` (`test_assessment_state_matches_unresolved_quantity`, `test_unresolved_result_is_never_a_confirmed_zero`) |
+| 계산 기준 (`calculation_basis`) | 그래프 대조 | 대상 = 같은 사건 모든 `TestRequest.unit_ids` 합집합 중 요건과 같은 `ProductUnit.configuration_id`인 보드, 결과 = 그 보드의 같은 사건 결과 | 보드별 1회: 결과 없음·`unresolved`·서로 다른 결과(충돌)는 미결. 충돌 시 결과를 고르지 않음. 한 사건에 L·L1이 섞여도 구성별로 따로 셈 | `UNRESOLVED_MISMATCH`, `QUANTITY_MISMATCH`, `DUPLICATE_BOARD_RESULT`, `RESULT_CONFLICT`, `NO_TEST_REQUEST` (`test_missing_result_for_a_target_board_is_unresolved`, `test_partial_results_need_matching_lower_bound_and_unresolved`, `test_same_board_from_two_requests_is_counted_once`, `test_conflicting_results_stay_open_for_a_person`, `test_requirement_needs_a_test_request_of_its_case`, `test_mixed_configurations_do_not_share_replacement_demand`, `test_mixed_configurations_do_not_share_unresolved_boards`, `test_each_configuration_gets_its_own_requirement`) |
+| `ReproductionRequirement.replacement_unit_ids` | 선택 문자열 목록 | 같은 구성 `ProductUnit` ID, 개수 = 사용할 대체 재고 | 사용할 대체 재고 보드. 공통 목록 참조는 필수 필드라 선택 목록을 표현할 수 없어, 공통에서 선택 목록 참조를 지원하기 전까지 C 규칙이 참조를 검사하는 문자열 목록으로 둠 | `INVALID_REFERENCE`, `CONFIGURATION_MISMATCH`, `QUANTITY_MISMATCH`, `REPLACEMENT_TARGET_CONFLICT`(같은 사건의 시험 대상 또는 다른 사건의 고객 교체·보관 대체 보드) (`test_replacement_boards_are_checked_when_listed`, `test_replacement_target_cannot_offset_itself`, `test_replacement_demand_in_another_case_is_not_available_stock`) |
+| `prepared_at`, `observed_at` | 시각 | UTC offset 필수 | 의뢰서 작성·테스트팀 관측 시각 | `INVALID_TIME` (`test_times_need_offsets`) |
+
+A 요청서의 "이번 재생산 요청량", 고객 희망 기한, 관련 계약은 C → A 한 방향 요청 문서의 내용이며 그래프 필드가 아니다.
+
 C 추적 경로: `ClaimIntake.reported_serials → ProductUnit.serial`(사람 확인 후 `QualityCase.unit_ids`), `UnitProductionRecord.unit_id → ProductUnit`, `UnitProductionRecord.production_line_id → ProductionLine`, `QualityScope.case_id → QualityCase`, `ContainmentRequest.scope_id → QualityScope`.
 
-C 1차 6종은 공통 승인·정확 버전의 RDF/SPARQL/Neo4j 조회를 지원한다. `claimed_quantity`와 선택 `draft_version`은 SHACL에서 1 이상의 정수, `reported_serials`는 비어 있지 않은 문자열의 다중 값으로 검사한다. 목록 순서는 정본 payload로 보존하고 `unit_ids` 관계 목록과 구분한다. 관계·근거·실제/가상 경계와 C 업무 검증을 모두 적용하며 Browser에는 29종 label·이름·색상을 제공한다. 현재 업무 스키마는 `graph-0.3`, Neo4j 저장 형식은 기존 `neo4j-projection-2`다. 구 버전 namespace를 재사용하지 말고 새 namespace에 필요한 승인 버전을 동기화해야 한다. 기존 초안의 operations/hash/승인 기록을 보존하고, 구 스키마 읽기 체크포인트는 재개를 거부한다. 검증은 `tests.test_c_graph_rdf`, `tests.test_c_graph_integration`이며 #7의 시험·재생산 타입은 포함하지 않는다.
+C 2차 경로: `TestRequest.case_id → QualityCase`, `QualityTestResult.test_request_id → TestRequest`, `QualityTestResult.unit_id → ProductUnit`, `ReproductionRequirement.test_result_ids → QualityTestResult`. 시험 방법·판정은 테스트팀이 정하며 C는 결과를 받아 재생산 필요량만 계산한다. 2차 3종도 공통 RDF·SHACL·Neo4j 투영을 사용한다. 수량 5개는 0 이상 정수, TestRequest.draft_version은 1 이상 정수이며 replacement_unit_ids는 선택 다중 문자열이다. 이 목록은 C 검증기가 ProductUnit 참조를 확인하지만 RDF/Neo4j 관계로 승격하지 않으며, test_result_ids는 기존 목록 관계를 사용한다.
+
+C 1·2차 9종은 공통 승인·정확 버전의 RDF/SPARQL/Neo4j 조회 경로를 사용한다. `claimed_quantity`와 선택 `draft_version`은 SHACL에서 1 이상의 정수, `reported_serials`는 비어 있지 않은 문자열의 다중 값으로 검사한다. 목록 순서는 정본 payload로 보존하고 `unit_ids` 관계 목록과 구분한다. 관계·근거·실제/가상 경계와 C 업무 검증을 모두 적용하며 Browser에는 32종 label·이름·색상을 제공한다. 현재 업무 스키마는 `graph-0.4`, Neo4j 저장 형식은 기존 `neo4j-projection-2`다. 구 버전 namespace를 재사용하지 말고 새 namespace에 필요한 승인 버전을 동기화해야 한다. 기존 초안의 operations/hash/승인 기록을 보존하고, 구 스키마 읽기 체크포인트는 재개를 거부한다. 검증은 `tests.test_c_graph_rdf`, `tests.test_c_graph_integration`이며 C1과 C2를 실제 노드로 각각 검사한다. graph-0.2/0.3에서 저장된 기존 승인 초안과 namespace를 보존하고, 새 namespace에서 재투영·정확 반영하는 호환 검사를 포함한다. 구성별 재생산 계산은 C 담당자의 별도 수정·회귀 대상이며 공통 투영 성공을 계산 정확도 검증으로 확대하지 않는다.
 
 시간은 `2026-09-20T10:00:00+09:00`처럼 명시적 시각·UTC offset이 필요하다. 날짜만 있는 원본은 이 필드에 임의로 넣지 않고 보완 대상으로 둔다. 구간은 `[start,end)`다. `confirmed_until`은 그 시각 이전까지 장착을 확인했다는 유한한 근거이며 제거 시각이 아니다. 조회의 이력 완전성은 사건 목록만 있는 상태를 뜻하지 않는다.
 
@@ -98,7 +119,7 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 
 `model.SCHEMA`가 공통 기준이다. A/B 메타데이터는 중립 `domain_schema.py`에서 한 번 정의하며 역할별 schema의 선언을 대조한다. 동일 이름은 필수·선택 필드, 단일·목록·선택 참조가 같을 때만 한 번 선언한다. 이름/관계 대상/range 및 필드 의미 충돌은 생성 전에 거부하며 생성기 호출 자체로 공통 SCHEMA·허용 필드·업무 검증기를 변경하지 않는다. A/B 업무 검증기의 동등성이나 실제 운영 자료 허용까지 검증하는 기능은 아니다.
 
-공통 실행 버전은 `graph-0.3`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
+공통 실행 버전은 `graph-0.4`다. A의 기존 버전 주석과 B `EXTRACTED_GRAPH_VERSION`은 역할별 이력이며 공통 실행 버전과 구분한다. 기존 12종의 정의·저장된 operations/hash·승인·데이터 버전은 유지한다. 이전 읽기 체크포인트는 graph_schema_version이 없거나 다르면 재개를 거부하며 새 요청으로 시작한다. 기존 초안을 자동 수정하거나 다시 승인하지 않는다.
 
 검사: `python -m unittest tests.test_tbox tests.materials.test_export_tbox tests.order_fulfillment.test_schema_export -v`. 공통 합성물 전체 일치와 각 역할 선언 보존을 함께 확인한다.
 
@@ -112,13 +133,13 @@ Git 원본의 커밋, `ProductRevision.revision`의 설계 개정, 공통 응답
 - S1 JSON 접수는 기존 보드·로트·장착·이력 범위·입출고 5종만 허용한다. 신규 업무 타입은 이력 접수로 우회하지 않는다. A의 별도 수요 확인/창고/일정 테이블·산출 문서는 자동으로 승인된 공통 사실이 되지 않는다.
 - `ProductionObservation`의 good/defective 수량은 가상 입력의 누계 기록이다. 저장 승인은 실제 검사·불량 원인·안전 판정이나 생산/출하 실행 승인이 아니다. Shipment만으로 Installation을 생성하지 않는다.
 - Neo4j 매핑은 `neo4j-projection-2`다. 이전 namespace의 투영은 재사용하거나 덮어쓰지 않는다. **새 `ONTOLOGICS_GRAPH_NAMESPACE`**를 정하고 기존 승인 버전을 `graph_projection sync`로 재투영한 뒤 `status`로 확인한다. PostgreSQL 초안·승인 원장은 재작성하지 않는다. 준비 전 조회는 실패하며 과거 버전/다른 backend로 대체하지 않는다.
-- 생성되는 모든 노드에 타입 label·`browser_caption`을 붙인다. Browser에 [neo4j-browser.grass](../ontology/neo4j-browser.grass)를 한 번 적용하면 이후 승인·동기화된 29종도 같은 스타일을 사용한다. Browser 스타일은 DB 권한·데이터 의미를 바꾸지 않는다.
+- 생성되는 모든 노드에 타입 label·`browser_caption`을 붙인다. Browser에 [neo4j-browser.grass](../ontology/neo4j-browser.grass)를 한 번 적용하면 이후 승인·동기화된 32종도 같은 스타일을 사용한다. Browser 스타일은 DB 권한·데이터 의미를 바꾸지 않는다.
 
 실행: `python -m examples.ab_graph_check --schema test_ab_team_001`. 아래 그래프 환경변수와 **비어 있는 시험 schema**를 사용한다. 기존 출처 있는 fixture를 재사용하며 저장·승인·읽기 3 backend와 S1 전후 결과를 검사한다. 실제 사람 인증·실모델 품질 평가가 아니다.
 
 ### PostgreSQL 저장과 pgvector 검색
 
-현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.3`과 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
+현재 서비스의 초안·승인·확정 버전·실행 기록과 pgvector 검색은 PostgreSQL을 사용한다. 선택적 RDF/Neo4j 조회도 같은 정본·공통 도구 계약을 사용하며 그래프 `graph-0.4`와 시간 `temporal-0.1`, O01~O08의 의미는 유지한다. 생성자는 `Service(database=None, *, principals, schema=None, graph_settings=None)`이며 기존 파일 경로/`:memory:` 입력은 거부한다. `graph_settings`를 생략하면 PostgreSQL 조회다. 호스트가 `GraphSettings.from_environment(...)`로 읽기 backend를 설정하고 Agent·도구 인자는 이를 바꿀 수 없다. `DATABASE_URL`은 필수, `ONTOLOGICS_DB_SCHEMA` 기본값은 `ontologics`다. `.env`→`.env.local`→프로세스 환경 순서로 덮어쓴다. 접속 문자열은 로그·응답에 포함하지 않는다.
 
 `database.py`가 pgvector extension과 전용 schema·테이블을 준비한다. 기존 서버에서는 관리자가 `CREATE EXTENSION vector WITH SCHEMA public`을 먼저 실행할 수 있다. 로컬 예제 역할은 개발용 DB 소유자이며 운영 최소권한 계정 분리는 미완료다. 테이블은 snapshots, drafts, requests, review_events, runs, runtime_runs, runtime_steps, evidence_vectors와 Neo4j 공개 버전 메타데이터 graph_projections다. 모델 네트워크 호출 동안 트랜잭션을 열지 않는다. 동시에 실행하는 호스트 작업마다 별도 Service/연결을 사용한다.
 
@@ -191,7 +212,7 @@ AWS 완료 검증은 실제 환경의 S1/S2 전체 업무, 인증·권한, 영�
   "data": {},
   "evidence": ["evidence:..."],
   "data_version": 3,
-  "schema_version": "graph-0.3",
+  "schema_version": "graph-0.4",
   "rule_version": "temporal-0.1",
   "contract_version": "0.3.0",
   "warnings": [],
@@ -255,7 +276,7 @@ B query: `{mode:'B', lot_id, unit_ids:[...], start, end, period_meaning:'install
 | 책임·코드 | 추가 계약 | 유지되는 경계 |
 | --- | --- | --- |
 | `harness.py` / `ExecutionBudget` | 요청과 하위 Agent의 모델/도구/repair 한도·deadline·비용 원장 공유, 호스트 취소. 다른 새 예산으로 교체 불가 | provider timeout을 잔여 시간으로 제한. 호출 중 강제 중단·계정 전체 과금 통제는 아님 |
-| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. 기존 DTO의 ontology_version 표식은 `graph-0.1`, context 형식은 `context-1`을 유지. 실제 조회 응답·읽기 체크포인트의 그래프 계약 `graph-0.3`과 구분 |
+| `harness.py` / `PinnedContext` | goal·conditions·data_version·evidence_ids·unknowns를 불변 직렬화. 조회 인자의 버전·A/B 일치 검사 | 입력 DTO는 사용자 권한/승인 원장이 아님. 기존 DTO의 ontology_version 표식은 `graph-0.1`, context 형식은 `context-1`을 유지. 실제 조회 응답·읽기 체크포인트의 그래프 계약 `graph-0.4`와 구분 |
 | `build_context_messages` | 동일 고정 조건 + 비신뢰 자료. baseline은 전체 자료, structured는 명시된 Evidence ID만 선별하고 생략 ID 표시 | 새로운 사실 요약·검색 정답 발견 기능 아님. 원자료는 호출자가 보존 |
 | `contracts.py` | `AgentSpec`·`AgentTask`·`AgentResult`, 얕은 `PayloadSchema`와 역할 검증기를 합성. 신원/승인 필드는 계약 권한으로 사용하지 않음 | Task `agent-task-1`·Result `agent-result-1`·역할 버전과 확정/초안 버전은 별개. DB migration/OWL 상속 기능 아님 |
 | `host.py` / `run_task` | 서버에 등록한 Spec·구현의 messages·Task·provider를 공통 실행기로 전달. `agents/registry.py`에 등록한 역할 폴더의 실제 구현으로 네 화면 역할도 같은 경로 사용. 결과 data_version이 있으면 고정 정수 버전과 대조. 실제 도구 결과의 Evidence만 확정 원본 정보로 연결하고 역할 결과 검증기 실행 | 기존 `AgentRegistration`/`run_agent` 호환. 웹 응답의 `data.agent_result`에 공통 DTO 추가; 자유 설명은 `free_text_unverified`로 구분 |
@@ -388,12 +409,46 @@ with host.request(DevelopmentContext('dev-alice')) as request:
 | `GET /api/source?source_id=...&version=...` | 지정 버전의 SourceDocument를 조회한 뒤 `data/` 경로와 실제 바이트 SHA-256 확인 후 attachment로 제공. 임의 경로·환경 파일·해시 불일치 원본 제공 불가 |
 | `POST /api/quality` | `{queries:{A,B},version,question,before_version?}`. 조회 조건·버전 필수. 비교 때 before_version과 version을 각각 이전/이후 데이터 버전으로 사용. 실제 Quality 도구 실행·동일 조건 직접 결과를 대조해 `data.consistency=matched`인 설명만 성공 반환 |
 | `GET /api/workspace` | read 권한. 최신 버전의 초안 최대 100건을 `data.drafts`로 반환(draft_id/version/status/author/reviewer/base_version/applied_data_version). 영속 DB의 업무 재개 목록이며 조사 대화 기록 목록은 아님 |
+| `GET /api/dashboard` | read 권한·서버 신원으로 공통 실행 감사와 한도를 적용. 단일 현재 승인 버전의 `graph_counts`와 `groups.planning/fulfillment/claims`(kinds/total/limit/truncated/records)를 반환. 각 그룹은 종류·ID순 최대 20개 원본 노드로 근거·origin을 보존. `draft_counts/draft_total`은 초안별 최신 버전 전체 집계, `drafts`는 최근 최대 `draft_limit=100`개. 등록 레코드 수이며 생산량·납품 완료량·불량률이 아니다. 선택된 RDF/Neo4j 조회 실패·미공개 버전이면 전체 응답을 실패시키며 다른 backend/버전으로 대체하지 않음. 기존 workspace·Agent 도구 계약·승인 원장은 변경하지 않음 |
+| `POST /api/planning/{action}` | 기존 A 계약 업무 9개 액션. `search/get/planning/materials`는 read, `register/interpret`는 draft, `review/connect/materials-calculate`는 review. 서버 신원·공통 한도·동일 DB를 사용. 원문 대조와 계산 저장은 그래프 승인이 아님. 액션별 정확한 필드는 [A adapter](../ontologics/materials/workspace.py)의 `FIELDS` |
+| `POST /api/fulfillment/query` | `{action,arguments}`. read 권한. 기존 B `delivery_round/fulfillment_status/delivery_forecast/response_plan/production_completion` 조회. 모든 조회에 정확한 version, 시간 조회에 offset 있는 as_of를 전달. 선택 graph backend와 공통 실행 기록·한도 유지 |
+| `POST /api/business/draft` | `{domain,action,payload,base_version,source_text,authored_at,notice,synthetic_confirmed,request_key,draft_id?,expected_version?}`. draft 권한. domain=`fulfillment/claims`와 서버가 정한 역할 builder만 사용. 제출 원문·필드를 해시로 보존하고 공통 초안만 생성. 응답 data의 draft_id/draft_version/validation/registration(record_ids/source/evidence_id)을 기존 `/api/review`로 인계 |
 | `POST /api/sources/intake` | `{filename,content_base64}`. draft 권한. 실제 바이트 해시를 manifest의 L/L1 WROOM ODS와 대조하고 제출 바이트를 파싱. `data.receipt_id/source/revision/configuration_id/rows/unknown_count/operations_count/base_version/verification` 반환. 미승인 후보 |
 | `POST /api/sources/compare` | `{receipt_id,left_id}`. 동일 사용자·현재 기준 버전의 접수 후보와 기존 구성 비교. 기존 구성 비교 함수를 재사용하고 is_preview=true. 초안·확정 데이터 생성 없음 |
 | `POST /api/sources/draft` | `{receipt_id,request_key,draft_id?,expected_version?}`. draft 권한. 서버에 보관한 정확한 후보 operations만 기존 초안 저장/검증 로직으로 처리. 응답은 prepare_draft와 같은 형태. 사용자 제공 operations/actor 불허 |
 | `POST /api/history/intake` | `{filename,content_base64}`. draft 권한. 200 KB 이하의 가상 운영 기록 JSON을 무변경 보존. receipt_id/source/records/validation/operations_count/base_version 반환. 허용 필드·관계·시간은 기존 SCHEMA 검증. 확정은 별도 검토·승인 필요 |
 | `GET /api/draft-source?draft_id=...&version=...&source_id=...` | 정확한 초안의 새 원본을 read 권한으로 내려받음. `data/` 내부 경로·바이트 해시 확인. 승인된 원본 조회와 구분 |
 | `POST /api/assistant` | `{question,version,screen,context,action?,request_key?}`. context: configuration_id/node_id/kind/draft_id/draft_version/queries/before_version/receipt_id/search_query/origin/search_mode(lexical/semantic). action=explain 기본, prepare_draft는 명시 요청 키 필수. 응답 role/runtime/results/tool_calls/consistency/conditions, Supervisor 인계 시 delegation. Agent 승인·신원·대상/버전 이탈 불허 |
+
+
+### 공통 업무 화면 A/B/C
+
+역할별 계산·입력 검증은 [A workspace](../ontologics/materials/workspace.py), [B workspace](../ontologics/order_fulfillment/workspace.py), [C workspace](../ontologics/claim_response/workspace.py)에 둔다. [business_drafts.py](../ontologics/business_drafts.py)는 B/C의 제출 원문·필드와 가상 자료 구분을 보존한 뒤 기존 `_save_draft`를 호출한다. 공개 Agent 도구 허용 목록에 승인이나 이 화면 전용 등록 API를 추가하지 않는다. 화면/HTTP가 주입하는 신원과 정확한 데이터 버전은 그대로 공통 호스트의 책임이다.
+
+- **A:** `search → get → interpret → review → planning → connect → materials → materials-calculate`. 새로운 계약은 `register`로 먼저 접수한다. 기존 `ContractLibrary/LibraryReview/LibraryProductReview/LibraryMaterials`를 재사용하며 계산식이나 예약 차감을 다시 구현하지 않는다. 공통 웹과 같은 DB/schema에 저장된 `pp_*` 원본·재고만 읽는다. A 저장소와 공통 그래프 계약 노드는 자동 변환하지 않으며 다른 schema의 자료를 복사하지 않는다. 원문 대조는 A 준비기록이고 그래프 승인·생산 실행이 아니다.
+- **B:** `production_progress`는 진행 중인 작업의 생산/정상/불량 **누계**를 새 `ProductionObservation` ID로 제안하고 해당 작업의 정상 완료 누계를 함께 보완한다. 기존 기준 시각 이후 기록은 `snapshot_as_of`와 9개 `confirmations`의 명시적 참/거짓을 함께 제출한다. 임의 완전성 확인이나 정상 완료→재고 생성은 하지 않는다. `split_allocation`은 출하가 연결되지 않은 기존 재고 배정만 분할하며 첫 배정 ID·전체 합계를 보존한다. `split_shipments`는 선택한 재고와 납품 회차에 새 배정·출하 ID들을 제안한다. 재고/회차 초과, 중복, 구성·시간·근거 검증은 기존 전체 그래프 검증과 승인에서 수행한다. 실제 출하 실행·이미 출하한 배정 재분할·부분 인수는 지원하지 않는다.
+- **C:** `intake`는 가상 고객 신고를 `needs_review` 접수 초안으로 저장한다. 별도 승인 뒤 `confirm_case`로 신고 일련번호와 사람이 대조한 보드를 선택하면 접수 상태 변경과 사건을 묶은 새 초안이 된다. 다시 별도 사람 승인 후 반영한다. 신고→사건 연결을 고장·원인 확정이나 시험·생산 중단으로 해석하지 않는다. C의 보드별 생산 작업/재고 소속 미합의 경계는 그대로 유지한다.
+
+B/C 변경은 `base_version`이 현재 승인 버전과 같아야 하며, 같은 사용자·요청 키·내용의 성공 재시도는 정확한 기존 초안을 반환한다. 변경한 내용은 새 키 또는 작성자의 명시적 초안 개정으로 제출한다. 입력은 가상 기록임을 확인하고 원문 내용·작성 시각·범위 설명을 제공해야 한다. 서버는 `data/receipts/business-<sha256>.json`에 무변경 보존하고 `SourceDocument/Evidence`를 붙인다. 이전 사실의 근거를 지우지 않으며 새 근거를 추가한다. 초안 생성 성공과 `validation.valid`는 별개이고, 자기 승인·오래된 버전·기준 변경은 기존 공통 경로에서 차단한다.
+
+A 원본은 UTF-8 TXT, 최대 600 KB로 제한한다. `.pdf` 및 TXT로 이름을 바꾼 PDF는 `A_PDF_SANDBOX_REQUIRED`, 그 외 형식/인코딩은 `UNSUPPORTED_CONTRACT_FORMAT`이다. 기존 A PDF 원본은 보존하되 공통 경로에서 호스트 PDF 파서로 우회하지 않는다. `interpret`를 명시적으로 누를 때만 고정 provider와 공통 비용·시간 한도를 사용한다. 기존 S2의 ODS 접수와 Sandbox는 변경하지 않는다.
+
+아래는 각 업무의 한 단계 입력 예다. 식별자·버전은 현재 조회 또는 이전 단계의 실제 응답으로 바꾼다. 먼저 `/api/context`의 쿠키·CSRF를 사용하며 작성자/권한을 body에 넣지 않는다.
+
+```text
+POST /api/planning/materials-calculate
+{"contract_id":"<A 계약 원본 ID>","item_index":0,"link_id":"<materials 응답의 link.id>","quantity":7,"reason":"기존 납품·배정 기록을 대조한 가상 잔여 수량 검토","request_key":"a-materials-review-01"}
+
+POST /api/fulfillment/query
+{"action":"fulfillment_status","arguments":{"delivery_round_id":"<승인된 납품 회차 ID>","as_of":"2026-10-27T10:00:00+09:00","version":3}}
+
+POST /api/business/draft
+{"domain":"claims","action":"intake","payload":{"external_claim_id":"CLM-DEMO-001","customer_name":"DEMO 고객사","reported_at":"2026-11-04T10:00:00+09:00","reported_symptom":"전원 표시 없음이라는 가상 고객 신고","claimed_quantity":1,"reported_serials":["U104"]},"base_version":3,"source_text":"시연용 가상 고객 신고: U104 전원 표시 없음, 1대.","authored_at":"2026-11-04T10:00:00+09:00","notice":"시연용 신고이며 실제 불량 확인 아님","synthetic_confirmed":true,"request_key":"claim-demo-intake-01"}
+```
+
+A 응답의 `data.result.components`는 `q/D/A/S`(대당 소요/필요/가용/부족)를 제공하고 미확인은 null로 남긴다. B 응답은 선택한 승인 버전의 현황·근거·미확인과 조건부 예상을 구분한다. C 응답은 초안 ID·정확 버전·검증 결과이며 승인 완료가 아니다. B 변경안도 같은 공통 초안 입력 바깥 구조를 쓰며 액션별 `payload`는 B adapter와 화면 입력을 따른다.
+
+공통 AI 패널은 기존 네 역할을 유지한다. A의 명시적 원문 해석 외에 B/C의 새로운 폼을 Supervisor가 자동 수행하는 것으로 연결하지 않았다. 승인된 업무 노드 설명은 기존 Knowledge 조회를 재사용한다. 대표 실모델 연결 확인은 범용 품질·검색 정확도·자동 업무 인계 완료를 뜻하지 않는다. 테스트 접점은 `tests.materials.test_workspace`, `tests.order_fulfillment.test_workspace`, `tests.claim_response.test_workspace`, `tests.test_business_web`이며 최종 수행 상태는 PROJECT_STATUS를 따른다.
 
 
 AI 초안 경로는 `get_source_receipt → prepare_source_draft → validate_draft`의 정확한 인자·순서를 강제한다. 직접 source_draft와 같은 요청 키를 사용한다. 성공은 `action=draft_prepared`와 draft/draft_record를 반환하며 승인 상태와 구별한다. 저장 후 모델·검증 기록 실패는 HTTP 오류와 `draft_saved_model_failed`에 저장된 ID/버전을 함께 반환한다. 같은 요청을 재시도해도 중복 초안을 만들지 않는다.

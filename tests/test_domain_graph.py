@@ -37,7 +37,7 @@ class SharedDomainGraphTests(unittest.TestCase):
                 observed.update(n['type'] for n in nodes)
         self.assertEqual(set(domain_schema.SCHEMA), observed & set(domain_schema.SCHEMA))
         self.assertEqual(len(domain_schema.SCHEMA), 11)
-        self.assertEqual(model.SCHEMA_VERSION, 'graph-0.3')
+        self.assertEqual(model.SCHEMA_VERSION, 'graph-0.4')
 
     def test_shared_contract_rules_run_once_and_reject_bool_quantities(self):
         nodes = self.mixed([])
@@ -114,7 +114,7 @@ class SharedDomainGraphTests(unittest.TestCase):
                 'from ontologics import model; '
                 'from ontologics.materials import schema as a; '
                 'from ontologics.order_fulfillment import schema as b; '
-                'assert len(model.SCHEMA)==29; '  # 12 core + 11 A/B + 6 C
+                'assert len(model.SCHEMA)==32; '  # 12 core + 11 A/B + 6 C 1st + 3 C 2nd
                 'a.SCHEMA["Contract"][0].append("private"); '
                 'assert "private" not in model.SCHEMA["Contract"][0]; '
                 'assert "private" not in b.SCHEMA["Contract"][0]', module],

@@ -582,6 +582,35 @@ class RequestSession:
         from .receipts import workspace
         return workspace(self._service, self._identity.actor)
 
+    def dashboard(self):
+        from .workspace import dashboard
+        self._budget.consume('tool')
+        result = dashboard(self._service, self._identity.actor)
+        self._budget.check()
+        return result
+
+    def business_draft(self, **arguments):
+        from .business_drafts import prepare_business_draft
+        from .claim_response.workspace import build_records as claim_records
+        from .order_fulfillment.workspace import build_records as fulfillment_records
+        builders = {'claims': claim_records, 'fulfillment': fulfillment_records}
+        domain = arguments.get('domain')
+        builder = builders.get(domain) if isinstance(domain, str) else None
+        if builder is None:
+            raise DomainError('INVALID_INPUT', '지원하는 업무를 선택하세요.')
+        self._budget.consume('tool')
+        result = prepare_business_draft(self._service, self._identity.actor,
+                                        builder=builder, **arguments)
+        self._budget.check()
+        return result
+
+    def fulfillment_query(self, action, arguments):
+        from .order_fulfillment.workspace import query
+        self._budget.consume('tool')
+        result = query(self._service, self._identity.actor, action, arguments)
+        self._budget.check()
+        return result
+
     def history_intake(self, filename, content_base64):
         from .receipts import history_intake
         return history_intake(self._service, self._identity.actor, filename, content_base64)

@@ -236,6 +236,41 @@ class LibraryProcessMaterials:
             raise DomainError('PROCESS_STOCK_INTEGRITY', '공정 자재 재고의 무결성을 확인하지 못했습니다.')
         return row
 
+    def store(self, context, payload, request_key):
+        """Append an explicit synthetic observation without changing history."""
+        from ..model import canonical, digest
+        from ..service import DomainError
+        payload = deepcopy(payload)
+        with self.host.request(context) as session:
+            svc = session._service
+            def save():
+                try:
+                    if not isinstance(payload, dict):
+                        raise ValueError('공정 자재 재고 객체가 필요합니다.')
+                    for field in ('company', 'location', 'as_of', 'basis'):
+                        if not isinstance(payload.get(field), str) or not payload[field].strip():
+                            raise ValueError('회사·창고·기준 시각·재고 근거를 입력하세요.')
+                    if not isinstance(payload.get('lots'), list):
+                        raise ValueError('재고 로트 목록이 필요합니다.')
+                    for lot in payload['lots']:
+                        if not isinstance(lot, dict):
+                            raise ValueError('재고 로트 객체가 필요합니다.')
+                        if lot.get('expires_at') is not None and not isinstance(lot['expires_at'], str):
+                            raise ValueError('사용기한은 시간대가 있는 시각이어야 합니다.')
+                    validate_stock(payload, load_reference())
+                    if instant(payload['as_of']) > instant(svc.now()):
+                        raise ValueError('미래 시점의 재고는 등록할 수 없습니다.')
+                except (ValueError, KeyError, TypeError, OSError) as exc:
+                    raise DomainError('INVALID_INPUT', str(exc)) from None
+                self.latest(svc)
+                key = digest(payload)
+                svc.db.execute('''INSERT INTO pp_process_material_stock VALUES(%s,%s,%s,%s,%s)
+                    ON CONFLICT(id) DO NOTHING''',
+                    (key, canonical(payload), key, session.context['actor'], svc.now()))
+                return svc._envelope(ok=True, data=dict(id=key, lots=len(payload['lots'])))
+            return svc._run(session.context['actor'], 'process_material_stock_store',
+                            dict(payload=payload), save, permission='review', request_key=request_key)
+
     def seed_scenario(self, context, request_key):
         from ..model import canonical, digest
         from ..service import DomainError

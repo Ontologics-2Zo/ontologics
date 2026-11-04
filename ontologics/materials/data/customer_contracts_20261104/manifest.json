@@ -1,0 +1,244 @@
+{
+  "format": "materials-customer-contracts-1",
+  "version": 1,
+  "dataset_id": "customer-contracts-20261104",
+  "origin": "synthetic",
+  "supplier": "주식회사 온톨로직스",
+  "contracts": [
+    {
+      "number": 1,
+      "contract_number": "SRL-2026-1020-01",
+      "contract_item_number": "SRL-2026-1020-01-01",
+      "title": "물류 배차센터 확장용 제어보드 공급계약서",
+      "counterparty": "새롬물류 주식회사",
+      "supplier": "주식회사 온톨로직스",
+      "path": "saerom_logistics_contract.txt",
+      "sha256": "270a81b3da16d7664d002217f75ac3854a748e168a9e37e505e9c86fa99f3a27",
+      "contract_date": "2026-10-20",
+      "reference_at": "2026-10-20T09:15:00+09:00",
+      "production_complete": "2026-11-09",
+      "dispatch": "2026-11-10",
+      "customer_arrival": "2026-11-12",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 80,
+      "unit": "piece",
+      "origin": "synthetic",
+      "fulfilled_quantity": 0,
+      "allocated_quantity": 0,
+      "new_production_quantity": 80,
+      "unit_price_krw": 42000,
+      "supply_amount_krw": 3360000,
+      "vat_krw": 336000,
+      "total_amount_krw": 3696000,
+      "deposit_percent": 30,
+      "deposit_krw": 1108800,
+      "balance_krw": 2587200,
+      "demand_allocation": [
+        {
+          "description": "상차 대기 구역",
+          "locations": 8,
+          "per_location": 8
+        },
+        {
+          "description": "출입 관리 구역",
+          "locations": 4,
+          "per_location": 4
+        }
+      ],
+      "source_id": "source:materials:contract:SRL-2026-1020-01",
+      "evidence_id": "evidence:materials:contract:SRL-2026-1020-01"
+    },
+    {
+      "number": 2,
+      "contract_number": "CWB-2026-1023-01",
+      "contract_item_number": "CWB-2026-1023-01-01",
+      "title": "업무시설 공조관리망 개선용 제어보드 공급계약서",
+      "counterparty": "청우빌딩관리 주식회사",
+      "supplier": "주식회사 온톨로직스",
+      "path": "cheongwoo_building_contract.txt",
+      "sha256": "f2dfc9c31c94140b6f840e3a9479aac96be66ad7c4335ac81fdbae6c5524ef14",
+      "contract_date": "2026-10-23",
+      "reference_at": "2026-10-23T10:30:00+09:00",
+      "production_complete": "2026-11-11",
+      "dispatch": "2026-11-12",
+      "customer_arrival": "2026-11-16",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "quantity": 120,
+      "unit": "piece",
+      "origin": "synthetic",
+      "fulfilled_quantity": 0,
+      "allocated_quantity": 0,
+      "new_production_quantity": 120,
+      "unit_price_krw": 43500,
+      "supply_amount_krw": 5220000,
+      "vat_krw": 522000,
+      "total_amount_krw": 5742000,
+      "deposit_percent": 30,
+      "deposit_krw": 1722600,
+      "balance_krw": 4019400,
+      "demand_allocation": [
+        {
+          "description": "동부 권역 관리시설",
+          "locations": 6,
+          "per_location": 12
+        },
+        {
+          "description": "서부 권역 관리시설",
+          "locations": 4,
+          "per_location": 12
+        }
+      ],
+      "source_id": "source:materials:contract:CWB-2026-1023-01",
+      "evidence_id": "evidence:materials:contract:CWB-2026-1023-01"
+    },
+    {
+      "number": 3,
+      "contract_number": "DSF-2026-1027-01",
+      "contract_item_number": "DSF-2026-1027-01-01",
+      "title": "재배단지 환경관리망 구축용 제어보드 공급계약서",
+      "counterparty": "주식회사 다온스마트팜",
+      "supplier": "주식회사 온톨로직스",
+      "path": "daon_smartfarm_contract.txt",
+      "sha256": "6e264c3681b8008342d3e790825f889f8d9593c724f6c3c110d34a47605106d1",
+      "contract_date": "2026-10-27",
+      "reference_at": "2026-10-27T14:00:00+09:00",
+      "production_complete": "2026-11-18",
+      "dispatch": "2026-11-19",
+      "customer_arrival": "2026-11-23",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 240,
+      "unit": "piece",
+      "origin": "synthetic",
+      "fulfilled_quantity": 0,
+      "allocated_quantity": 0,
+      "new_production_quantity": 240,
+      "unit_price_krw": 42000,
+      "supply_amount_krw": 10080000,
+      "vat_krw": 1008000,
+      "total_amount_krw": 11088000,
+      "deposit_percent": 30,
+      "deposit_krw": 3326400,
+      "balance_krw": 7761600,
+      "demand_allocation": [
+        {
+          "description": "제1 재배구역",
+          "locations": 8,
+          "per_location": 18
+        },
+        {
+          "description": "제2 재배구역",
+          "locations": 8,
+          "per_location": 12
+        }
+      ],
+      "source_id": "source:materials:contract:DSF-2026-1027-01",
+      "evidence_id": "evidence:materials:contract:DSF-2026-1027-01"
+    },
+    {
+      "number": 4,
+      "contract_number": "SJE-2026-1030-01",
+      "contract_item_number": "SJE-2026-1030-01-01",
+      "title": "에너지 관제거점 통신망 증설용 제어보드 공급계약서",
+      "counterparty": "주식회사 서진에너지",
+      "supplier": "주식회사 온톨로직스",
+      "path": "seojin_energy_contract.txt",
+      "sha256": "2a6c526c9bda6abb4cb99f0c0601171a42b02235a496afa4caceb909918a95a0",
+      "contract_date": "2026-10-30",
+      "reference_at": "2026-10-30T16:10:00+09:00",
+      "production_complete": "2026-11-30",
+      "dispatch": "2026-12-02",
+      "customer_arrival": "2026-12-04",
+      "configuration_id": "config:esp32-poe:L1:WROOM",
+      "quantity": 60,
+      "unit": "piece",
+      "origin": "synthetic",
+      "fulfilled_quantity": 0,
+      "allocated_quantity": 0,
+      "new_production_quantity": 60,
+      "unit_price_krw": 43500,
+      "supply_amount_krw": 2610000,
+      "vat_krw": 261000,
+      "total_amount_krw": 2871000,
+      "deposit_percent": 30,
+      "deposit_krw": 861300,
+      "balance_krw": 2009700,
+      "demand_allocation": [
+        {
+          "description": "주요 관제거점",
+          "locations": 5,
+          "per_location": 8
+        },
+        {
+          "description": "소규모 관제거점",
+          "locations": 5,
+          "per_location": 4
+        }
+      ],
+      "source_id": "source:materials:contract:SJE-2026-1030-01",
+      "evidence_id": "evidence:materials:contract:SJE-2026-1030-01"
+    },
+    {
+      "number": 5,
+      "contract_number": "EDR-2026-1102-01",
+      "contract_item_number": "EDR-2026-1102-01-01",
+      "title": "유통센터 설비관리망 확충용 제어보드 공급계약서",
+      "counterparty": "주식회사 이든리테일",
+      "supplier": "주식회사 온톨로직스",
+      "path": "eden_retail_contract.txt",
+      "sha256": "0efff527d33c6f1f3e1ddf7e3c462233fe21dfdd0be6a226cc397eddb0aedb9e",
+      "contract_date": "2026-11-02",
+      "reference_at": "2026-11-02T11:20:00+09:00",
+      "production_complete": "2026-12-07",
+      "dispatch": "2026-12-09",
+      "customer_arrival": "2026-12-11",
+      "configuration_id": "config:esp32-poe:L:WROOM",
+      "quantity": 300,
+      "unit": "piece",
+      "origin": "synthetic",
+      "fulfilled_quantity": 0,
+      "allocated_quantity": 0,
+      "new_production_quantity": 300,
+      "unit_price_krw": 42000,
+      "supply_amount_krw": 12600000,
+      "vat_krw": 1260000,
+      "total_amount_krw": 13860000,
+      "deposit_percent": 30,
+      "deposit_krw": 4158000,
+      "balance_krw": 9702000,
+      "demand_allocation": [
+        {
+          "description": "입출고 구역",
+          "locations": 10,
+          "per_location": 12
+        },
+        {
+          "description": "보관 구역",
+          "locations": 12,
+          "per_location": 15
+        }
+      ],
+      "source_id": "source:materials:contract:EDR-2026-1102-01",
+      "evidence_id": "evidence:materials:contract:EDR-2026-1102-01"
+    }
+  ],
+  "internal_metadata": {
+    "source_kind": "authored_contract_documents",
+    "provenance": "Five internally authored business scenario documents prepared under the user request. Customer names, contract numbers, commercial terms, business dates, demand allocations and zero-delivery/zero-allocation baselines are synthetic context; these are not actual signed customer contracts or verified external customer records.",
+    "license": "Internally authored scenario text; no third-party contract or signature is reproduced.",
+    "product_provenance": "Product model, revision and WROOM configurations refer only to the unchanged OLIMEX public BOM configurations already present in data/catalog.json. No BOM parts, substitutions, compatibility claims or product configurations are authored here.",
+    "time_policy": "contract_date is the stated business contract date; reference_at is the stated production-preparation quantity baseline; production_complete, dispatch and customer_arrival are contractual planned dates. None is an archive received_at, actual execution timestamp, collection timestamp or approval timestamp. Archive intake time must be assigned by the existing intake service.",
+    "signature_policy": "Signature fields remain blank. No actual signature, human approval, payment, manufacture, inspection, shipment, receipt, reservation or stock allocation is asserted.",
+    "demand_policy": "Each contract is a separate new customer demand. All five are independent of Hanbit Facilities contract HFM-2026-1104-01 and its separate additional request; none changes or duplicates that demand.",
+    "business_document_policy": "Contract titles and body use ordinary business language. Synthetic origin and authored assumptions are preserved in this internal manifest.",
+    "registration_policy": "Use the existing validated contract intake service. These files perform no database writes and do not approve graph facts, production, reservations, purchases or customer communications.",
+    "fact_locators": {
+      "parties": "Opening paragraph and blank signature blocks",
+      "configuration_quantity_price": "Article 2 and Article 3",
+      "dates": "Article 4 and Annex 1 section 3",
+      "demand_allocation": "Annex 1 section 1",
+      "independence": "Annex 1 section 2",
+      "quantity_baseline": "Annex 1 section 3",
+      "payments": "Article 6"
+    }
+  }
+}

@@ -18,9 +18,26 @@ from .library_process_materials import LibraryProcessMaterials
 from .library_process_rfq import LibraryProcessRFQ
 from .request_workflow import RequestWorkflow
 from .workspace_review import WorkspaceReview
+from .rfq_handoff import RFQHandoff
+from .rfq_mail import RFQMail
+from .rfq_document import RFQDocument
 
 
 FIELDS = {
+    'rfq-document-get': ('source_kind','review_id'),
+    'rfq-document-save': ('source_kind','review_id','base_document_id','text','request_key'),
+    'mail-compose': ('source_kind','review_id'),
+    'mail-save': ('source_kind','review_id','contact_id','subject','message','request_key'),
+    'mail-send': ('draft_id',),
+    'mail-history': ('offset','source_kind','review_id'),
+    'mail-get': ('draft_id',),
+    'mail-file': ('draft_id','kind'),
+    'mail-graph-retry': ('draft_id',),
+    'rfq-handoff-prepare': ('source_kind', 'review_id', 'recipient', 'subject', 'message', 'sent_at',
+                            'evidence_filename', 'evidence_base64', 'evidence_origin', 'confirmed', 'request_key'),
+    'rfq-handoff-status': ('source_kind', 'review_id'),
+    'rfq-handoff-history': ('offset',),
+    'rfq-handoff-retry': ('source_kind', 'review_id', 'receipt_id'),
     'product-inventory': ('quantity',),
     'process-requirement-preview': ('configuration_id', 'quantity', 'allowance_percent'),
     'combined-review': ('configuration_id', 'quantity', 'allowance_percent', 'request_key'),
@@ -39,6 +56,7 @@ FIELDS = {
     'materials': ('contract_id', 'item_index'),
     'materials-calculate': ('contract_id', 'item_index', 'link_id', 'quantity', 'reason', 'request_key'),
 }
+OPTIONAL_FIELDS = {'mail-compose': ('rfq_document_id',), 'mail-save': ('rfq_document_id',)}
 
 
 def _text_original(filename, encoded):
@@ -72,16 +90,31 @@ class MaterialsWorkspace:
         request_host = request_host or configured_request_host(host)
         self.requests = RequestWorkflow(self.materials, self.process_rfq, setup_context, request_host)
         self.combined = WorkspaceReview(self.materials, self.process_rfq, setup_context)
+        self.handoffs = RFQHandoff(host)
+        self.mail = RFQMail(host)
+        self.rfq_documents = RFQDocument()
 
     def dispatch(self, context, action, body):
         if action not in FIELDS:
             raise DomainError('ROUTE_NOT_FOUND', '지원하지 않는 생산·자재 작업입니다.')
-        exact_keys(body, FIELDS[action])
+        exact_keys(body, FIELDS[action], OPTIONAL_FIELDS.get(action, ()))
         # All nested Library requests retain this actor and common request
         # budget. A database query is not a new independently funded request.
         with self.host.request(context) as session:
             session._budget.consume('tool')
-            if action == 'product-inventory':
+            if action.startswith('rfq-document-'):
+                result = self.rfq_documents.dispatch(session, action, body)
+            elif action.startswith('mail-'):
+                result = self.mail.dispatch(session, action, body)
+            elif action == 'rfq-handoff-prepare':
+                result = self.handoffs.prepare(context, **body)
+            elif action == 'rfq-handoff-retry':
+                result = self.handoffs.retry(context, **body)
+            elif action == 'rfq-handoff-history':
+                result = self.handoffs.history(context, **body)
+            elif action == 'rfq-handoff-status':
+                result = self.handoffs.status(context, **body)
+            elif action == 'product-inventory':
                 result = self.materials.inventory(context, **body)
             elif action == 'process-requirement-preview':
                 result = self.process_rfq.preview(context, **body)

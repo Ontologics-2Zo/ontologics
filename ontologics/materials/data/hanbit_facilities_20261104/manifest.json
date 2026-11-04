@@ -1,0 +1,184 @@
+{
+  "format": "materials-business-dataset-1",
+  "version": 1,
+  "origin": "synthetic",
+  "dataset_id": "hanbit-facilities-20261104",
+  "title": "한빛시설관리 통합운영센터 제어보드 공급 업무",
+  "customer": "한빛시설관리 주식회사",
+  "supplier": "주식회사 온톨로직스",
+  "contract_number": "HFM-2026-1104-01",
+  "contract_item_number": "HFM-2026-1104-01-01",
+  "contract_id": "contract:HFM-2026-1104-01",
+  "contract_item_id": "contract-item:HFM-2026-1104-01-01",
+  "configuration_id": "config:esp32-poe:L:WROOM",
+  "baseline_evidence_id": "evidence:materials:plan:HFM-20261104-01",
+  "request_id": "MREQ-HFM-20261104-001",
+  "files": [
+    {
+      "path": "contract.txt",
+      "title": "통합운영센터 증설용 제어보드 공급계약서",
+      "origin": "synthetic",
+      "source_id": "source:materials:contract:HFM-2026-1104-01",
+      "sha256": "639303313cd044407a862344169708355f5ff7a7342530cefd5016cde549c2ab",
+      "evidence_id": "evidence:materials:contract:HFM-2026-1104-01"
+    },
+    {
+      "path": "plan.txt",
+      "title": "통합운영센터 증설용 제어보드 자재 검토 기준계획서",
+      "origin": "synthetic",
+      "source_id": "source:materials:plan:HFM-20261104-01",
+      "sha256": "c221b983b2df993c4b73a711eaadcaec0777a5117294214c971d869fd70d8f26",
+      "evidence_id": "evidence:materials:plan:HFM-20261104-01"
+    },
+    {
+      "path": "additional_request.txt",
+      "title": "통합운영센터 추가 구역 제어보드 생산·자재 검토 요청서",
+      "origin": "synthetic",
+      "source_id": "source:materials:request:HFM-20261104-001",
+      "sha256": "32366dd33f92cd75b089c67598edadaf772c48a768a522a79ac25199dd9b3ebd",
+      "evidence_id": "evidence:materials:request:HFM-20261104-001"
+    },
+    {
+      "path": "additional_request.json",
+      "title": "통합운영센터 추가 구역 생산·자재 검토 요청 항목",
+      "origin": "synthetic",
+      "source_id": "source:materials:request-payload:HFM-20261104-001",
+      "sha256": "af251a1671b350dbdeaf422c984340c142c6484c0b6089ae88b9ab9ae005380a"
+    },
+    {
+      "path": "buyer_contacts.json",
+      "title": "구매팀 담당자 연락처",
+      "origin": "synthetic",
+      "source_id": "source:materials:buyer-contacts:HFM-20261104-01",
+      "sha256": "28841efdbe4a8e1bd139c0bddb89bb2376939059a91211da08da43e2fb613ab5"
+    },
+    {
+      "path": "process_stock.json",
+      "title": "공정자재 공용 재고 검토 기준",
+      "origin": "synthetic",
+      "source_id": "source:materials:process-stock:HFM-20261104-01",
+      "sha256": "4d7f98d41ffc4df65525f49430bd5fa51b758dfe0a8abd2e1fcc4f3ecae9253a"
+    },
+    {
+      "path": "bom_stock.json",
+      "title": "성수 자재창고 BOM 부품 보유 재고 기준",
+      "origin": "synthetic",
+      "source_id": "source:materials:bom-stock:HFM-20261104-01",
+      "sha256": "7f03ad47536a9489c36cb8c330062b43b46bdd5f199ecbee163544a32d434a3c"
+    }
+  ],
+  "internal_metadata": {
+    "original_contract": {
+      "path": "/private/tmp/materials-contract-intake/한빛시설관리_통합운영센터_제어보드_공급계약서_HFM-2026-1104-01.txt",
+      "sha256": "639303313cd044407a862344169708355f5ff7a7342530cefd5016cde549c2ab",
+      "preservation": "byte_for_byte",
+      "source_kind": "existing_authored_contract",
+      "license": "Internal generated scenario artifact, authored under prior user authorization; no user-provided factual contract or third-party license is asserted."
+    },
+    "baseline_policy": "Only contract facts transcribed. No production, inspection, allocation, reservation, line, lead-time or usage history has been invented.",
+    "contract_fact_locators": {
+      "parties": "opening paragraph and signature blocks",
+      "configuration_and_quantity": "Article 2 and Article 3",
+      "dates": "Article 4",
+      "demand_and_readiness": "Annex 1, sections 1–3",
+      "additional_order_policy": "Article 7"
+    },
+    "assumptions": [
+      {
+        "id": "additional-demand",
+        "origin": "synthetic",
+        "scope": "additional_request.txt and additional_request.json",
+        "statement": "Scenario-only 60-board request for three new zones of 20 each, no overlap with the contract 180 or other requests; need date 2026-11-27 is production completion, not dispatch or arrival."
+      },
+      {
+        "id": "request-contact-and-time",
+        "origin": "synthetic",
+        "scope": "additional_request.txt and additional_request.json",
+        "statement": "Requester name, facility-operations role and 2026-11-04T10:30:00+09:00 request time are authored scenario context, not verified customer correspondence."
+      },
+      {
+        "id": "purchasing-contacts",
+        "origin": "synthetic",
+        "scope": "buyer_contacts.json",
+        "statement": "Three authored purchasing staff names use reserved .test addresses; no real identity, mailbox or external send is asserted."
+      },
+      {
+        "id": "baseline-author",
+        "origin": "synthetic",
+        "scope": "plan.txt",
+        "statement": "Material-management authorship is document context only; contract facts remain the sole baseline quantity and date evidence."
+      },
+      {
+        "id": "process-stock",
+        "origin": "synthetic",
+        "scope": "process_stock.json",
+        "statement": "Existing five-material scenario quantities are preserved. Company location, lot labels and snapshot time are scenario context; actual stock measurement, quality inspection, expiry verification and real reservations are not claimed."
+      },
+      {
+        "id": "bom-stock",
+        "origin": "synthetic",
+        "scope": "bom_stock.json",
+        "statement": "64 unique company inventory SKUs reference 125 populated BOM rows from the unchanged public L/L1 catalog; 23 unknown-population rows remain unknown. Explicit stock assumptions use passives/discretes 500 or 1000 pieces, connectors/special parts 200, most ICs/module 100, LAN PHY 80 and revision-specific PoE controllers 20. Quantities, lot names and scope are authored scenario context, not manufacturer package sizes, physical counts, actual purchases or receipts. Both configurations consume the same pool through 61 existing-rule identity pairs; no double counting."
+      }
+    ],
+    "business_document_policy": "Business document titles and body text use ordinary contract and operations language. Origin, assumptions and provenance remain explicit machine-readable metadata.",
+    "registration_policy": "Use existing validated services and human review. These files do not perform database writes, approve production, reserve stock, issue purchase orders or send messages.",
+    "stock_quantity_evidence": [
+      {
+        "id": "evidence:materials:process-stock:HFM-20261104-01",
+        "origin": "synthetic",
+        "source_id": "source:materials:process-stock:HFM-20261104-01",
+        "locator": "lots[0]",
+        "basis": "scenario_assumption",
+        "material_id": "process-material:kester:np560:7048230910"
+      },
+      {
+        "id": "evidence:materials:process-stock:HFM-20261104-02",
+        "origin": "synthetic",
+        "source_id": "source:materials:process-stock:HFM-20261104-01",
+        "locator": "lots[1]",
+        "basis": "scenario_assumption",
+        "material_id": "process-material:kester:275:2470687601"
+      },
+      {
+        "id": "evidence:materials:process-stock:HFM-20261104-03",
+        "origin": "synthetic",
+        "source_id": "source:materials:process-stock:HFM-20261104-01",
+        "locator": "lots[2]",
+        "basis": "scenario_assumption",
+        "material_id": "process-material:kester:951"
+      },
+      {
+        "id": "evidence:materials:process-stock:HFM-20261104-04",
+        "origin": "synthetic",
+        "source_id": "source:materials:process-stock:HFM-20261104-01",
+        "locator": "lots[3]",
+        "basis": "scenario_assumption",
+        "material_id": "process-material:mgchemicals:824"
+      },
+      {
+        "id": "evidence:materials:process-stock:HFM-20261104-05",
+        "origin": "synthetic",
+        "source_id": "source:materials:process-stock:HFM-20261104-01",
+        "locator": "lots[4]",
+        "basis": "scenario_assumption",
+        "material_id": "process-material:kester:sac305:bar"
+      },
+      {
+        "id": "evidence:materials:bom-stock:HFM-20261104-01",
+        "origin": "synthetic",
+        "source_id": "source:materials:bom-stock:HFM-20261104-01",
+        "locator": "snapshots[0].stocks; internal_metadata.quantity_rules; internal_metadata.catalog_rows",
+        "basis": "scenario_assumption"
+      }
+    ],
+    "graph_registration": {
+      "collected_at": "2026-11-04T11:54:36.019004+00:00",
+      "baseline_quantity": 180,
+      "license": "Internal generated synthetic business scenario; not a factual customer contract or operating record.",
+      "quantity_scope": "Only the existing 180-board contract is registered as ContractItem. The separate 60-board request does not alter that quantity."
+    }
+  },
+  "request_source_id": "source:materials-request:3453ccb11d80da34abf8617a34149e7c7b29edb227d9ce5974474a66fe288146",
+  "request_evidence_id": "evidence:materials-request:3453ccb11d80da34abf8617a34149e7c7b29edb227d9ce5974474a66fe288146"
+}

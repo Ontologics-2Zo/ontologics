@@ -1,0 +1,50 @@
+{
+  "origin": "synthetic",
+  "authored_on": "2026-11-04",
+  "notice": "합성 시연 자료. 회사·발주·운영 기록은 실제 거래의 증빙이 아니다. 제품 정의는 기존 OLIMEX 공개 카탈로그를 재사용한다.",
+  "input_state": "unregistered",
+  "screen_connected": false,
+  "scope": "계약 품목 1개·납품 회차 1개. 분할 출하 및 미출고분 운송 가정 변경. A/C 연결·계약 승인·출고 실행 없음.",
+  "cases": [
+    {
+      "mail_path": "data/order_fulfillment/examples/delivery_800_mail.md",
+      "mail_sha256": "9fb318d299bfcda84f5e4a214a33acd6661aa70841a2c71306b87138bc6a76cb",
+      "baseline_path": "data/order_fulfillment/examples/delivery_800.md",
+      "baseline_sha256": "eeffc2c4f00717ba66ba7e5361b31647909d8291690e5b31a698707c9d01c13c",
+      "anchors": {
+        "contract_number": "계약 번호는 PO-261104-018입니다",
+        "company": "공급사는 온결테크이며",
+        "customer_name": "서린제어시스템 구매 담당입니다",
+        "product_name": "최종 제품은 OLIMEX ESP32-POE",
+        "revision": "설계 개정 L,",
+        "variant": "WROOM 구성으로 확정",
+        "line_number": "계약 항목 번호는 1번",
+        "quantity": "최종 계약 수량은 완성 보드 800개",
+        "unit": "수량 단위는 개(piece)",
+        "round_number": "계약상 납품 약속은 1회차",
+        "round_quantity": "회차 약속 수량은 계약 전량인 800개",
+        "due_at": "2026년 11월 5일 오후 4시 정각, 한국 시간(KST, UTC+09:00)",
+        "due_basis": "고객 창고 도착 기준",
+        "destination": "수령 장소는 서린제어시스템 제2수령창고입니다"
+      }
+    }
+  ],
+  "expected": {
+    "before": {
+      "transport_seconds": 7200,
+      "on_time_quantity": 800,
+      "shortfall_quantity": 0,
+      "estimated_full_arrival_at": "2026-11-05T15:30:00+09:00"
+    },
+    "after": {
+      "transport_seconds": 12600,
+      "on_time_quantity": 700,
+      "shortfall_quantity": 100,
+      "estimated_full_arrival_at": "2026-11-05T17:00:00+09:00"
+    },
+    "production_completion_at": "2026-11-05T13:00:00+09:00",
+    "new_dispatch_quantity": 600,
+    "already_delivered_quantity": 100,
+    "in_transit_quantity": 100
+  }
+}

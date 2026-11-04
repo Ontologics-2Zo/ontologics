@@ -71,7 +71,7 @@ class ComparisonFormatTests(unittest.TestCase):
 
     def test_only_observed_catalog_ids_are_final_output_choices(self):
         messages = [self.message(self.nodes[:1])]
-        value = connection._comparison_text_format(self.task, messages)
+        value = connection._catalog_text_format(self.task, messages, name='b_comparison')
         self.assertEqual('json_schema', value['type'])
         self.assertTrue(value['strict'])
         schema = value['schema']
@@ -85,7 +85,7 @@ class ComparisonFormatTests(unittest.TestCase):
 
     def test_candidates_accumulate_but_do_not_require_all_reads_or_all_citations(self):
         messages = [self.message([node]) for node in reversed(self.nodes)]
-        value = connection._comparison_text_format(self.task, messages + messages[:1])
+        value = connection._catalog_text_format(self.task, messages + messages[:1], name='b_comparison')
         field = value['schema']['properties']['evidence_ids']
         self.assertEqual(sorted({eid for node in self.nodes for eid in node['evidence']}),
                          field['items']['enum'])
@@ -99,7 +99,7 @@ class ComparisonFormatTests(unittest.TestCase):
             [self.message(self.nodes[:1], data_version=8)], [self.message([wrong])])
         for index, messages in enumerate(histories):
             with self.subTest(history=index):
-                self.assertIsNone(connection._comparison_text_format(self.task, messages))
+                self.assertIsNone(connection._catalog_text_format(self.task, messages, name='b_comparison'))
 
 
 class CatalogReadTests(unittest.TestCase):
@@ -354,6 +354,41 @@ class ModelConnectionTests(unittest.TestCase):
                         self.assertEqual(task.data()['input_sources_by_side'],
                                          result['payload']['input_sources_by_side'])
                         self.assertEqual(1, len(result['payload']['evidence_ids']))
+
+    def test_cq02_terminal_source_is_not_offered_as_confirmed_evidence(self):
+        from examples.order_fulfillment import b_terminal_input as terminal
+        from ontologics.model import ROOT
+        source = terminal.load_input(ROOT / 'data/order_fulfillment/examples/demo_normal_800.md')
+        role, task = terminal.case_task('cq02_normal', source, version=self.version)
+        input_id = next(item['evidence_id'] for item in task.data()['input_locators']
+                        if item['evidence_id'].endswith(':operations'))
+        for invalid in (False, True):
+            with self.subTest(invalid=invalid):
+                def select(value):
+                    if invalid:
+                        value['evidence_ids'].append(input_id)
+                transport = LocalModel(role, task, final_transform=select)
+                result, calls = connection.execute_case(self.host, 'cq02_normal', task, role,
+                    settings=self.settings, budget=connection.new_budget(self.policy), opener=transport)
+                self.assertNotIn('text', transport.requests[0][0])
+                observed = set()
+                for index, (payload, _) in enumerate(transport.requests[1:]):
+                    node = next(node for node in task.data()['catalog_nodes']
+                                if node['id'] == transport.calls[index]['arguments']['node_id'])
+                    observed.update(node['evidence'])
+                    choices = payload['text']['format']['schema']['properties']['evidence_ids']['items']['enum']
+                    self.assertEqual(sorted(observed), choices)
+                    self.assertNotIn(input_id, choices)
+                self.assertEqual(not invalid, result['runtime']['ok'], result['error'])
+                self.assertEqual(4, len(calls))
+                self.assertEqual(transport.final_text, calls[-1]['model_text'])
+                self.assertEqual(0, result['runtime']['repairs'])
+                if invalid:
+                    self.assertEqual('AGENT_EVIDENCE_MISMATCH', result['error']['code'])
+                    self.assertIsNone(result['payload'])
+                else:
+                    self.assertEqual(task.data()['input_sources'], result['payload']['input_sources'])
+                    self.assertEqual(task.data()['assessment'], result['payload']['assessment'])
 
     def test_remaining_cases_accept_main_lookup_with_both_kind_and_node_id(self):
         for case in CASES[1:]:

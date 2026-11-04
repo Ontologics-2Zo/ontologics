@@ -204,6 +204,11 @@ class Entry:
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
+    def end_headers(self):
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Content-Security-Policy', "frame-ancestors 'none'")
+        super().end_headers()
+
     def reply(self,status,body,kind='application/json'):
         raw=body.encode() if isinstance(body,str) else canonical(body).encode()
         self.send_response(status); self.send_header('Content-Type',kind+'; charset=utf-8')

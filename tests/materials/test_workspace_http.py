@@ -45,6 +45,69 @@ class MaterialsWorkspaceHTTPTests(WebCase):
         self.failed(self.http(self.alice,path+'combined-review',dict(body,quantity=-1,request_key='negative')),400,'INVALID_INPUT')
         self.assertEqual(1,self.ok(self.http(self.alice,'/api/context'))['data_version'])
 
+    def test_lost_calculation_response_replays_saved_rfq_after_stock_change(self):
+        import json
+        from datetime import datetime, timedelta
+        from urllib.request import Request, urlopen
+        from ontologics.identity import DevelopmentContext
+        from ontologics.materials.library_stock import company_stock_scenario
+        from ontologics.model import digest
+
+        prefix = '/api/planning/'
+        path = prefix + 'combined-review'
+        context = DevelopmentContext('dev-alice')
+        self.ok(self.http(self.alice, prefix+'product-inventory', {'quantity': 200}))
+        app = self.alice.app.workspaces['planning']
+        cid = 'config:esp32-poe:L:WROOM'
+        with self.host.request(context) as session:
+            detail = session.call('configuration', {'configuration_id': cid})['data']
+            stock = company_stock_scenario(detail, session._service.now())
+        self.assertTrue(app.materials.stock.store(context, cid, stock, 'initial-stock')['ok'])
+
+        def saved_rows():
+            with self.host.request(context) as session:
+                return session._service.db.execute(
+                    'SELECT id, payload FROM pp_workspace_material_reviews ORDER BY id'
+                ).fetchall()
+
+        body = dict(configuration_id=cid, quantity=200, allowance_percent='10', request_key='lost-review')
+        self.assertEqual([], saved_rows())
+        req = Request(self.alice.origin + path, data=json.dumps(body).encode(), headers={
+            'Origin': self.alice.origin, 'Content-Type': 'application/json',
+            'X-CSRF-Token': self.alice.test_token, 'Cookie': self.alice.test_cookie,
+        })
+        # Headers arrive after the transaction commits. Close before consuming the response body.
+        with urlopen(req, timeout=15) as response:
+            self.assertEqual(200, response.status)
+        first_rows = saved_rows()
+        self.assertEqual(1, len(first_rows))
+        first = first_rows[0]
+        rfq_ref = dict(source_kind='workspace', review_id=first['id'])
+        first_document = self.ok(self.http(self.alice, prefix+'rfq-document-get', rfq_ref))['data']['document']
+
+        at = datetime.fromisoformat(stock['scope']['as_of'].replace('Z', '+00:00')) + timedelta(seconds=1)
+        stock['scope']['as_of'] = at.isoformat()
+        for observation in stock['snapshots']:
+            observation['stock_scope']['as_of'] = at.isoformat()
+            for component in observation['stocks']:
+                component['on_hand_quantity'] += 1000
+            observation['sha256'] = digest({k: v for k, v in observation.items() if k != 'sha256'})
+        self.assertTrue(app.materials.stock.store(context, cid, stock, 'new-stock')['ok'])
+
+        replay = self.ok(self.http(self.alice, path, body))
+        self.assertIn('IDEMPOTENT_REPLAY', [warning['code'] for warning in replay['warnings']])
+        self.assertEqual(first['id'], replay['data']['id'])
+        self.assertEqual(first['payload'], replay['data']['payload'])
+        self.assertEqual(first_rows, saved_rows())
+        replay_document = self.ok(self.http(self.alice, prefix+'rfq-document-get', rfq_ref))['data']['document']
+        self.assertEqual(first_document['document_id'], replay_document['document_id'])
+
+        fresh = self.ok(self.http(self.alice, path, dict(body, request_key='new-review')))['data']
+        self.assertNotEqual(first['id'], fresh['id'])
+        self.assertEqual(2, len(saved_rows()))
+        self.assertTrue(any(row['kind'] == 'bom' for row in first['payload']['rfq']['lines']))
+        self.assertFalse(any(row['kind'] == 'bom' for row in fresh['payload']['rfq']['lines']))
+
     def handoff_body(self):
         import base64
         import shutil

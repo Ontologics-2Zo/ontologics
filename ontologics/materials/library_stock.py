@@ -1,9 +1,8 @@
 """Explicit, persistent company-stock scenarios. Never loaded implicitly."""
 from copy import deepcopy
-from datetime import datetime
 from ..model import canonical, digest
 from ..service import DomainError
-from .materials import available_stock
+from .materials import _time, available_stock
 
 
 def company_stock_scenario(detail, as_of):
@@ -26,56 +25,111 @@ def company_stock_scenario(detail, as_of):
     return dict(origin='synthetic',label='회사 재고 시나리오',scope=scope,snapshots=[doc])
 
 
-def shared_stock(rows):
-    """Resolve one company/location pool without copying or adding duplicate lots.
+def _normalized_payload(payload, mapping):
+    if not mapping:
+        return payload
+    normalized=deepcopy(payload)
+    coverage={}
+    for cid,lots in normalized['scope'].get('component_lots',{}).items():
+        key=mapping.get(cid,cid)
+        if key in coverage:
+            raise DomainError('STOCK_IDENTITY_CONFLICT','동일 재고 품목의 관측이 중복됐습니다.')
+        coverage[key]=lots
+    normalized['scope']['component_lots']=coverage
+    for doc in normalized['snapshots']:
+        for item in doc['stocks']:
+            item['component_id']=mapping.get(item['component_id'],item['component_id'])
+    return normalized
 
-    A configuration snapshot is an observation source. For each component use
-    its newest complete observation; retain original per-lot provenance.
-    The current reservation ledger has no warehouse dimension, so mixed scopes
-    must be reconciled rather than silently consuming stock from another site.
-    """
+
+def _at_least_as_recent(current, other):
+    if not other:
+        return True
+    if not current:
+        return False
+    if current.keys()==other.keys():
+        return all(current[lot]>=when for lot,when in other.items())
+    # Different lot sets can supersede each other only when their entire
+    # observation windows are ordered. Never assemble a count across sources.
+    return min(current.values())>max(other.values())
+
+
+def shared_stock(rows, mapping=None, report_components=None):
+    """Resolve a company/location pool using whole component observations."""
     if not rows:return None
-    if len(rows)==1:return rows[0]
+    if len(rows)==1 and not mapping:return rows[0]
     scopes={(r['payload']['scope']['company'],r['payload']['scope']['location'],
              r['payload']['scope']['unit']) for r in rows}
     if len(scopes)!=1:
         raise DomainError('STOCK_SCOPE_CONFLICT','회사·창고가 다른 재고 자료입니다. 공용 재고 범위를 먼저 대사하세요.')
-    sources=[];chosen={}
+    conflict='동일 시점 또는 대사되지 않은 로트의 재고가 서로 다릅니다. 재고 담당자의 대사가 필요합니다.'
+    candidates={}; observations={}; sources=[]
     for row in rows:
-        p=row['payload'];calculated=available_stock(p['snapshots'],p['scope'])
+        p=_normalized_payload(row['payload'],mapping)
+        calculated=available_stock(p['snapshots'],p['scope'])
         if not calculated['valid']:
             raise DomainError('STOCK_SOURCE_INVALID','공용 재고 원본에 오류 또는 상충이 있습니다.')
-        at=datetime.fromisoformat(p['scope']['as_of'].replace('Z','+00:00'))
         sources.append((row,calculated))
+        allowed=(report_components or {}).get(row.get('configuration_id'))
+        by_component={}
+        for selection in calculated['selected']:
+            obs=selection['observation']
+            cid=obs['component_id']
+            if allowed is not None and cid not in allowed:
+                continue
+            lot,when=obs['lot_id'],_time(obs['as_of'])
+            by_component.setdefault(cid,{})[lot]=(when,selection)
+            # Use the common calculator's comparison semantics for corroborating
+            # observations while keeping each source's original timestamp string.
+            values={k:v for k,v in obs.items() if k not in ('id','as_of','evidence')}
+            if observations.setdefault((cid,lot,when),values)!=values:
+                raise DomainError('STOCK_OBSERVATION_CONFLICT',conflict)
         for cid,component in calculated['components'].items():
-            # Include lot quantities, not just the summed availability.
-            lots=[{k:v for k,v in x['observation'].items() if k!='id'} for x in calculated['selected'] if x['observation'].get('component_id')==cid]
-            signature=digest(dict(component=component,lots=lots))
-            old=chosen.get(cid)
-            if old and old[0]==at and old[3]!=signature:
-                raise DomainError('STOCK_OBSERVATION_CONFLICT','동일 시점의 부품 재고가 서로 다릅니다. 재고 담당자의 대사가 필요합니다.')
-            if old is None or at>old[0]:chosen[cid]=(at,row,calculated,signature)
-    newest=max(rows,key=lambda r:datetime.fromisoformat(r['payload']['scope']['as_of'].replace('Z','+00:00')))
-    result=deepcopy(next(c for r,c in sources if r['id']==newest['id']))
+            if allowed is not None and cid not in allowed:
+                continue
+            lots=by_component.get(cid,{})
+            times={lot:when for lot,(when,_) in lots.items()}
+            selections=[selection for _,selection in lots.values()]
+            coverage=p['scope'].get('component_lots',{}).get(cid,[])
+            candidates.setdefault(cid,[]).append((times,row,component,selections,coverage,calculated))
+
+    def source_order(row,calculated):
+        return _time(calculated['scope']['as_of']),row.get('created_at',''),row['id']
+
+    newest,latest=max(sources,key=lambda pair:source_order(*pair))
+    result=deepcopy(latest)
+    cutoff=_time(result['scope']['as_of'])
     result.update(components={},selected=[],excluded=[],errors=[],conflicts=[],unresolved=[])
     coverage={}
-    for cid,(_,row,calculated,_) in chosen.items():
-        result['components'][cid]=deepcopy(calculated['components'][cid])
+    for cid,options in sorted(candidates.items()):
+        # A candidate that dominates all lot times also has the greatest
+        # descending time vector. The source order breaks corroborating ties.
+        times,row,component,selections,lots,calculated=max(
+            options,key=lambda option:(sorted(option[0].values(),reverse=True),source_order(option[1],option[5])))
+        for other_times,_,other_component,_,other_lots,_ in options:
+            if (not _at_least_as_recent(times,other_times) or
+                    times and times==other_times and
+                    (component!=other_component or set(lots)!=set(other_lots))):
+                raise DomainError('STOCK_OBSERVATION_CONFLICT',conflict)
+
+        result['components'][cid]=deepcopy(component)
         result['components'][cid]['source_snapshot_id']=row['id']
-        result['components'][cid]['source_as_of']=row['payload']['scope']['as_of']
-        coverage[cid]=row['payload']['scope'].get('component_lots',{}).get(cid,[])
-    # Keep original source/locator evidence intact; do not rewrite source rows.
-    for row,calculated in sources:
-        selected_ids={cid for cid,value in chosen.items() if value[1]['id']==row['id']}
-        result['selected'].extend(deepcopy(x) for x in calculated['selected'] if x['observation'].get('component_id') in selected_ids)
-        result['unresolved'].extend(deepcopy(calculated['unresolved']))
+        result['components'][cid]['source_as_of']=min(
+            selections,key=lambda selection:_time(selection['observation']['as_of'])
+        )['observation']['as_of'] if selections else None
+        if lots:
+            coverage[cid]=deepcopy(lots)
+        for selection in deepcopy(selections):
+            observed_at=times[selection['observation']['lot_id']]
+            selection['age_seconds']=(cutoff-observed_at).total_seconds()
+            result['selected'].append(selection)
+        refs=[selection['source'] for selection in selections]
+        result['unresolved'].extend(deepcopy(issue) for issue in calculated['unresolved']
+                                    if issue['refs']==[cid] or any(ref in refs for ref in issue['refs']))
     result['scope']['component_lots']=coverage
     result['scope']['coverage_basis']='부품별 최신 관측 원본 참조; 중복 로트 합산 없음'
-    payload=deepcopy(newest['payload']);payload['scope']=deepcopy(result['scope'])
-    payload['label']='회사 공용 부품 재고'
-    merged=dict(newest,id=digest(sorted(r['id'] for r in rows)),payload=payload,
-                shared_calculated=result,source_snapshot_ids=sorted(r['id'] for r in rows))
-    return merged
+    source_ids=sorted(r['id'] for r in rows)
+    return dict(newest,id=digest(source_ids),shared_calculated=result,source_snapshot_ids=source_ids)
 
 
 class LibraryStock:
@@ -90,29 +144,26 @@ class LibraryStock:
 
     def latest(self,svc,configuration_id):
         # configuration_id identifies the consumer, never ownership of stock.
-        rows=svc.db.execute('''SELECT DISTINCT ON (configuration_id) *
-            FROM pp_company_stock_snapshots
-            ORDER BY configuration_id,created_at DESC,id DESC''').fetchall()
+        rows=svc.db.execute('SELECT * FROM pp_company_stock_snapshots ORDER BY created_at DESC,id DESC').fetchall()
         from .library_inventory_identity import links
         mapping=links(svc)
         if not mapping:
-            own=next((r for r in rows if r['configuration_id']==configuration_id),None)
-            return own or (rows[0] if len(rows)==1 else None)
-        normalized=[]
-        for raw in rows:
-            row=deepcopy(raw);p=row['payload'];coverage={}
-            for cid,lots in p['scope'].get('component_lots',{}).items():
-                key=mapping.get(cid,cid)
-                if key in coverage:raise DomainError('STOCK_IDENTITY_CONFLICT','동일 재고 품목의 관측이 중복됐습니다.')
-                coverage[key]=lots
-            p['scope']['component_lots']=coverage
-            for doc in p['snapshots']:
-                for item in doc['stocks']:
-                    item['component_id']=mapping.get(item['component_id'],item['component_id'])
-            normalized.append(row)
-        pooled=shared_stock(normalized)
-        if pooled:
-            pooled=dict(pooled,id=digest(dict(sources=sorted(r['id'] for r in rows),links=mapping)),inventory_links=mapping)
+            own=[r for r in rows if r['configuration_id']==configuration_id]
+            if not own and len({r['configuration_id'] for r in rows})!=1:
+                return None
+            rows=own or rows
+        current={}
+        for row in sorted(rows,key=lambda r:_time(r['payload']['scope']['as_of']),reverse=True):
+            current.setdefault(row['configuration_id'],row['payload'])
+        # An omitted human count has no observation time. The greatest report
+        # cutoff determines which components the configuration still declares.
+        report_components={
+            cid:{mapping.get(part,part) for part in payload['scope'].get('component_lots',{})}
+            for cid,payload in current.items() if payload['origin']=='human_reported'
+        }
+        pooled=shared_stock(rows,mapping,report_components)
+        if pooled and mapping:
+            pooled=dict(pooled,id=digest(dict(sources=pooled['source_snapshot_ids'],links=mapping)),inventory_links=mapping)
         return pooled
 
     def store(self,context,configuration_id,payload,request_key):
@@ -123,7 +174,11 @@ class LibraryStock:
             svc=session._service
             def save():
                 from .library_fulfillment import received_totals
-                if set(calculated['components']) & set(received_totals(svc)):
+                from .library_inventory_identity import links
+                mapping=links(svc)
+                observed={mapping.get(cid,cid) for cid in calculated['components']}
+                received={mapping.get(cid,cid) for cid in received_totals(svc)}
+                if observed & received:
                     raise DomainError('RECONCILIATION_REQUIRED','입고 원장이 있는 부품의 기준 재고는 입고 반영분 대사 없이 교체할 수 없습니다.')
                 key=digest(dict(configuration_id=configuration_id,payload=payload))
                 svc.db.execute('INSERT INTO pp_company_stock_snapshots VALUES(%s,%s,%s,%s,%s) ON CONFLICT(id) DO NOTHING',(key,configuration_id,canonical(payload),session.context['actor'],svc.now()))
@@ -134,7 +189,10 @@ class LibraryStock:
         if row is None:
             return dict(components={},selected=[],excluded=[],errors=[],conflicts=[],unresolved=[dict(code='STOCK_SOURCE_NOT_CONNECTED',refs=[],message='재고 자료 미연결')],scope=None,valid=True,state='unavailable')
         payload=row['payload']; result=deepcopy(row['shared_calculated']) if 'shared_calculated' in row else available_stock(payload['snapshots'],payload['scope'])
-        result.update(snapshot_id=row['id'],origin=payload['origin'],label=payload['label'],state='available')
+        label=payload['label']
+        if row.get('inventory_links') and len(row['source_snapshot_ids'])>1:
+            label='회사 공용 부품 재고'
+        result.update(snapshot_id=row['id'],origin=payload['origin'],label=label,state='available')
         if svc is not None:
             from .library_reservations import reserved_totals,reservation_token
             totals=reserved_totals(svc,owner)

@@ -5,13 +5,15 @@ import os
 import unittest
 from pathlib import Path
 from copy import deepcopy
-from ontologics.materials.library_stock import shared_stock, company_stock_scenario
+from ontologics.materials.library_stock import LibraryStock, shared_stock, company_stock_scenario
 from ontologics.service import DomainError
 
 class SharedResolverTests(unittest.TestCase):
-    def row(self,key='a',available=100,when='2026-11-02T00:00:00+00:00'):
-        scope=dict(company='C',location='W',as_of=when,unit='piece',component_lots={'part':['lot']},coverage_basis='full count')
-        doc=dict(source_ref=key,sha256='a'*64,stock_scope=scope,stocks=[dict(id=key,component_id='part',lot_id='lot',unit='piece',quantity_state='known',availability_basis='reported_available',available_quantity=available)])
+    @staticmethod
+    def row(key='a',available=100,when='2026-11-02T00:00:00+00:00',*, observed=None, component='part'):
+        scope=dict(company='C',location='W',as_of=when,unit='piece',component_lots={component:['lot']},coverage_basis='full count')
+        doc=dict(source_ref=key,sha256='a'*64,stock_scope=scope,stocks=[dict(id=key,component_id=component,lot_id='lot',unit='piece',quantity_state='known',availability_basis='reported_available',available_quantity=available)])
+        if observed is not None:doc['stocks'][0]['as_of']=observed
         return dict(id=key,payload=dict(origin='synthetic',label=key,scope=scope,snapshots=[doc]))
     def test_same_lot_is_not_added_twice(self):
         r=shared_stock([self.row(),self.row('b')])
@@ -25,8 +27,176 @@ class SharedResolverTests(unittest.TestCase):
         b=self.row('b');b['payload']['scope']['location']='other'
         with self.assertRaises(DomainError):shared_stock([self.row(),b])
 
+    def test_observation_time_wins_over_later_evaluation_cutoff(self):
+        a=self.row('new-count',100,'2026-11-03T00:00:00Z')
+        b=self.row('old-count',200,'2026-11-04T00:00:00Z',observed='2026-11-02T00:00:00Z')
+        for rows in ([a,b],[b,a]):
+            with self.subTest(order=[row['id'] for row in rows]):
+                result=shared_stock(rows)['shared_calculated']
+                self.assertEqual(100,result['components']['part']['available_quantity'])
+                self.assertEqual('2026-11-03T00:00:00Z',result['components']['part']['source_as_of'])
+                self.assertEqual('new-count',result['selected'][0]['source']['source_ref'])
+                self.assertEqual('/stocks/0',result['selected'][0]['source']['locator'])
+                self.assertEqual('2026-11-04T00:00:00Z',result['scope']['as_of'])
+                self.assertEqual(86400,result['selected'][0]['age_seconds'])
+
+    def test_pooled_lot_ages_use_returned_scope_cutoff(self):
+        a=self.row('a',100,'2026-11-03T00:00:00Z')
+        payload=a['payload']
+        payload['scope']['component_lots']['part'].append('lot2')
+        doc=payload['snapshots'][0]
+        doc['stocks'].append(dict(doc['stocks'][0],id='a2',lot_id='lot2',as_of='2026-11-02T09:00:00+09:00'))
+        b=self.row('b',70,'2026-11-04T00:00:00Z',component='other')
+        b['payload']['scope']['component_lots']['other']=['other-lot']
+        b['payload']['snapshots'][0]['stocks'][0]['lot_id']='other-lot'
+        result=shared_stock([a,b])['shared_calculated']
+        self.assertEqual('2026-11-04T00:00:00Z',result['scope']['as_of'])
+        self.assertEqual(
+            {'lot':86400,'lot2':172800,'other-lot':0},
+            {s['observation']['lot_id']:s['age_seconds'] for s in result['selected']},
+        )
+
+
+    def test_equal_instant_different_counts_conflict_across_cutoffs(self):
+        a=self.row('a',100,'2026-11-03T00:00:00Z')
+        b=self.row('b',200,'2026-11-04T00:00:00Z',observed='2026-11-03T09:00:00+09:00')
+        with self.assertRaises(DomainError) as error:
+            shared_stock([a,b])
+        self.assertEqual('STOCK_OBSERVATION_CONFLICT',error.exception.code)
+
+    def test_equal_instant_equivalent_counts_corroborate(self):
+        a=self.row('a',100,'2026-11-03T00:00:00Z')
+        b=self.row('b',100,'2026-11-03T09:00:00+09:00')
+        result=shared_stock([a,b])['shared_calculated']
+        self.assertEqual(100,result['components']['part']['available_quantity'])
+        self.assertEqual(1,len(result['selected']))
+
+    def test_crossing_lot_times_need_reconciliation(self):
+        a=self.row('a',100,'2026-11-04T00:00:00Z',observed='2026-11-03T00:00:00Z')
+        b=self.row('b',200,'2026-11-05T00:00:00Z',observed='2026-11-02T00:00:00Z')
+        for row,when in ((a,'2026-11-02T00:00:00Z'),(b,'2026-11-04T00:00:00Z')):
+            payload=row['payload']
+            payload['scope']['component_lots']['part'].append('lot2')
+            doc=payload['snapshots'][0]
+            doc['stocks'].append(dict(doc['stocks'][0],id=row['id']+'2',lot_id='lot2',as_of=when))
+        with self.assertRaises(DomainError) as error:
+            shared_stock([a,b])
+        self.assertEqual('STOCK_OBSERVATION_CONFLICT',error.exception.code)
+
+    def test_new_complete_lot_set_replaces_old_without_union(self):
+        a=self.row('a',100,'2026-11-03T00:00:00Z')
+        b=self.row('b',70,'2026-11-04T00:00:00Z')
+        b['payload']['scope']['component_lots']['part']=['replacement-lot']
+        b['payload']['snapshots'][0]['stocks'][0]['lot_id']='replacement-lot'
+        result=shared_stock([a,b])['shared_calculated']
+        self.assertEqual(70,result['components']['part']['available_quantity'])
+        self.assertEqual(['replacement-lot'],result['components']['part']['lot_ids'])
+
+    def test_future_observation_cannot_replace_eligible_count(self):
+        a=self.row('a',100,'2026-11-03T00:00:00Z')
+        b=self.row('b',200,'2026-11-04T00:00:00Z',observed='2026-11-05T00:00:00Z')
+        result=shared_stock([a,b])['shared_calculated']
+        self.assertEqual(100,result['components']['part']['available_quantity'])
+        self.assertEqual([],result['unresolved'])
+
+    def test_new_unknown_quantity_remains_unknown(self):
+        a=self.row('a',100,'2026-11-03T00:00:00Z')
+        b=self.row('b',None,'2026-11-04T00:00:00Z')
+        result=shared_stock([a,b])['shared_calculated']
+        self.assertIsNone(result['components']['part']['available_quantity'])
+        self.assertTrue(result['unresolved'])
+
 @unittest.skipUnless(os.environ.get('TEST_DATABASE_URL'),'Disposable PostgreSQL required')
 class SharedInventoryTests(unittest.TestCase):
+    def stock_fixture(self):
+        from tests.db import database_for_test
+        from ontologics.host import CommonHost
+        from ontologics.identity import DevelopmentContext,DevelopmentIdentityProvider
+        from ontologics.web import USERS
+        settings=database_for_test(self)
+        context=DevelopmentContext('dev-alice')
+        host=CommonHost(DevelopmentIdentityProvider(USERS,enabled=True),settings)
+        return host,context,LibraryStock(host,context)
+
+    def test_late_registration_preserves_newest_observation(self):
+        host,context,stock=self.stock_fixture()
+        for row in (
+            SharedResolverTests.row('new-count',100,'2026-11-03T00:00:00Z'),
+            SharedResolverTests.row('old-count',200,'2026-11-04T00:00:00Z',observed='2026-11-02T00:00:00Z'),
+        ):
+            stored=stock.store(context,'config',row['payload'],row['id'])
+            self.assertTrue(stored['ok'],stored)
+        with host.request(context) as session:
+            svc=session._service
+            result=stock.calculate(stock.latest(svc,'config'),svc)
+        self.assertEqual(100,result['components']['part']['available_quantity'])
+        self.assertEqual('new-count',result['selected'][0]['source']['source_ref'])
+
+    def test_omitted_human_report_count_stays_unknown(self):
+        self.assertIsNone(self.available_after_omission('2026-11-04T00:00:00Z'))
+
+    def test_late_older_omission_does_not_hide_newer_human_count(self):
+        self.assertEqual(100,self.available_after_omission('2026-11-02T00:00:00Z'))
+
+    def available_after_omission(self, omitted_as_of):
+        from ontologics.model import canonical
+        host,context,stock=self.stock_fixture()
+        first=SharedResolverTests.row('first',100,'2026-11-03T00:00:00Z')['payload']
+        latest=SharedResolverTests.row('omitted',when=omitted_as_of)['payload']
+        latest['scope']['component_lots']={}
+        latest['snapshots'][0]['stocks']=[]
+        with host.request(context) as session:
+            svc=session._service
+            for key,payload in (('first',first),('omitted',latest)):
+                payload['origin']='human_reported'
+                svc.db.execute('INSERT INTO pp_company_stock_snapshots VALUES(%s,%s,%s,%s,%s)',
+                               (key,'config',canonical(payload),'fixture',svc.now()))
+            result=stock.calculate(stock.latest(svc,'config'),svc)
+        return result['components'].get('part',{}).get('available_quantity')
+
+    def test_receipt_reconciliation_uses_canonical_stock_identity(self):
+        from ontologics.model import canonical,digest
+        for receipt_part,observed_part,ledger,available in (
+            ('alias','part','warehouse',100),('part','alias','supply',105),('part','part','warehouse',100),
+        ):
+            with self.subTest(receipt_part=receipt_part,observed_part=observed_part,ledger=ledger):
+                host,context,stock=self.stock_fixture()
+                with host.request(context) as session:
+                    svc=session._service
+                    for member,key in [('part','part'),('alias','part'),('other-alias','other-part')]:
+                        svc.db.execute('INSERT INTO pp_inventory_component_links VALUES(%s,%s,%s,%s,%s)',
+                                       (member,key,'isolated fixture','fixture',svc.now()))
+                baseline=SharedResolverTests.row('base',component='part')
+                stored=stock.store(context,'config',baseline['payload'],'base')
+                self.assertTrue(stored['ok'],stored)
+                with host.request(context) as session:
+                    svc=session._service
+                    payload=dict(component_id=receipt_part,accepted=5,held=3)
+                    now=svc.now()
+                    if ledger=='warehouse':
+                        svc.db.execute('INSERT INTO pp_warehouse_receipts VALUES(%s,%s,%s,%s,%s,%s,%s)',
+                                       ('receipt','purchase','reference',canonical(payload),digest(payload),'fixture',now))
+                    else:
+                        svc.db.execute('INSERT INTO pp_supply_events VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                                       ('receipt','receipt','reference','contract',0,'reservation',canonical(payload),digest(payload),'fixture',now))
+                update=SharedResolverTests.row('update',105,'2026-11-03T00:00:00Z',component=observed_part)
+                saved=stock.store(context,'config',update['payload'],f'update-{receipt_part}-{observed_part}')
+                self.assertFalse(saved['ok'],saved)
+                self.assertEqual('RECONCILIATION_REQUIRED',saved['errors'][0]['code'])
+                with host.request(context) as session:
+                    svc=session._service
+                    result=stock.calculate(stock.latest(svc,'config'),svc)
+                for component in ('part','alias'):
+                    count=result['components'][component]
+                    self.assertEqual(105,count['available_before_a_reservations'])
+                    self.assertEqual(available,count['available_quantity'])
+                self.assertEqual('base',result['selected'][0]['source']['source_ref'])
+                unrelated=SharedResolverTests.row('other',70,component='other-alias')['payload']
+                unrelated['scope']['component_lots']['other-alias']=['other-lot']
+                unrelated['snapshots'][0]['stocks'][0]['lot_id']='other-lot'
+                saved=stock.store(context,'other-config',unrelated,'other-stock')
+                self.assertTrue(saved['ok'],saved)
+
     def test_reserve_30_and_release_visible_in_both_products(self):
         from tests.db import database_for_test
         from ontologics.host import CommonHost

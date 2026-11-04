@@ -1,6 +1,13 @@
 """Run: python -m unittest ontologics.order_fulfillment.test_request_entry -v"""
+import json
+import threading
 import unittest
-from .request_entry import candidate_payload
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
+from types import SimpleNamespace
+from unittest.mock import Mock, call
+
+from .request_entry import Handler, candidate_payload
 
 class CandidateTests(unittest.TestCase):
     def setUp(self):
@@ -27,7 +34,116 @@ class CandidateTests(unittest.TestCase):
         self.fields['quantity']=0
         with self.assertRaises(ValueError): candidate_payload(self.answer,self.text,self.nodes,'key','2026-11-03T10:00:00+09:00')
 
-if __name__=='__main__': unittest.main()
+class RequestEntryHttpTests(unittest.TestCase):
+    def setUp(self):
+        self.entry = Mock(
+            settings=SimpleNamespace(model='test-model'),
+            policy=SimpleNamespace(max_cost_usd=1),
+        )
+        self.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        self.server.entry = self.entry
+        self.server.csrf = 'test-csrf'
+        self.server.host_header = f'127.0.0.1:{self.server.server_port}'
+        self.thread = threading.Thread(
+            target=self.server.serve_forever, kwargs={'poll_interval': 0.01}, daemon=True,
+        )
+        self.thread.start()
+        self.addCleanup(self.close_server)
+
+    def close_server(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+
+    def request(self, method, path, body=None, headers=None):
+        request_headers = {}
+        if method == 'POST':
+            request_headers = {
+                'Content-Type': 'application/json',
+                'Origin': f'http://{self.server.host_header}',
+                'X-CSRF-Token': self.server.csrf,
+            }
+        request_headers.update(headers or {})
+        connection = HTTPConnection('127.0.0.1', self.server.server_port, timeout=3)
+        try:
+            connection.request(method, path, body=body, headers=request_headers)
+            response = connection.getresponse()
+            return response.status, dict(response.getheaders()), response.read()
+        finally:
+            connection.close()
+
+    def assert_frame_protected(self, headers):
+        self.assertEqual(
+            ('DENY', "frame-ancestors 'none'"),
+            (headers.get('X-Frame-Options'), headers.get('Content-Security-Policy')),
+        )
+
+    def assert_reply_protected(self, headers):
+        self.assertEqual('no-store', headers['Cache-Control'])
+        self.assertEqual('nosniff', headers['X-Content-Type-Options'])
+        self.assert_frame_protected(headers)
+
+    def test_successful_responses_are_frame_protected(self):
+        self.entry.preview.return_value = {'status': 'preview'}
+        self.entry.confirm_context.return_value = {'business_context': {'ready': True}}
+        self.entry.register.return_value = {'status': 'registered'}
+        selection = {'contract_item_id': 'item'}
+        cases = (
+            ('GET', '/', None, 'text/html; charset=utf-8', None),
+            ('GET', '/api/info', None, 'application/json; charset=utf-8',
+             {'csrf': 'test-csrf', 'model': 'test-model', 'max_cost_usd': 1}),
+            ('POST', '/api/preview', {'text': 'request', 'key': 'key'},
+             'application/json; charset=utf-8', {'status': 'preview'}),
+            ('POST', '/api/context', {'key': 'key', 'selection': selection},
+             'application/json; charset=utf-8', {'business_context': {'ready': True}}),
+            ('POST', '/api/register', {'key': 'key'},
+             'application/json; charset=utf-8', {'status': 'registered'}),
+        )
+        for method, path, data, content_type, expected in cases:
+            with self.subTest(method=method, path=path):
+                body = json.dumps(data) if data is not None else None
+                status, headers, raw = self.request(method, path, body)
+                self.assertEqual(200, status)
+                self.assertEqual(content_type, headers['Content-Type'])
+                if expected is None:
+                    self.assertIn(b'<script>', raw)
+                    self.assertIn(b'<style>', raw)
+                else:
+                    self.assertEqual(expected, json.loads(raw))
+                self.assert_reply_protected(headers)
+        self.assertEqual(
+            [call.preview('request', 'key'), call.confirm_context('key', selection),
+             call.register('key')],
+            self.entry.method_calls,
+        )
+
+    def test_rejected_requests_are_frame_protected_and_skip_entry(self):
+        preview = '{"text":"request","key":"key"}'
+        cases = (
+            ('GET', '/', None, {'Host': 'example.invalid'}, 403),
+            ('POST', '/api/preview', preview, {'Host': 'example.invalid'}, 403),
+            ('POST', '/api/preview', preview, {'Origin': 'https://example.invalid'}, 403),
+            ('POST', '/api/preview', preview, {'X-CSRF-Token': 'invalid'}, 403),
+            ('POST', '/api/preview', '{', {}, 400),
+            ('GET', '/missing', None, {}, 404),
+            ('POST', '/missing', preview, {}, 404),
+            ('PUT', '/api/preview', preview, {}, 501),
+        )
+        for method, path, body, request_headers, expected_status in cases:
+            with self.subTest(method=method, path=path, request_headers=request_headers):
+                status, headers, _ = self.request(method, path, body, request_headers)
+                self.assertEqual(expected_status, status)
+                if expected_status == 501:
+                    self.assert_frame_protected(headers)
+                else:
+                    self.assert_reply_protected(headers)
+        self.assertEqual([], self.entry.method_calls)
+
+    def test_processing_error_is_frame_protected(self):
+        self.entry.preview.side_effect = RuntimeError('entry failure')
+        status, headers, _ = self.request('POST', '/api/preview', '{"text":"request","key":"key"}')
+        self.assertEqual(500, status)
+        self.assert_reply_protected(headers)
 
 # Opt-in real PostgreSQL + Neo4j test; only creates its own development schema.
 import os
@@ -72,3 +188,6 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(entry.register(key),result)
             saved=json.loads((Path(tmp)/(key+'.json')).read_text())
             self.assertIn(text,saved['payload']['reason'])
+
+
+if __name__=='__main__': unittest.main()

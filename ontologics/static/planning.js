@@ -4,8 +4,19 @@ async function mountPlanning(container) {
   const names = {contract_item_id:'계약 품목 번호',company:'회사',customer:'고객',manufacturer:'제조사',product_model:'제품 모델',revision:'개정',variant:'변형',configuration_id:'구성 ID',ordered_quantity:'주문 수량',unit:'원문 단위',fulfilled_quantity:'기납품 수량',allocated_quantity:'기배정 수량',planned_input_quantity:'생산 검토 수량',delivery_due:'납기 원문',constraints:'개정·대체 제한'};
   const call = async (action, body) => must(await api('/api/planning/' + action, body)).data;
   const save = (action, body) => call(action, {...body, request_key:requestKey('planning:' + action, body)});
-  // Deliberate review/recalculation gets a new key; transport retries keep this body's key.
-  const reviewSave = (action, body) => call(action, {...body, request_key:crypto.randomUUID()});
+  const reviewNamespace = action => 'planning:pending-review:' + action;
+  const reviewSignature = (action, body) => reviewNamespace(action) + ':' + canonical(body);
+  // Keep an unacknowledged attempt across remounts and reloads in the same session.
+  async function reviewSave(action, body) {
+    const signature = reviewSignature(action, body);
+    const request_key = requestKey(reviewNamespace(action), body);
+    const saved = await call(action, {...body, request_key});
+    if (state.requestKeys[signature] === request_key) {
+      delete state.requestKeys[signature];
+      persist();
+    }
+    return saved;
+  }
   const can = permission => context?.identity?.permissions?.includes(permission);
   const button = (label, action, permission) => {
     const b = actionButton(label, () => attempt(action));
@@ -236,16 +247,21 @@ async function mountPlanning(container) {
             requireSavedReview();
             const fresh=await call('get',{contract_id:id}),latest=fresh.review;
             const latestCheck=[...(latest?.checks||[])].reverse().find(check=>check.decisions);
-            if(latest?.id!==review.id||latest?.result_sha256!==review.result_sha256||(latestCheck?.id||null)!==(previous?.id||null)){
-              await open(id,2);throw Error('저장된 원문 대조가 바뀌었습니다. 최신 값과 근거를 확인한 뒤 다시 눌러주세요.');
-            }
             const decisions={};
-            for(const [i,entry]of latest.result.items.entries())for(const key of Object.keys(entry.fields)){
+            for(const [i,entry]of review.result.items.entries())for(const key of Object.keys(entry.fields)){
               const scope=`${i}:${key}`;
-              decisions[scope]=structuredClone(latestCheck?.decisions?.[scope]||{state:'unresolved',value:null,reason:''});
+              decisions[scope]=structuredClone(previous?.decisions?.[scope]||{state:'unresolved',value:null,reason:''});
             }
             for(const key of supported)decisions[`${index}:${key}`]={state:'accepted',value:fields[key].value,reason:''};
-            await reviewSave('review',{contract_id:id,interpretation_id:review.id,result_sha256:review.result_sha256,decisions,note:latestCheck?.note||''});
+            const body={contract_id:id,interpretation_id:review.id,result_sha256:review.result_sha256,decisions,note:previous?.note||''};
+            const pending=state.requestKeys[reviewSignature('review',body)];
+            const sameSavedReview=pending&&latestCheck?.actor===context.identity.actor&&
+              (latestCheck.note||'')===body.note&&canonical(latestCheck.decisions)===canonical(decisions);
+            if(latest?.id!==review.id||latest?.result_sha256!==review.result_sha256||
+              ((latestCheck?.id||null)!==(previous?.id||null)&&!sameSavedReview)){
+              await open(id,2);throw Error('저장된 원문 대조가 바뀌었습니다. 최신 값과 근거를 확인한 뒤 다시 눌러주세요.');
+            }
+            await reviewSave('review',body);
             await open(id,2,'제품 정보 확인을 저장했습니다. 아래의 일치하는 구성을 연결하세요.');
           },'review'));
           if(!can('review'))panel.append(node('p','제품 정보를 확인·저장하려면 검토 권한이 필요합니다.','message'));
@@ -679,7 +695,7 @@ async function mountPlanning(container) {
           for(const issue of row.issues||[])checkPage.append(node('p',issue,'message error'));
           if(data.invalid?.length)checkPage.append(node('p','요청 목록에 검증 오류가 있습니다. 원본 요청을 보완한 뒤 목록을 새로고침하세요.','message error'));
           if(row.issues?.length)checkPage.append(node('p','요청 등록 담당자가 위 정보를 보완해야 계산할 수 있습니다. 요청 목록으로 돌아가 다른 요청을 확인할 수 있습니다.','mat-next'));
-          if(row.last_review)checkPage.append(node('p','이전에 검토한 요청입니다. 이번에는 현재 재고와 여유율로 다시 계산합니다.','hint'));
+          if(row.last_review)checkPage.append(node('p','이전에 검토한 요청입니다. 새 계산에는 현재 재고와 여유율을 사용합니다. 응답을 받지 못한 계산은 같은 조건으로 다시 눌러 저장 결과를 확인할 수 있습니다.','hint'));
           form.append(allowance.label,actions(submit));checkPage.append(form,node('p','이번 계산에는 추가 요청량만 적용합니다. 요청을 읽는 것은 자재 검토 완료가 아닙니다.','hint'));
           allowance.input.addEventListener('input',()=>{resultPage.replaceChildren();notice('여유율이 변경됐습니다. 다시 계산해 결과를 확인하세요.','pending');});
           form.addEventListener('submit',event=>{event.preventDefault();if(!form.reportValidity())return;run(()=>attempt(async()=>{

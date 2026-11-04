@@ -154,18 +154,31 @@ class RequestWorkflowDatabaseTests(unittest.TestCase):
             self.assertEqual('needs_info',rows[0]['status'])
             with self.assertRaises(DomainError):self.review(second)
     def test_fresh_stock_changes_draft_keeps_saved_review(self):
-        e=self.register();self.seed_stock();first=self.ok(self.review(e))
+        from datetime import datetime, timedelta
         from ontologics.model import digest
+        e=self.register();self.seed_stock();first=self.ok(self.review(e))
+        def review_ids():
+            with self.host.request(self.context) as s:
+                return {row['id'] for row in s._service.db.execute('SELECT id FROM pp_request_reviews')}
+
+        self.assertEqual(first['id'],self.ok(self.review(e,'same-stock-new-key'))['id'])
+        self.assertEqual({first['id']},review_ids())
         with self.host.request(self.context) as s:
             payload=self.app.materials.stock.latest(s._service,self.payload['configuration_id'])['payload']
         import copy
         payload=copy.deepcopy(payload)
+        at=(datetime.fromisoformat(payload['scope']['as_of'].replace('Z','+00:00'))+timedelta(seconds=1)).isoformat()
+        payload['scope']['as_of']=at
         for doc in payload['snapshots']:
+            doc['stock_scope']['as_of']=at
             for row in doc['stocks']:row['on_hand_quantity']+=1000
             doc['sha256']=digest({k:v for k,v in doc.items() if k!='sha256'})
         self.ok(self.app.materials.stock.store(self.context,self.payload['configuration_id'],payload,'stock-changed'))
+        self.assertEqual(first,self.ok(self.review(e)))
+        self.assertEqual({first['id']},review_ids())
         second=self.ok(self.review(e,'review-after-change'))
         self.assertNotEqual(first['id'],second['id'])
+        self.assertEqual({first['id'],second['id']},review_ids())
         self.assertGreater(len([r for r in first['payload']['rfq']['lines'] if r['kind']=='bom']),len([r for r in second['payload']['rfq']['lines'] if r['kind']=='bom']))
     def test_separate_source_host_with_a_cost_policy(self):
         from ontologics.paid_budget import cost_policy_from_environment

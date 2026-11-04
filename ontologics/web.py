@@ -193,6 +193,9 @@ class WebApplication:
             if path == '/api/fulfillment/query':
                 exact_keys(body, ('action', 'arguments'))
                 return request.fulfillment_query(**body)
+            if path == '/api/claims/query':
+                exact_keys(body, ('action', 'arguments'))
+                return request.claims_query(**body)
             if path == '/api/business/draft':
                 exact_keys(body, ('domain', 'action', 'payload', 'base_version',
                     'source_text', 'authored_at', 'notice', 'synthetic_confirmed', 'request_key'),
@@ -465,7 +468,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise DomainError('INVALID_INPUT', 'JSON 객체를 전달하세요.')
                 if url.path == '/api/development-user':
                     return self.respond(self.select_development_user(body))
-                if url.path in {'/api/review', '/api/quality', '/api/assistant', '/api/sources/intake', '/api/sources/draft', '/api/sources/compare', '/api/history/intake', '/api/business/draft', '/api/fulfillment/query'} or url.path.startswith(('/api/tools/', '/api/planning/')):
+                if url.path in {'/api/review', '/api/quality', '/api/assistant', '/api/sources/intake', '/api/sources/draft', '/api/sources/compare', '/api/history/intake', '/api/business/draft', '/api/fulfillment/query', '/api/claims/query'} or url.path.startswith(('/api/tools/', '/api/planning/')):
                     return self.respond(self.app.dispatch(url.path, body))
             else:
                 return self.respond(failure('METHOD_NOT_ALLOWED', 'GET 또는 POST를 사용하세요.'))

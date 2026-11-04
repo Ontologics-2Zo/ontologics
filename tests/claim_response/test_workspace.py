@@ -5,7 +5,7 @@ import json
 import unittest
 import uuid
 
-from ontologics.business_drafts import prepare_business_draft
+from ontologics.business_drafts import BusinessProposal, prepare_business_draft, preserve_proposal_sources
 from ontologics.claim_response.workspace import build_records
 from ontologics.host import CommonHost
 from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider
@@ -129,3 +129,188 @@ class ClaimWorkspaceTests(unittest.TestCase):
             payload={'intake_id': claim_id, 'unit_ids': ['unit:U104'], 'serials_confirmed': False}), 'CLAIM_UNITS_REQUIRED')
         self.assertEqual(2, self.audit._version())
         self.assertFalse(any(n['type'] == 'QualityCase' for n in self.audit._nodes()))
+
+
+# ---------------------------------------------------------------- common-screen claim flow
+# The file-driven steps and read-only views behind the common screen's claim tabs. These run on the
+# seed the demonstration uses (examples/claim_response/seed_common.py) without PostgreSQL: the common
+# host attaches origin/evidence and approves; here each step's records are applied as approved.
+from ontologics.claim_response import workspace as claim_workspace
+from ontologics.domain_schema import C_TYPES
+from ontologics.model import validate_graph
+from ontologics.service import DomainError
+from examples.claim_response.seed_common import seed_nodes
+
+FLOW_AT = '2026-11-04T18:00:00+09:00'
+FLOW_EVIDENCE = 'evidence:claim_response:batch:delivered'
+
+
+class _Graph:
+    """The shared lookup as the views see it: one approved version of every node."""
+    def __init__(self, index, ok=True):
+        self.index, self.ok, self.calls = index, ok, []
+
+    def lookup(self, actor, *, version=None):
+        self.calls.append((actor, version))
+        if not self.ok:
+            return {'ok': False, 'data': None, 'errors': [{'code': 'FORBIDDEN', 'message': 'no read'}]}
+        return {'ok': True, 'data': list(self.index.values()), 'evidence': ['every'], 'data_version': version,
+                'conflicts': ['any'], 'errors': []}
+
+
+class ClaimFileFlowTests(unittest.TestCase):
+    def setUp(self):
+        self.index = {node['id']: node for node in seed_nodes()}
+
+    def step(self, action, payload):
+        built = claim_workspace.build_records(list(self.index.values()), action, payload)
+        proposal = built if isinstance(built, BusinessProposal) else BusinessProposal(built)
+        records = proposal.records
+        before = set((ROOT / 'data/receipts').glob('business-file-*'))
+        sources = preserve_proposal_sources(proposal, self.index)
+        for path in set((ROOT / 'data/receipts').glob('business-file-*')) - before:
+            self.addCleanup(path.unlink, missing_ok=True)
+        self.index.update({n['id']: n for n in sources})
+        self.assertTrue(1 <= len(records) <= claim_workspace.RECORD_LIMIT)
+        for record in records:
+            self.assertIn(record['type'], C_TYPES)
+            self.assertFalse({'origin', 'evidence'} & set(record))
+            self.index[record['id']] = {**record, 'origin': 'synthetic', 'evidence': sorted(set([FLOW_EVIDENCE] + proposal.record_evidence.get(record['id'], [])))}
+        return records
+
+    def view(self, action, **arguments):
+        return claim_workspace.query(_Graph(self.index), 'alice', action, {**arguments, 'version': 1})['data']
+
+    def kinds(self, records):
+        return sorted(record['type'] for record in records)
+
+    def one(self, kind):
+        found = [node for node in self.index.values() if node['type'] == kind]
+        self.assertEqual(len(found), 1, kind)
+        return found[0]
+
+    def run_to_test_request(self, claim_file):
+        self.step('intake_file', {'file': claim_file, 'collected_at': FLOW_AT})
+        self.step('trace_case', {'intake_id': self.one('ClaimIntake')['id']})
+        case = self.one('QualityCase')
+        self.step('containment', {'case_id': case['id'], 'prepared_at': FLOW_AT})
+        self.step('test_request', {'case_id': case['id'], 'prepared_at': FLOW_AT})
+        return case
+
+    def register_results(self, case, result_file):
+        parts = []
+        while True:
+            try:
+                parts.append(len(self.step('test_results', {'case_id': case['id'], 'file': result_file, 'collected_at': FLOW_AT})))
+            except DomainError as error:
+                self.assertEqual(error.code, 'TEST_RESULTS_COMPLETE')
+                return parts
+
+    def test_mail_claim_runs_to_six_confirmed_in_a_valid_graph(self):
+        intake = self.step('intake_file', {'file': '1_메일_전수시험_클레임.eml', 'collected_at': FLOW_AT})
+        self.assertEqual(self.kinds(intake), ['ClaimIntake'])
+        self.assertEqual(intake[0]['reported_serials'], ['C-D021', 'C-D022', 'C-D023'])
+        with self.assertRaises(DomainError) as again:
+            self.step('intake_file', {'file': '1_메일_전수시험_클레임.eml', 'collected_at': FLOW_AT})
+        self.assertEqual(again.exception.code, 'CLAIM_ALREADY_REGISTERED')
+        traced = self.step('trace_case', {'intake_id': intake[0]['id']})
+        self.assertEqual(self.kinds(traced), ['ClaimIntake', 'QualityCase'])
+        self.assertEqual(self.one('ClaimIntake')['intake_state'], 'confirmed')
+        case = self.one('QualityCase')
+        held = self.step('containment', {'case_id': case['id'], 'prepared_at': FLOW_AT})
+        self.assertEqual(self.kinds(held), ['ContainmentRequest'] * 2 + ['QualityScope'] * 3)
+        request = self.step('test_request', {'case_id': case['id'], 'prepared_at': FLOW_AT})
+        self.assertEqual(len(request[0]['unit_ids']), 123)
+        with self.assertRaises(DomainError) as twice:
+            self.step('test_request', {'case_id': case['id'], 'prepared_at': FLOW_AT})
+        self.assertEqual(twice.exception.code, 'TEST_REQUEST_EXISTS')
+        self.assertEqual(self.register_results(case, '1_테스트팀_결과.csv'), [100, 23])
+        reproduction = self.step('reproduction', {'case_id': case['id'], 'collected_at': FLOW_AT})[0]
+        self.assertEqual((reproduction['customer_replacement_quantity'], reproduction['stock_replacement_quantity'],
+                          reproduction['available_replacement_quantity'], reproduction['required_good_quantity'],
+                          reproduction['unresolved_quantity'], reproduction['assessment_state']),
+                         (3, 10, 7, 6, 0, 'confirmed'))
+        report = validate_graph(list(self.index.values()))
+        self.assertTrue(report['valid'], report['errors'][:3])
+
+    def test_sampled_sheet_claim_is_a_lower_bound_not_a_total(self):
+        case = self.run_to_test_request('2_엑셀_표본시험_클레임.xlsx')
+        self.register_results(case, '2_테스트팀_결과.csv')
+        reproduction = self.step('reproduction', {'case_id': case['id'], 'collected_at': FLOW_AT})[0]
+        self.assertEqual((reproduction['required_good_quantity'], reproduction['unresolved_quantity'],
+                          reproduction['assessment_state']), (3, 90, 'lower_bound'))
+
+    def test_miswritten_serial_stops_before_a_case_and_is_never_corrected(self):
+        self.step('intake_file', {'file': '4_메일_일련번호오기재_클레임.eml', 'collected_at': FLOW_AT})
+        intake = self.one('ClaimIntake')
+        match = self.view('serial_match', intake_id=intake['id'])
+        self.assertFalse(match['ready'])
+        self.assertEqual([(row['serial'], row['match_state']) for row in match['links']],
+                         [('C-D071', 'matched'), ('C-D072', 'matched'), ('C-D730', 'not_found')])
+        with self.assertRaises(DomainError) as stopped:
+            self.step('trace_case', {'intake_id': intake['id']})
+        self.assertEqual(stopped.exception.code, 'CLAIM_SERIAL_UNRESOLVED')
+        self.assertIn('C-D730', str(stopped.exception))
+        self.assertFalse(any(node['type'] == 'QualityCase' for node in self.index.values()))
+
+    def test_faulty_result_file_saves_nothing_until_the_corrected_file(self):
+        case = self.run_to_test_request('5_CSV_결과파일오류_클레임.csv')
+        faulty = self.view('result_file', case_id=case['id'], file='5_테스트팀_결과_오류.csv')
+        self.assertEqual(faulty['state'], 'blocked')
+        self.assertEqual(sorted({issue['code'] for issue in faulty['issues']}),
+                         ['DUPLICATE_RESULT', 'TIMEZONE_REQUIRED', 'UNIT_NOT_REQUESTED'])
+        with self.assertRaises(DomainError) as blocked:
+            self.step('test_results', {'case_id': case['id'], 'file': '5_테스트팀_결과_오류.csv', 'collected_at': FLOW_AT})
+        self.assertEqual(blocked.exception.code, 'TEST_RESULT_BLOCKED')
+        self.assertFalse(any(node['type'] == 'QualityTestResult' for node in self.index.values()))
+        self.register_results(case, '5_테스트팀_결과_수정본.csv')
+        reproduction = self.step('reproduction', {'case_id': case['id'], 'collected_at': FLOW_AT})[0]
+        self.assertEqual((reproduction['required_good_quantity'], reproduction['assessment_state']), (3, 'confirmed'))
+
+    def test_views_show_the_file_as_written_and_documents_from_stored_records(self):
+        mail = self.view('claim_file', file='1_메일_전수시험_클레임.eml')
+        self.assertEqual(mail['original']['kind'], 'mail')
+        self.assertIn('가정 고객사 C-01', mail['original']['text'])
+        self.assertEqual((mail['claimed_quantity'], mail['claim']['requested_due_date'], mail['registered']), (3, '2026-11-13', False))
+        sheet = self.view('claim_file', file='2_엑셀_표본시험_클레임.xlsx')
+        self.assertEqual(sheet['original']['kind'], 'table')
+        self.assertIn('고객 클레임 번호', sheet['original']['columns'])
+        case = self.run_to_test_request('1_메일_전수시험_클레임.eml')
+        self.assertTrue(self.view('claim_file', file='1_메일_전수시험_클레임.eml')['registered'])
+        containment = self.view('containment_documents', case_id=case['id'])
+        self.assertTrue(containment['saved'])
+        self.assertEqual(sorted(doc['markdown'].splitlines()[0] for doc in containment['documents']),
+                         ['# 생산 중단 요청서 검토 초안', '# 출고 배송 중단 요청서 검토 초안'])
+        stored = next(node for node in self.index.values() if node['type'] == 'ContainmentRequest')
+        self.assertEqual(containment['prepared_at'], stored['prepared_at'])
+        test = self.view('test_request_document', case_id=case['id'])
+        self.assertEqual((test['saved'], test['unit_count']), (True, 123))
+        with self.assertRaises(DomainError) as early:
+            self.view('reproduction_document', case_id=case['id'])
+        self.assertEqual(early.exception.code, 'NOT_FOUND')
+        self.register_results(case, '1_테스트팀_결과.csv')
+        self.step('reproduction', {'case_id': case['id'], 'collected_at': FLOW_AT})
+        document = self.view('reproduction_document', case_id=case['id'])
+        self.assertEqual(document['requested_due_date'], '2026-11-13')
+        self.assertIn('정상 완제품 **6대** (확정 총량)', document['markdown'])
+        self.assertIn('날짜: 2026-11-13', document['markdown'])
+
+    def test_views_are_reads_on_an_explicit_version_with_exact_input(self):
+        graph = _Graph(self.index)
+        before = canonical(list(self.index.values()))
+        result = claim_workspace.query(graph, 'reader', 'claim_file', {'file': '1_메일_전수시험_클레임.eml', 'version': 4})
+        self.assertEqual((graph.calls, result['data_version'], result['evidence'], result['conflicts']), ([('reader', 4)], 4, ['every'], ['any']))
+        self.assertEqual(canonical(list(self.index.values())), before)
+        for action, arguments, code in [
+                ('claim_file', {'file': '1_메일_전수시험_클레임.eml'}, 'INVALID_INPUT'),
+                ('claim_file', {'file': '1_메일_전수시험_클레임.eml', 'version': 1, 'extra': 1}, 'INVALID_INPUT'),
+                ('claim_file', {'file': '1_메일_전수시험_클레임.eml', 'version': True}, 'INVALID_VERSION'),
+                ('claim_file', {'file': '1_메일_전수시험_클레임.eml', 'version': -1}, 'INVALID_VERSION'),
+                ('unknown', {'version': 1}, 'INVALID_INPUT'),
+                ('claim_file', {'file': '../scenario_inputs/README.md', 'version': 1}, 'NOT_FOUND'),
+                ('result_file', {'case_id': 'quality-case:none', 'file': '1_테스트팀_결과.csv', 'version': 1}, 'NOT_FOUND')]:
+            with self.subTest(action=action, arguments=arguments), self.assertRaises(DomainError) as refused:
+                claim_workspace.query(_Graph(self.index), 'alice', action, arguments)
+            self.assertEqual(refused.exception.code, code)
+        denied = claim_workspace.query(_Graph(self.index, ok=False), 'alice', 'claim_file', {'file': '1_메일_전수시험_클레임.eml', 'version': 1})
+        self.assertEqual(denied['errors'][0]['code'], 'FORBIDDEN')

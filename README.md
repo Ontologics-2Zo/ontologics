@@ -1,6 +1,6 @@
 # Ontologics 공통 기반 v0.3.0 — PostgreSQL + pgvector
 
-## 통합 업무 화면 — 개발 중인 첫 연결
+## 통합 업무 화면 — A 계산·B 부분/분할 기록·C 접수
 
 공통 웹의 `/#home`에서 검토 대기·보완·승인 후 미반영의 **최신 초안 전체 건수**와 최근 100개 목록, 승인된 생산·자재/계약·납품/클레임 기록을 확인한다. 같은 앱의 메뉴에서 목록·유형/문자열 필터 → 정확한 데이터 버전의 상세 → 연결된 개체/원본 근거로 이동한다. AI 패널은 기본 접힘이며 기존 Knowledge의 `node_id`·version 설명 계약을 재사용한다. 기존 S1/S2 원본 접수·초안·승인·재조회 화면과 사용자 전환은 유지한다.
 
@@ -9,14 +9,32 @@
 ```bash
 python -m ontologics.web serve --development --user alice --port 8062 \
   --schema EXISTING_DEVELOPMENT_SCHEMA --env-file /absolute/local/.env.local \
+  --model-env-file /absolute/local/.env \
   --graph-backend neo4j --graph-env-file /absolute/local/.env.graph.local
 ```
 
 새 포트는 동일 브라우저 개발 세션·Host 권한/승인·선택 graph backend를 사용한다. 대시보드 건수는 승인 **기록 수**이며 생산량·납품 완료량·불량률이 아니다. 그룹에는 공통 계약이 중복 노출될 수 있으므로 그룹 합계를 회사 전체 수량으로 사용하지 않는다. 조회 오류는 0건으로 바꾸지 않는다. 목록을 새로 불러오기 전까지 상세와 근거는 선택한 버전을 유지한다.
 
-현재 연결은 S1/S2 업무와 A/B/C 승인 기록 조회다. A 계약 원문·자재 계산의 전용 `pp_*` 업무, B 예측/부분·분할 등록, C 접수·Agent 전체 업무는 아직 이 공통 화면에 연결하지 않았다. B의 격리 시험 웹을 운영 화면으로 합치지 않는다. 기존 Agent의 모델·비용 설정이 없으면 AI 미연결로 표시하며 자동 유료 호출은 없다. 실제 인증·운영 배포 완료를 뜻하지 않는다.
+같은 메뉴에서 다음 업무를 실행한다. 기존 사용자 DB를 다른 schema로 복사하거나 시드하지 않는다. A의 기존 `pp_*` 계약·재고는 **같은 DB/schema를 선택했을 때** 표시하며, 공통 그래프에 계약 노드가 있다고 A 계약 원문 보관함에 자동 등록되지는 않는다.
 
-변경 영향 검사는 `tests.test_workspace`와 기존 S1/S2 대표 HTTP 흐름을 사용한다. API 계약은 [TOOLS](docs/TOOLS.md)의 `GET /api/dashboard`, UI 코드는 `ontologics/static/dashboard.js`와 기존 `app.js/index.html/app.css`다.
+| 화면 | 실행 순서와 결과 | 유지하는 경계 |
+| --- | --- | --- |
+| 생산·자재 계획 | 계약 검색 또는 UTF-8 TXT 접수 → **AI 계약 해석 요청** → 원문·항목별 근거 대조 → 일치하는 구성 연결 → 생산 검토 수량·산정 근거 입력 → 소요량 계산·저장 | 기존 A 계산·재고/예약 차감 재사용. 가용량·실장 미확인은 유지. 원문 대조·계산 저장은 그래프 승인·생산 실행이 아님 |
+| 계약·납품 | 납품 회차·기준 시각 선택 → 현황/조건부 예상 조회. 변경은 부분 생산 누계 또는 분할 배정·출하 입력 → 근거 첨부 → 초안 → 별도 사용자 승인 → 최신 버전 재조회 | 완료 누계는 증분이 아니며 완제품 재고로 자동 전환하지 않음. 기존 미출하 배정의 분할 합계 보존, 재고·회차 초과·중복 검증. 시간 없는 출하는 도착으로 계산하지 않음 |
+| 클레임·대응 | 가상 신고 입력 → 원문 근거와 접수 초안 → Bob 등 별도 검토자 승인 → 신고 일련번호와 보드 직접 대조 → 사건 연결안 → 별도 승인·재조회 | 고객 신고를 불량·고장 원인으로 확정하지 않음. 보드 생산작업/재고 소속의 미합의 관계를 추론하지 않음 |
+
+A 공통 접수·해석은 **600 KB 이하 UTF-8 TXT만 지원**한다. 기존 A PDF 원본은 보존하지만 공통 화면에서는 `A_PDF_SANDBOX_REQUIRED`로 해석을 막는다. A 계약용 격리 PDF 파서 연결은 남은 작업이며 기존 S2 ODS·격리 파서 경로는 유지한다. A의 대체품·예약·구매·창고·일정 후속 화면은 이번 통합에 포함하지 않는다.
+
+공통 AI 패널은 기존 Supervisor·Product·Knowledge·Quality와 동일 도구·근거·버전을 사용한다. A 계약 해석만 별도 명시 버튼으로 기존 고정 provider·공통 한도에 연결했다. B 계산·변경안과 C 접수는 사람이 입력하는 공통 도구 경로이며 Supervisor의 A/B/C 자동 인계나 신규 C Agent를 구현했다고 표현하지 않는다. 모델·비용 설정이 없으면 AI 미연결로 표시하고 원본 접수만으로 유료 호출하지 않는다. 대표 실모델 연결 확인은 범용 Agent 품질 평가·실제 인증·운영 배포 완료와 별개다.
+
+PostgreSQL + pgvector를 실행하고 `.env.local`의 `DATABASE_URL` 또는 별도 `TEST_DATABASE_URL`을 준비한다. 각 검사는 자체 `test_<UUID>` schema를 만들고 정리하며 DB 미설정은 실패로 처리한다. 변경 영향 검사는 아래 모듈을 사용하며, 기존 근거와 최종 통합 검증 상태는 [PROJECT_STATUS](PROJECT_STATUS.md)를 확인한다. 관련 검사를 이미 수행했다면 같은 환경에서 반복하지 않는다.
+
+```bash
+python -m unittest tests.production_planning.test_workspace tests.order_fulfillment.test_workspace \
+  tests.claim_response.test_workspace tests.test_business_web -v
+```
+
+API와 입력 계약은 [TOOLS의 공통 업무 화면](docs/TOOLS.md#공통-업무-화면-abc)을 따른다. 담당 화면은 `ontologics/static/planning.js`, `fulfillment.js`, `claims.js`, 공통 초안·표시는 `business.js`다. 서버는 역할별 `workspace.py`와 공통 `business_drafts.py`를 재사용하며 승인·신원·한도를 화면에 복제하지 않는다.
 
 
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
@@ -345,11 +363,11 @@ Sandbox는 네트워크 차단·non-root·읽기 전용 루트/입력·CPU/메�
 
 ## 저장소 공유 상태
 
-저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-11-01 확인한 main은 PR #10 병합 `7d2db577d0b6bc99f435f53205ab5a1ba5f49980`**이다. PR #4·#5·#8·#9·#10 위에 `codex/ab-domain-graph`에서 공통 저장·그래프 후속 통합을 별도 검토한다. 사용자는 공개 저장소에 팀 코드 공유를 허용했으며, 개인 평가·경험 기록·환경 파일·비밀값은 제외한다. 이번 브랜치의 검증과 main 반영 상태는 [PROJECT_STATUS](PROJECT_STATUS.md)로 구분한다. 실제 인증·운영 백업·AWS 완료를 뜻하지 않는다.
+저장소는 [Ontologics-2Zo/ontologics](https://github.com/Ontologics-2Zo/ontologics), clone 주소는 `https://github.com/Ontologics-2Zo/ontologics.git`이다. **2026-11-04 확인한 main은 PR #7 병합 `2cdfe9b3abe0810bb54fedc7320d8a9169eabd29`**이다. 이번 A/B/C 공통 화면 연결은 `codex/unified-workspace-20261104`에서 별도 PR로 검토하며 main 병합 여부는 해당 PR을 확인한다. 사용자는 공개 저장소에 팀 코드 공유를 허용했으며, 개인 평가·경험 기록·환경 파일·비밀값은 제외한다. 구현·검증 범위는 [PROJECT_STATUS](PROJECT_STATUS.md)를 따른다. 실제 인증·운영 백업·AWS 완료를 뜻하지 않는다.
 
 저장소 접근 권한이 있는 팀원은 위 기준 커밋을 포함하는 main에서 담당 브랜치를 만들어 기존 실행·역할별 테스트 순서를 따른다. 미커밋 작업은 먼저 보존한다. Harness·Sandbox 구현과 역할 폴더는 이미 공유돼 있으며 환경 설정 후 사용할 수 있다. 실행한 기준 커밋은 `git rev-parse HEAD`, 검증 범위와 남은 작업은 [PROJECT_STATUS](PROJECT_STATUS.md)로 확인한다.
 
-**과거 공유 이력:** 2026-10-27에는 main `7c5e2d9`에 PR #1~#3이 병합돼 있었고, `codex/harness-security-eval`은 Harness·계약·Sandbox 보완의 리뷰 브랜치였다. 2026-10-29 확인 기준은 main `ca7c391`이었다. 당시의 공유 대기·기준 커밋 안내는 위 현재 상태와 구분한다.
+**과거 공유 이력:** 2026-11-01에는 PR #10 병합 main `7d2db577` 위 `codex/ab-domain-graph`에서 공통 그래프 후속 통합을 검토했다. 2026-10-27에는 main `7c5e2d9`에 PR #1~#3이 병합돼 있었고, `codex/harness-security-eval`은 Harness·계약·Sandbox 보완의 리뷰 브랜치였다. 2026-10-29 확인 기준은 main `ca7c391`이었다. 당시의 공유 대기·기준 커밋 안내는 위 현재 상태와 구분한다.
 
 ## 개발 기준
 

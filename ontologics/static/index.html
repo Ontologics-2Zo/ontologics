@@ -6,7 +6,11 @@
   <link rel="icon" href="data:,">
   <title>Ontologics · 제조 제품정보 서비스</title>
   <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/dashboard.js" defer></script>
+  <script src="/static/business.js" defer></script>
+<script src="/static/planning.js" defer></script>
+<script src="/static/fulfillment.js" defer></script>
+<script src="/static/claims.js" defer></script>
+<script src="/static/dashboard.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
@@ -117,6 +121,7 @@
         </section>
         <section id="view-business" class="view" hidden>
           <div class="page-heading"><div><p class="eyebrow">승인된 업무 기록</p><h1 id="business-title">업무 기록</h1><p id="business-note"></p></div><button id="business-refresh" type="button">최신 승인 버전 조회</button></div>
+          <div id="business-actions" class="card business-actions"></div>
           <div class="business-layout"><section class="card"><div class="record-filters"><label>기록 종류<select id="business-kind"></select></label><label>목록 내 검색<input id="business-query" placeholder="식별자·등록 내용 검색"></label></div><p id="business-coverage" class="hint"></p><div id="business-records"></div></section><section class="card record-detail-panel" id="business-detail"><p class="hint">기록의 상세·근거를 선택하세요.</p></section></div>
         </section>
         <section id="view-product" class="view" hidden>

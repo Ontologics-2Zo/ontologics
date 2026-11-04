@@ -4,9 +4,9 @@ let dashboardSnapshot = null;
 let businessSelection = null;
 let businessRows = [];
 const businessViews = {
-  planning: {title: '생산·자재 계획', note: '승인된 생산 작업·자재 기준을 조회합니다. 계약 원문 해석·소요 계산·예약은 A 전용 업무 화면에 있으며 아직 이 화면에 통합되지 않았습니다.'},
-  fulfillment: {title: '계약·납품', note: '승인된 계약·납품회차·배정·출하 기록입니다. 부분 생산·분할 출하의 등록 및 납품 예측 도구는 이 화면에 아직 연결되지 않았습니다.'},
-  claims: {title: '클레임·대응', note: '승인된 고객 신고·사건·영향 범위를 확인합니다. 신고는 불량 확정이 아니며, 시험·중단 실행이나 C Agent 업무 접수는 아직 연결되지 않았습니다.'}
+  planning: {title: '생산·자재 계획', note: '승인된 생산 작업·자재 기준을 조회합니다. 계약 원문 확인과 제품 구성 연결 후 기존 A 자재 소요 계산을 실행합니다. 계산은 생산 승인이나 실제 입출고가 아닙니다.'},
+  fulfillment: {title: '계약·납품', note: '승인된 계약·납품회차·배정·출하 기록입니다. 부분 생산 관측과 분할 출하 기록을 근거가 있는 초안으로 작성하고 별도 사람 승인 후 반영합니다.'},
+  claims: {title: '클레임·대응', note: '승인된 고객 신고·사건·영향 범위를 확인합니다. 신고 접수와 보드 연결은 원문 근거가 있는 초안으로 저장합니다. 불량 확정·시험 실행·출고 중단은 수행하지 않습니다.'}
 };
 const recordNames = {
   Configuration:'제품 구성', ProductModel:'제품 모델', ProductRevision:'제품 개정', ComponentModel:'부품', BOMItem:'BOM 항목',
@@ -123,6 +123,8 @@ async function openBusiness(view, kind) {
   if (kind && group.kinds.includes(kind)) select.value=kind;
   businessSelection={view,version:dashboardSnapshot.data_version,node:null};
   $('business-query').value='';
+  const actions = clear('business-actions');
+  await ({planning:mountPlanning, fulfillment:mountFulfillment, claims:mountClaims}[view])(actions);
   await loadBusinessKind();
 }
 async function loadBusinessKind() {

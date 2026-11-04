@@ -410,12 +410,45 @@ with host.request(DevelopmentContext('dev-alice')) as request:
 | `POST /api/quality` | `{queries:{A,B},version,question,before_version?}`. 조회 조건·버전 필수. 비교 때 before_version과 version을 각각 이전/이후 데이터 버전으로 사용. 실제 Quality 도구 실행·동일 조건 직접 결과를 대조해 `data.consistency=matched`인 설명만 성공 반환 |
 | `GET /api/workspace` | read 권한. 최신 버전의 초안 최대 100건을 `data.drafts`로 반환(draft_id/version/status/author/reviewer/base_version/applied_data_version). 영속 DB의 업무 재개 목록이며 조사 대화 기록 목록은 아님 |
 | `GET /api/dashboard` | read 권한·서버 신원으로 공통 실행 감사와 한도를 적용. 단일 현재 승인 버전의 `graph_counts`와 `groups.planning/fulfillment/claims`(kinds/total/limit/truncated/records)를 반환. 각 그룹은 종류·ID순 최대 20개 원본 노드로 근거·origin을 보존. `draft_counts/draft_total`은 초안별 최신 버전 전체 집계, `drafts`는 최근 최대 `draft_limit=100`개. 등록 레코드 수이며 생산량·납품 완료량·불량률이 아니다. 선택된 RDF/Neo4j 조회 실패·미공개 버전이면 전체 응답을 실패시키며 다른 backend/버전으로 대체하지 않음. 기존 workspace·Agent 도구 계약·승인 원장은 변경하지 않음 |
+| `POST /api/planning/{action}` | 기존 A 계약 업무 9개 액션. `search/get/planning/materials`는 read, `register/interpret`는 draft, `review/connect/materials-calculate`는 review. 서버 신원·공통 한도·동일 DB를 사용. 원문 대조와 계산 저장은 그래프 승인이 아님. 액션별 정확한 필드는 [A adapter](../ontologics/production_planning/workspace.py)의 `FIELDS` |
+| `POST /api/fulfillment/query` | `{action,arguments}`. read 권한. 기존 B `delivery_round/fulfillment_status/delivery_forecast/response_plan/production_completion` 조회. 모든 조회에 정확한 version, 시간 조회에 offset 있는 as_of를 전달. 선택 graph backend와 공통 실행 기록·한도 유지 |
+| `POST /api/business/draft` | `{domain,action,payload,base_version,source_text,authored_at,notice,synthetic_confirmed,request_key,draft_id?,expected_version?}`. draft 권한. domain=`fulfillment/claims`와 서버가 정한 역할 builder만 사용. 제출 원문·필드를 해시로 보존하고 공통 초안만 생성. 응답 data의 draft_id/draft_version/validation/registration(record_ids/source/evidence_id)을 기존 `/api/review`로 인계 |
 | `POST /api/sources/intake` | `{filename,content_base64}`. draft 권한. 실제 바이트 해시를 manifest의 L/L1 WROOM ODS와 대조하고 제출 바이트를 파싱. `data.receipt_id/source/revision/configuration_id/rows/unknown_count/operations_count/base_version/verification` 반환. 미승인 후보 |
 | `POST /api/sources/compare` | `{receipt_id,left_id}`. 동일 사용자·현재 기준 버전의 접수 후보와 기존 구성 비교. 기존 구성 비교 함수를 재사용하고 is_preview=true. 초안·확정 데이터 생성 없음 |
 | `POST /api/sources/draft` | `{receipt_id,request_key,draft_id?,expected_version?}`. draft 권한. 서버에 보관한 정확한 후보 operations만 기존 초안 저장/검증 로직으로 처리. 응답은 prepare_draft와 같은 형태. 사용자 제공 operations/actor 불허 |
 | `POST /api/history/intake` | `{filename,content_base64}`. draft 권한. 200 KB 이하의 가상 운영 기록 JSON을 무변경 보존. receipt_id/source/records/validation/operations_count/base_version 반환. 허용 필드·관계·시간은 기존 SCHEMA 검증. 확정은 별도 검토·승인 필요 |
 | `GET /api/draft-source?draft_id=...&version=...&source_id=...` | 정확한 초안의 새 원본을 read 권한으로 내려받음. `data/` 내부 경로·바이트 해시 확인. 승인된 원본 조회와 구분 |
 | `POST /api/assistant` | `{question,version,screen,context,action?,request_key?}`. context: configuration_id/node_id/kind/draft_id/draft_version/queries/before_version/receipt_id/search_query/origin/search_mode(lexical/semantic). action=explain 기본, prepare_draft는 명시 요청 키 필수. 응답 role/runtime/results/tool_calls/consistency/conditions, Supervisor 인계 시 delegation. Agent 승인·신원·대상/버전 이탈 불허 |
+
+
+### 공통 업무 화면 A/B/C
+
+역할별 계산·입력 검증은 [A workspace](../ontologics/production_planning/workspace.py), [B workspace](../ontologics/order_fulfillment/workspace.py), [C workspace](../ontologics/claim_response/workspace.py)에 둔다. [business_drafts.py](../ontologics/business_drafts.py)는 B/C의 제출 원문·필드와 가상 자료 구분을 보존한 뒤 기존 `_save_draft`를 호출한다. 공개 Agent 도구 허용 목록에 승인이나 이 화면 전용 등록 API를 추가하지 않는다. 화면/HTTP가 주입하는 신원과 정확한 데이터 버전은 그대로 공통 호스트의 책임이다.
+
+- **A:** `search → get → interpret → review → planning → connect → materials → materials-calculate`. 새로운 계약은 `register`로 먼저 접수한다. 기존 `ContractLibrary/LibraryReview/LibraryPlanning/LibraryMaterials`를 재사용하며 계산식이나 예약 차감을 다시 구현하지 않는다. 공통 웹과 같은 DB/schema에 저장된 `pp_*` 원본·재고만 읽는다. A 저장소와 공통 그래프 계약 노드는 자동 변환하지 않으며 다른 schema의 자료를 복사하지 않는다. 원문 대조는 A 준비기록이고 그래프 승인·생산 실행이 아니다.
+- **B:** `production_progress`는 진행 중인 작업의 생산/정상/불량 **누계**를 새 `ProductionObservation` ID로 제안하고 해당 작업의 정상 완료 누계를 함께 보완한다. 기존 기준 시각 이후 기록은 `snapshot_as_of`와 9개 `confirmations`의 명시적 참/거짓을 함께 제출한다. 임의 완전성 확인이나 정상 완료→재고 생성은 하지 않는다. `split_allocation`은 출하가 연결되지 않은 기존 재고 배정만 분할하며 첫 배정 ID·전체 합계를 보존한다. `split_shipments`는 선택한 재고와 납품 회차에 새 배정·출하 ID들을 제안한다. 재고/회차 초과, 중복, 구성·시간·근거 검증은 기존 전체 그래프 검증과 승인에서 수행한다. 실제 출하 실행·이미 출하한 배정 재분할·부분 인수는 지원하지 않는다.
+- **C:** `intake`는 가상 고객 신고를 `needs_review` 접수 초안으로 저장한다. 별도 승인 뒤 `confirm_case`로 신고 일련번호와 사람이 대조한 보드를 선택하면 접수 상태 변경과 사건을 묶은 새 초안이 된다. 다시 별도 사람 승인 후 반영한다. 신고→사건 연결을 고장·원인 확정이나 시험·생산 중단으로 해석하지 않는다. C의 보드별 생산 작업/재고 소속 미합의 경계는 그대로 유지한다.
+
+B/C 변경은 `base_version`이 현재 승인 버전과 같아야 하며, 같은 사용자·요청 키·내용의 성공 재시도는 정확한 기존 초안을 반환한다. 변경한 내용은 새 키 또는 작성자의 명시적 초안 개정으로 제출한다. 입력은 가상 기록임을 확인하고 원문 내용·작성 시각·범위 설명을 제공해야 한다. 서버는 `data/receipts/business-<sha256>.json`에 무변경 보존하고 `SourceDocument/Evidence`를 붙인다. 이전 사실의 근거를 지우지 않으며 새 근거를 추가한다. 초안 생성 성공과 `validation.valid`는 별개이고, 자기 승인·오래된 버전·기준 변경은 기존 공통 경로에서 차단한다.
+
+A 원본은 UTF-8 TXT, 최대 600 KB로 제한한다. `.pdf` 및 TXT로 이름을 바꾼 PDF는 `A_PDF_SANDBOX_REQUIRED`, 그 외 형식/인코딩은 `UNSUPPORTED_CONTRACT_FORMAT`이다. 기존 A PDF 원본은 보존하되 공통 경로에서 호스트 PDF 파서로 우회하지 않는다. `interpret`를 명시적으로 누를 때만 고정 provider와 공통 비용·시간 한도를 사용한다. 기존 S2의 ODS 접수와 Sandbox는 변경하지 않는다.
+
+아래는 각 업무의 한 단계 입력 예다. 식별자·버전은 현재 조회 또는 이전 단계의 실제 응답으로 바꾼다. 먼저 `/api/context`의 쿠키·CSRF를 사용하며 작성자/권한을 body에 넣지 않는다.
+
+```text
+POST /api/planning/materials-calculate
+{"contract_id":"<A 계약 원본 ID>","item_index":0,"link_id":"<materials 응답의 link.id>","quantity":7,"reason":"기존 납품·배정 기록을 대조한 가상 잔여 수량 검토","request_key":"a-materials-review-01"}
+
+POST /api/fulfillment/query
+{"action":"fulfillment_status","arguments":{"delivery_round_id":"<승인된 납품 회차 ID>","as_of":"2026-10-27T10:00:00+09:00","version":3}}
+
+POST /api/business/draft
+{"domain":"claims","action":"intake","payload":{"external_claim_id":"CLM-DEMO-001","customer_name":"DEMO 고객사","reported_at":"2026-11-04T10:00:00+09:00","reported_symptom":"전원 표시 없음이라는 가상 고객 신고","claimed_quantity":1,"reported_serials":["U104"]},"base_version":3,"source_text":"시연용 가상 고객 신고: U104 전원 표시 없음, 1대.","authored_at":"2026-11-04T10:00:00+09:00","notice":"시연용 신고이며 실제 불량 확인 아님","synthetic_confirmed":true,"request_key":"claim-demo-intake-01"}
+```
+
+A 응답의 `data.result.components`는 `q/D/A/S`(대당 소요/필요/가용/부족)를 제공하고 미확인은 null로 남긴다. B 응답은 선택한 승인 버전의 현황·근거·미확인과 조건부 예상을 구분한다. C 응답은 초안 ID·정확 버전·검증 결과이며 승인 완료가 아니다. B 변경안도 같은 공통 초안 입력 바깥 구조를 쓰며 액션별 `payload`는 B adapter와 화면 입력을 따른다.
+
+공통 AI 패널은 기존 네 역할을 유지한다. A의 명시적 원문 해석 외에 B/C의 새로운 폼을 Supervisor가 자동 수행하는 것으로 연결하지 않았다. 승인된 업무 노드 설명은 기존 Knowledge 조회를 재사용한다. 대표 실모델 연결 확인은 범용 품질·검색 정확도·자동 업무 인계 완료를 뜻하지 않는다. 테스트 접점은 `tests.production_planning.test_workspace`, `tests.order_fulfillment.test_workspace`, `tests.claim_response.test_workspace`, `tests.test_business_web`이며 최종 수행 상태는 PROJECT_STATUS를 따른다.
 
 
 AI 초안 경로는 `get_source_receipt → prepare_source_draft → validate_draft`의 정확한 인자·순서를 강제한다. 직접 source_draft와 같은 요청 키를 사용한다. 성공은 `action=draft_prepared`와 draft/draft_record를 반환하며 승인 상태와 구별한다. 저장 후 모델·검증 기록 실패는 HTTP 오류와 `draft_saved_model_failed`에 저장된 ID/버전을 함께 반환한다. 같은 요청을 재시도해도 중복 초안을 만들지 않는다.

@@ -611,6 +611,13 @@ class RequestSession:
         self._budget.check()
         return result
 
+    def claims_query(self, action, arguments):
+        from .claim_response.workspace import query
+        self._budget.consume('tool')
+        result = query(self._service, self._identity.actor, action, arguments)
+        self._budget.check()
+        return result
+
     def history_intake(self, filename, content_base64):
         from .receipts import history_intake
         return history_intake(self._service, self._identity.actor, filename, content_base64)

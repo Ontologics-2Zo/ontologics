@@ -133,7 +133,9 @@ class AgentContractTests(unittest.TestCase):
         with self.host.request(DevelopmentContext('a')) as request:
             failed=request.run_task(self.spec.name,role,task,provider,config=config)
         run_id=failed['runtime']['run_id']
-        for variant in ('provider','prompt','instructions','schema','tools','validator','checkpoint_schema'):
+        original_config=self.audit.db.execute('SELECT config FROM runtime_runs WHERE id=%s',(run_id,)).fetchone()['config']
+        for variant in ('provider','prompt','instructions','schema','tools','validator','graph_schema','graph_schema_03','missing_graph_schema','checkpoint_schema'):
+            self.audit.db.execute('UPDATE runtime_runs SET config=%s WHERE id=%s',(original_config,run_id))
             altered=self.spec
             role.prompt='Read the pinned graph.'
             provider.provider_name='local-script'
@@ -144,10 +146,17 @@ class AgentContractTests(unittest.TestCase):
             if variant=='schema': altered=replace(self.spec,output_schema=PayloadSchema(self.spec.output_schema.fields+(FieldSpec('extra','string',False),)))
             if variant=='tools': altered=replace(self.spec,requested_tools=frozenset({'configuration'}))
             if variant=='validator': role.validate_result=lambda value, task, results: True
-            if variant=='checkpoint_schema':
+            if variant in ('checkpoint_schema','graph_schema','graph_schema_03','missing_graph_schema'):
                 row=self.audit.db.execute('SELECT config FROM runtime_runs WHERE id=%s',(run_id,)).fetchone()
                 stored=json.loads(row['config'])
-                stored['read_checkpoint']['schema_version']='read-checkpoint-2'
+                if variant=='graph_schema':
+                    stored['read_checkpoint']['graph_schema_version']='graph-0.1'
+                elif variant=='graph_schema_03':
+                    stored['read_checkpoint']['graph_schema_version']='graph-0.3'
+                elif variant=='missing_graph_schema':
+                    stored['read_checkpoint'].pop('graph_schema_version',None)
+                else:
+                    stored['read_checkpoint']['schema_version']='read-checkpoint-2'
                 self.audit.db.execute('UPDATE runtime_runs SET config=%s WHERE id=%s',(json.dumps(stored),run_id))
             host=CommonHost(self.host._identities,self.database,agent_registrations=(AgentRegistration.from_spec(altered),))
             with self.subTest(variant=variant),host.request(DevelopmentContext('a')) as request:

@@ -88,7 +88,7 @@ class WebCase(unittest.TestCase):
         server.test_token = result['data']['csrf_token']
         return server
 
-    def http(self, server, path, body=None, *, headers=None, raw=None):
+    def http(self, server, path, body=None, *, headers=None, raw=None, timeout=15):
         values = {'Origin': server.origin}
         if getattr(server, 'test_cookie', None):
             values['Cookie'] = server.test_cookie
@@ -99,7 +99,7 @@ class WebCase(unittest.TestCase):
         values.update(headers or {})
         req = request.Request(server.origin + path, data=data, headers=values)
         try:
-            response = request.urlopen(req, timeout=15)
+            response = request.urlopen(req, timeout=timeout)
         except error.HTTPError as exc:
             response = exc
         with response:

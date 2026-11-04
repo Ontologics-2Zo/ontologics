@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS evidence_vectors(
  model TEXT NOT NULL, dimensions INTEGER NOT NULL CHECK(dimensions BETWEEN 1 AND 2000),
  content_hash TEXT NOT NULL, content TEXT NOT NULL, embedding public.vector NOT NULL,
  PRIMARY KEY(data_version,evidence_id,model), CHECK(public.vector_dims(embedding)=dimensions));
+CREATE TABLE IF NOT EXISTS graph_projections(
+ backend TEXT NOT NULL, namespace TEXT NOT NULL,
+ data_version INTEGER NOT NULL REFERENCES snapshots(version),
+ content_hash TEXT NOT NULL, schema_version TEXT NOT NULL, rule_version TEXT NOT NULL,
+ node_count INTEGER NOT NULL, ready_at TEXT NOT NULL,
+ PRIMARY KEY(backend,namespace,data_version));
 '''
 
 

@@ -11,6 +11,11 @@ from .ingest import build_catalog, parse_olimex_ods
 from .model import ROOT, digest, validate_graph
 from .service import DomainError, configuration_changes
 
+# This intake is the S1 operating-history format, not every synthetic domain.
+# A/B contracts and planning/fulfillment facts use the common draft API instead.
+HISTORY_TYPES = frozenset({'ProductUnit', 'ComponentLot', 'Installation',
+                           'HistoryCoverage', 'InventoryMovement'})
+
 
 def source_io(action):
     def guarded():
@@ -160,7 +165,7 @@ def history_intake(service, actor, filename, content_base64):
     """User-submitted synthetic operating evidence; no inferred facts or real logs."""
     import json
     import os
-    from .model import ALLOWED_FIELDS, SYNTHETIC, instant
+    from .model import ALLOWED_FIELDS, instant
     if not isinstance(filename, str) or not 1 <= len(filename) <= 255 or not isinstance(content_base64, str):
         raise DomainError('INVALID_INPUT', '파일명과 base64 JSON 원본이 필요합니다.')
     service._require(actor, 'draft')  # Do not spend controller resources for a denied user.
@@ -184,7 +189,7 @@ def history_intake(service, actor, filename, content_base64):
             raise ValueError()
         instant(raw['authored_at'])
         for record in raw['records']:
-            if (not isinstance(record, dict) or record.get('type') not in SYNTHETIC or
+            if (not isinstance(record, dict) or record.get('type') not in HISTORY_TYPES or
                     not isinstance(record.get('id'), str) or not record['id'].strip() or
                     set(record) - (ALLOWED_FIELDS[record['type']] - {'origin', 'evidence'})):
                 raise ValueError()

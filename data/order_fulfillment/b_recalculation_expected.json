@@ -1,0 +1,264 @@
+{
+  "description": "Independent expected values transcribed from MVP section8 and Task07 rational hand arithmetic; never generated from project forecast output.",
+  "delivery_round_id": "delivery-round:demo:B-01:1",
+  "unit": "piece",
+  "time_delta_unit": "second",
+  "delta_direction": "after_minus_before",
+  "source_id": "source:demo:CQ06:recalculation-v1",
+  "source_sha256": "4f7cd72e3710525e41a161d04ef44d5faaf485953a5c1f2a09358f249bf726cc",
+  "before": {
+    "as_of": "2026-10-27T10:00:00+09:00",
+    "forecast": {
+      "on_time_quantity": 960,
+      "shortfall_quantity": 40,
+      "estimated_full_arrival_at": "2026-10-27T15:26:40+09:00",
+      "deadline_status": "shortfall"
+    },
+    "production": {
+      "good_rate_per_hour": 90,
+      "remaining_quantity": 400,
+      "remaining_seconds": 16000,
+      "estimated_completion_at": "2026-10-27T14:26:40+09:00",
+      "latest_good_quantity": 600,
+      "recent_defect_ratio": 0.1
+    },
+    "dispatch_request": {
+      "delivered_quantity": 0,
+      "in_transit_quantity": 0,
+      "new_dispatch_quantity": 1000,
+      "on_time_new_dispatch_quantity": 960,
+      "later_new_dispatch_quantity": 40,
+      "currently_available_quantity": 600,
+      "future_quantity": 400,
+      "unallocated_quantity": 0
+    },
+    "source_section": "CQ04 source sections A-F"
+  },
+  "cases": {
+    "continued11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "forecast": {
+        "on_time_quantity": 960,
+        "shortfall_quantity": 40,
+        "estimated_full_arrival_at": "2026-10-27T15:26:40+09:00",
+        "deadline_status": "shortfall"
+      },
+      "production": {
+        "good_rate_per_hour": 90,
+        "remaining_quantity": 310,
+        "remaining_seconds": 12400,
+        "estimated_completion_at": "2026-10-27T14:26:40+09:00",
+        "latest_good_quantity": 690,
+        "recent_defect_ratio": 0.1
+      },
+      "dispatch_request": {
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 1000,
+        "on_time_new_dispatch_quantity": 960,
+        "later_new_dispatch_quantity": 40,
+        "currently_available_quantity": 690,
+        "future_quantity": 310,
+        "unallocated_quantity": 0
+      },
+      "source_section": "C",
+      "quantity_deltas": {
+        "on_time_quantity": 0,
+        "shortfall_quantity": 0,
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 0,
+        "on_time_new_dispatch_quantity": 0,
+        "later_new_dispatch_quantity": 0,
+        "currently_available_quantity": 90,
+        "future_quantity": -90,
+        "unallocated_quantity": 0
+      },
+      "time_deltas": {
+        "remaining_seconds": -3600,
+        "estimated_completion_seconds": 0,
+        "estimated_full_arrival_seconds": 0
+      }
+    },
+    "defects11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "forecast": {
+        "on_time_quantity": 920,
+        "shortfall_quantity": 80,
+        "estimated_full_arrival_at": "2026-10-27T16:00:00+09:00",
+        "deadline_status": "shortfall"
+      },
+      "production": {
+        "good_rate_per_hour": 80,
+        "remaining_quantity": 320,
+        "remaining_seconds": 14400,
+        "estimated_completion_at": "2026-10-27T15:00:00+09:00",
+        "latest_good_quantity": 680,
+        "recent_defect_ratio": 0.2
+      },
+      "dispatch_request": {
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 1000,
+        "on_time_new_dispatch_quantity": 920,
+        "later_new_dispatch_quantity": 80,
+        "currently_available_quantity": 680,
+        "future_quantity": 320,
+        "unallocated_quantity": 0
+      },
+      "source_section": "D",
+      "quantity_deltas": {
+        "on_time_quantity": -40,
+        "shortfall_quantity": 40,
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 0,
+        "on_time_new_dispatch_quantity": -40,
+        "later_new_dispatch_quantity": 40,
+        "currently_available_quantity": 80,
+        "future_quantity": -80,
+        "unallocated_quantity": 0
+      },
+      "time_deltas": {
+        "remaining_seconds": -1600,
+        "estimated_completion_seconds": 2000,
+        "estimated_full_arrival_seconds": 2000
+      }
+    },
+    "transport2h": {
+      "as_of": "2026-10-27T10:00:00+09:00",
+      "forecast": {
+        "on_time_quantity": 870,
+        "shortfall_quantity": 130,
+        "estimated_full_arrival_at": "2026-10-27T16:26:40+09:00",
+        "deadline_status": "shortfall"
+      },
+      "production": {
+        "good_rate_per_hour": 90,
+        "remaining_quantity": 400,
+        "remaining_seconds": 16000,
+        "estimated_completion_at": "2026-10-27T14:26:40+09:00",
+        "latest_good_quantity": 600,
+        "recent_defect_ratio": 0.1
+      },
+      "dispatch_request": {
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 1000,
+        "on_time_new_dispatch_quantity": 870,
+        "later_new_dispatch_quantity": 130,
+        "currently_available_quantity": 600,
+        "future_quantity": 400,
+        "unallocated_quantity": 0
+      },
+      "source_section": "E",
+      "quantity_deltas": {
+        "on_time_quantity": -90,
+        "shortfall_quantity": 90,
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 0,
+        "on_time_new_dispatch_quantity": -90,
+        "later_new_dispatch_quantity": 90,
+        "currently_available_quantity": 0,
+        "future_quantity": 0,
+        "unallocated_quantity": 0
+      },
+      "time_deltas": {
+        "remaining_seconds": 0,
+        "estimated_completion_seconds": 0,
+        "estimated_full_arrival_seconds": 3600
+      }
+    },
+    "combined11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "forecast": {
+        "on_time_quantity": 840,
+        "shortfall_quantity": 160,
+        "estimated_full_arrival_at": "2026-10-27T17:00:00+09:00",
+        "deadline_status": "shortfall"
+      },
+      "production": {
+        "good_rate_per_hour": 80,
+        "remaining_quantity": 320,
+        "remaining_seconds": 14400,
+        "estimated_completion_at": "2026-10-27T15:00:00+09:00",
+        "latest_good_quantity": 680,
+        "recent_defect_ratio": 0.2
+      },
+      "dispatch_request": {
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 1000,
+        "on_time_new_dispatch_quantity": 840,
+        "later_new_dispatch_quantity": 160,
+        "currently_available_quantity": 680,
+        "future_quantity": 320,
+        "unallocated_quantity": 0
+      },
+      "source_section": "F",
+      "quantity_deltas": {
+        "on_time_quantity": -120,
+        "shortfall_quantity": 120,
+        "delivered_quantity": 0,
+        "in_transit_quantity": 0,
+        "new_dispatch_quantity": 0,
+        "on_time_new_dispatch_quantity": -120,
+        "later_new_dispatch_quantity": 120,
+        "currently_available_quantity": 80,
+        "future_quantity": -80,
+        "unallocated_quantity": 0
+      },
+      "time_deltas": {
+        "remaining_seconds": -1600,
+        "estimated_completion_seconds": 2000,
+        "estimated_full_arrival_seconds": 5600
+      }
+    },
+    "zero_rate11": {
+      "as_of": "2026-10-27T11:00:00+09:00",
+      "forecast": {
+        "on_time_quantity": null,
+        "shortfall_quantity": null,
+        "estimated_full_arrival_at": null,
+        "deadline_status": "needs_confirmation"
+      },
+      "production": {
+        "good_rate_per_hour": 0,
+        "remaining_quantity": 400,
+        "remaining_seconds": null,
+        "estimated_completion_at": null,
+        "latest_good_quantity": 600,
+        "recent_defect_ratio": 1.0
+      },
+      "dispatch_request": {
+        "delivered_quantity": null,
+        "in_transit_quantity": null,
+        "new_dispatch_quantity": null,
+        "on_time_new_dispatch_quantity": null,
+        "later_new_dispatch_quantity": null,
+        "currently_available_quantity": null,
+        "future_quantity": null,
+        "unallocated_quantity": null
+      },
+      "source_section": "G",
+      "quantity_deltas": {
+        "on_time_quantity": null,
+        "shortfall_quantity": null,
+        "delivered_quantity": null,
+        "in_transit_quantity": null,
+        "new_dispatch_quantity": null,
+        "on_time_new_dispatch_quantity": null,
+        "later_new_dispatch_quantity": null,
+        "currently_available_quantity": null,
+        "future_quantity": null,
+        "unallocated_quantity": null
+      },
+      "time_deltas": {
+        "remaining_seconds": null,
+        "estimated_completion_seconds": null,
+        "estimated_full_arrival_seconds": null
+      }
+    }
+  }
+}

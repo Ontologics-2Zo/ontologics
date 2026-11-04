@@ -1,0 +1,14 @@
+{
+  "purpose": "Development reference conditions; not OLIMEX throughput, a work order or production performance",
+  "production_conditions": {
+    "origin": "synthetic",
+    "resource_ref": "resource:planning:001",
+    "available_at": "2026-10-26T10:00:00+09:00",
+    "setup_minutes": 60,
+    "boards_per_hour": 20,
+    "loss_quantity": 0,
+    "defect_quantity": 0,
+    "rework_quantity": 0,
+    "interruption_policy": "none_assumed"
+  }
+}

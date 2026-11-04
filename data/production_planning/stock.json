@@ -1,0 +1,51 @@
+{
+  "origin": "synthetic",
+  "purpose": "Development reference input; not actual inventory or a registered graph snapshot",
+  "stock_scope": {
+    "company": "Planning Reference Company",
+    "location": "warehouse:reference",
+    "as_of": "2026-10-26T09:00:00+09:00"
+  },
+  "coverage": "Only three real L/WROOM BOM rows; all remaining component stocks are unconfirmed",
+  "stocks": [
+    {
+      "id": "stock:planning:001",
+      "lot_id": "lot:planning:lan8710:001",
+      "bom_item_id": "bom:esp32-poe:L:WROOM:row-55",
+      "component_id": "component:olimex-L-wroom:32d420c6c802a2c2",
+      "on_hand_quantity": 100,
+      "reserved_quantity": 30,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known"
+    },
+    {
+      "id": "stock:planning:002",
+      "lot_id": "lot:planning:2k2:001",
+      "bom_item_id": "bom:esp32-poe:L:WROOM:row-9",
+      "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86",
+      "on_hand_quantity": 600,
+      "reserved_quantity": 40,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known"
+    },
+    {
+      "id": "stock:planning:003",
+      "lot_id": "lot:planning:10k:001",
+      "bom_item_id": "bom:esp32-poe:L:WROOM:row-14",
+      "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c",
+      "on_hand_quantity": 1200,
+      "reserved_quantity": 100,
+      "held_quantity": 0,
+      "unit": "piece",
+      "availability_basis": "on_hand_less_reserved_and_held",
+      "deductions_disjoint": true,
+      "quantity_state": "known"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "origin": "synthetic",
+  "authored_at": "2026-10-27T17:10:21+09:00",
+  "notice": "2026-10-27 사용자가 확정한 개발·시연용 가정 로트. 실제 공급처·실재고·승인된 운영 자료가 아니다. ID를 해석해 얻은 값이 아니다.",
+  "lots": [
+    {
+      "id": "lot:planning:lan8710:001",
+      "company": "Planning Reference Company",
+      "supplier": "Planning Demo Supplier",
+      "lot_code": "PP-LOT-001",
+      "component_id": "component:olimex-L-wroom:32d420c6c802a2c2"
+    },
+    {
+      "id": "lot:planning:2k2:001",
+      "company": "Planning Reference Company",
+      "supplier": "Planning Demo Supplier",
+      "lot_code": "PP-LOT-002",
+      "component_id": "component:olimex-L-wroom:a39f8e8d3a8a9f86"
+    },
+    {
+      "id": "lot:planning:10k:001",
+      "company": "Planning Reference Company",
+      "supplier": "Planning Demo Supplier",
+      "lot_code": "PP-LOT-003",
+      "component_id": "component:olimex-L-wroom:7e7b047ff0528a6c"
+    }
+  ]
+}

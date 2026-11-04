@@ -113,9 +113,11 @@ def http_status(result):
     if code in {'NOT_FOUND', 'DRAFT_NOT_FOUND', 'VERSION_NOT_FOUND', 'ROUTE_NOT_FOUND'}:
         return 404
     if code in {'STALE_BASE', 'SUPERSEDED_DRAFT', 'DRAFT_CLOSED', 'INVALID_STATE',
-                'APPROVAL_REQUIRED', 'NO_CHANGES', 'IDEMPOTENCY_CONFLICT', 'STALE_RECEIPT'}:
+                'APPROVAL_REQUIRED', 'NO_CHANGES', 'IDEMPOTENCY_CONFLICT', 'STALE_RECEIPT', 'GRAPH_VERSION_CONFLICT', 'STALE_REVISION'}:
         return 409
     if code in {'STORAGE_ERROR', 'IDENTITY_PROVIDER_UNAVAILABLE', 'AI_NOT_CONFIGURED', 'AI_BUSY', 'EMBEDDINGS_NOT_CONFIGURED', 'EVIDENCE_INDEX_NOT_READY', 'SOURCE_STORAGE_ERROR', 'DEVELOPMENT_SESSION_LIMIT'}:
+        return 503
+    if code in {'GRAPH_NOT_READY', 'GRAPH_UNAVAILABLE', 'GRAPH_INTEGRITY', 'GRAPH_VALIDATION_FAILED'}:
         return 503
     if code in {'COST_POLICY_REQUIRED', 'COST_CONFIG_INVALID', 'MODEL_PRICE_REQUIRED', 'COST_RESERVATION_CONFIG_INVALID'}:
         return 503
@@ -146,6 +148,8 @@ class WebApplication:
         self.provider_factory, self.model = provider_factory, model
         self.csrf_token = secrets.token_urlsafe(32)
         self.model_lock = threading.Lock()
+        self.workspace_lock = threading.Lock()
+        self.workspaces = {}
 
     def bind_browser_session(self, session):
         # Keep host/provider/lock shared, but never mutate the process-wide user.
@@ -153,7 +157,28 @@ class WebApplication:
         bound.context, bound.csrf_token = session.context, session.csrf_token
         return bound
 
+    def planning(self, action, body):
+        from .production_planning.workspace import PlanningWorkspace
+        from .production_planning.library_review import REGISTRATION
+        # Shared cache survives browser-bound copies; user context is passed on
+        # every call and is never captured as a mutable process-wide identity.
+        with self.workspace_lock:
+            if 'planning' not in self.workspaces:
+                self.workspaces['planning'] = PlanningWorkspace(self.host, self.context,
+                    provider_factory=self.provider_factory, model=self.model)
+            workspace = self.workspaces['planning']
+        if action != 'interpret':
+            return workspace.dispatch(self.context, action, body)
+        if not self.model_lock.acquire(blocking=False):
+            return failure('AI_BUSY', '다른 AI 요청이 처리 중입니다. 완료 후 다시 시도하세요.')
+        try:
+            return workspace.dispatch(self.context, action, body)
+        finally:
+            self.model_lock.release()
+
     def dispatch(self, path, body=None):
+        if path.startswith('/api/planning/'):
+            return self.planning(path[len('/api/planning/'):], body)
         if path in {'/api/quality', '/api/assistant'}:
             if not self.model_lock.acquire(blocking=False):
                 return failure('AI_BUSY', 'AI 설명 요청이 처리 중입니다. 완료 후 다시 시도하세요.')
@@ -165,8 +190,18 @@ class WebApplication:
             finally:
                 self.model_lock.release()
         with self.host.request(self.context) as request:
+            if path == '/api/fulfillment/query':
+                exact_keys(body, ('action', 'arguments'))
+                return request.fulfillment_query(**body)
+            if path == '/api/business/draft':
+                exact_keys(body, ('domain', 'action', 'payload', 'base_version',
+                    'source_text', 'authored_at', 'notice', 'synthetic_confirmed', 'request_key'),
+                    ('draft_id', 'expected_version'))
+                return request.business_draft(**body)
             if path == '/api/workspace':
                 return request.workspace()
+            if path == '/api/dashboard':
+                return request.dashboard()
             if path == '/api/sources/intake':
                 exact_keys(body, ('filename', 'content_base64'))
                 return request.intake(**body)
@@ -180,10 +215,11 @@ class WebApplication:
                 exact_keys(body, ('receipt_id', 'left_id'))
                 return request.source_compare(**body)
             if path == '/api/context':
-                result = request.call('lookup', {'kind': 'ProductUnit'})
+                result = request.context_status()
                 if result['ok']:
                     result['data'] = {'identity': request.context, 'csrf_token': self.csrf_token,
                         'database_schema': self.host._database.schema,
+                        'graph_backend': self.host._graph_settings.backend if self.host._graph_settings else 'postgres',
                         'default_queries': example_queries(), 'http_contract': HTTP_CONTRACT,
                         'model': {'configured': self.provider_factory is not None, 'model': self.model,
                                   'cost_policy_configured': self.host._cost_policy is not None},
@@ -382,11 +418,14 @@ class Handler(BaseHTTPRequestHandler):
             if method == 'GET':
                 files = {'/': ('index.html', 'text/html; charset=utf-8'),
                          '/static/app.css': ('app.css', 'text/css; charset=utf-8'),
-                         '/static/app.js': ('app.js', 'text/javascript; charset=utf-8')}
+                         '/static/app.js': ('app.js', 'text/javascript; charset=utf-8'),
+                         '/static/dashboard.js': ('dashboard.js', 'text/javascript; charset=utf-8'),
+                         **{'/static/' + name + '.js': (name + '.js', 'text/javascript; charset=utf-8')
+                            for name in ('business', 'planning', 'fulfillment', 'claims')}}
                 if url.path in files and not url.query:
                     name, mime = files[url.path]
                     return self.send_content(200, (STATIC / name).read_bytes(), mime)
-                if url.path in {'/api/context', '/api/demo-supplement', '/api/workspace'} and not url.query:
+                if url.path in {'/api/context', '/api/demo-supplement', '/api/workspace', '/api/dashboard'} and not url.query:
                     result = self.app.dispatch(url.path)
                     if url.path == '/api/context' and result['ok']:
                         result['data']['session_reset'] = self.session_reset
@@ -426,7 +465,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise DomainError('INVALID_INPUT', 'JSON 객체를 전달하세요.')
                 if url.path == '/api/development-user':
                     return self.respond(self.select_development_user(body))
-                if url.path in {'/api/review', '/api/quality', '/api/assistant', '/api/sources/intake', '/api/sources/draft', '/api/sources/compare', '/api/history/intake'} or url.path.startswith('/api/tools/'):
+                if url.path in {'/api/review', '/api/quality', '/api/assistant', '/api/sources/intake', '/api/sources/draft', '/api/sources/compare', '/api/history/intake', '/api/business/draft', '/api/fulfillment/query'} or url.path.startswith(('/api/tools/', '/api/planning/')):
                     return self.respond(self.app.dispatch(url.path, body))
             else:
                 return self.respond(failure('METHOD_NOT_ALLOWED', 'GET 또는 POST를 사용하세요.'))
@@ -473,6 +512,9 @@ def main():
     parser.add_argument('--env-file', help='Database settings file; never commit secrets')
     parser.add_argument('--model-env-file', help='Model settings file; defaults to .env/.env.local then process env')
     parser.add_argument('--sandbox-socket', help='Trusted local parser controller socket; configured failures never fall back to host parsing')
+    parser.add_argument('--graph-backend', choices=('postgres', 'rdf', 'neo4j'),
+                        help='Trusted read projection; approval authority always remains PostgreSQL')
+    parser.add_argument('--graph-env-file', help='Neo4j connection settings; local secrets only')
     parser.add_argument('--user', choices=('alice', 'bob', 'reader'), help='Initial development user for a new browser; selector can switch presets')
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--reserve-l1', action='store_true', help='Seed only L configuration; register L1 through S2')
@@ -500,8 +542,13 @@ def main():
         if args.sandbox_socket:
             from .sandbox import SandboxClient
             sandbox_client = SandboxClient(args.sandbox_socket)
-        app = WebApplication(CommonHost(identities, database, embedding_provider=embeddings,
-                                       sandbox_client=sandbox_client, cost_policy=cost_policy), DevelopmentContext('dev-' + args.user),
+        from .graph_views import GraphSettings
+        graph_settings = GraphSettings.from_environment(
+            env_file=args.graph_env_file or args.env_file, backend=args.graph_backend)
+        from .production_planning.library_review import REGISTRATION as PLANNING_REGISTRATION
+        app = WebApplication(CommonHost(identities, database, agent_registrations=(PLANNING_REGISTRATION,), embedding_provider=embeddings,
+                                       sandbox_client=sandbox_client, cost_policy=cost_policy,
+                                       graph_settings=graph_settings), DevelopmentContext('dev-' + args.user),
                              provider_factory=factory, model=model)
         # Fail startup clearly for missing DB, without exposing its URL.
         context = app.dispatch('/api/context')
@@ -511,6 +558,7 @@ def main():
         server = WebServer(app, args.port)
         print(canonical({'url': server.origin, 'identity': 'dev-' + args.user, 'schema': database.schema,
                          'mode': 'development', 'model_configured': factory is not None,
+                         'graph_backend': graph_settings.backend,
                          'cost_policy_configured': cost_policy is not None}), flush=True)
         try:
             server.serve_forever()
@@ -523,7 +571,7 @@ def main():
         print(canonical({'ok': False, 'error': exc.code,
                          'message': '공통 실행 정책 설정을 확인하세요. 비밀값은 로그에 기록하지 않습니다.'}))
         return 1
-    except (DatabaseError, IdentityError, ProviderError, OSError):
+    except (DatabaseError, IdentityError, ProviderError, OSError, ValueError):
         print(canonical({'ok': False, 'error': '시작하지 못했습니다. DB·모델 설정·포트·파일 접근을 확인하세요.'}))
         return 1
 

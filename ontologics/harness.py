@@ -14,6 +14,7 @@ import threading
 import time
 
 from .service import DomainError
+from .model import SCHEMA_VERSION
 from .paid_budget import CostLedger, CostPolicy
 
 
@@ -223,11 +224,11 @@ class PinnedContext:
     evidence_ids: tuple[str, ...] = ()
     unknowns: tuple[str, ...] = ()
     schema_version: str = 'context-1'
-    ontology_version: str = 'graph-0.1'
+    ontology_version: str = SCHEMA_VERSION
     _serialized: str = field(init=False, repr=False)
 
     def __post_init__(self):
-        if (self.schema_version != 'context-1' or self.ontology_version != 'graph-0.1'
+        if (self.schema_version != 'context-1' or self.ontology_version != SCHEMA_VERSION
                 or not isinstance(self.goal, str) or not 1 <= len(self.goal) <= 2000
                 or type(self.data_version) is not int or self.data_version < 0
                 or not isinstance(self.conditions, dict)):

@@ -12,6 +12,7 @@ import json
 import time
 import hashlib
 import marshal
+import uuid
 from types import MappingProxyType
 
 from .database import DatabaseSettings
@@ -20,6 +21,7 @@ from .runtime import ModelRuntime
 from .harness import BudgetLimits, ExecutionBudget, PinnedContext, build_context_messages, request_budget, canonical
 from .contracts import AgentSpec, AgentTask, AgentResult, EvidenceRef
 from .service import AgentGateway, DomainError, Service
+from .model import SCHEMA_VERSION
 from .tool_specs import PRODUCT_TOOLS, QUALITY_TOOLS, KNOWLEDGE_TOOLS, SUPERVISOR_TOOLS
 
 
@@ -88,12 +90,13 @@ def _identity(value, subject=None):
 class CommonHost:
     """One connection per request; existing DB transactions remain authoritative."""
 
-    def __init__(self, identity_provider: IdentityProvider, database=None, *, schema=None, agent_registrations=(), embedding_provider=None, sandbox_client=None, cost_policy=None):
+    def __init__(self, identity_provider: IdentityProvider, database=None, *, schema=None, agent_registrations=(), embedding_provider=None, sandbox_client=None, cost_policy=None, graph_settings=None):
         self._agent_registrations = _registrations(agent_registrations)
         self._identities = identity_provider
         self._embedding_provider = embedding_provider
         self._sandbox_client = sandbox_client
         self._cost_policy = cost_policy
+        self._graph_settings = graph_settings
         self._database = (database if isinstance(database, DatabaseSettings) else
                           DatabaseSettings(database, schema or 'ontologics') if database is not None else
                           DatabaseSettings.from_environment(schema=schema))
@@ -107,7 +110,7 @@ class CommonHost:
             raise
         except Exception:
             raise IdentityError('IDENTITY_PROVIDER_UNAVAILABLE', 'Cannot resolve request identity') from None
-        service = Service(self._database, principals={user.actor: user.principal()})
+        service = Service(self._database, principals={user.actor: user.principal()}, graph_settings=self._graph_settings)
         service.embedding_provider = self._embedding_provider
         service.sandbox_client = self._sandbox_client
         try:
@@ -134,7 +137,7 @@ class CommonHost:
             # Service's exact-key replay / ALREADY_APPLIED behavior available
             # even when the identity provider is temporarily unavailable.
             if draft['data']['status'] == 'applied':
-                return service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key)
+                return self._publish_applied(service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key))
             reviewer = draft['data']['reviewer']
             if isinstance(reviewer, str) and reviewer.startswith('user:'):
                 subject = reviewer[len('user:'):]
@@ -152,9 +155,44 @@ class CommonHost:
                     # retry can still replay its success under the store lock.
                     return service._run(WORKFLOW_ACTOR, 'apply',
                         {'draft_id': draft_id, 'version': version}, unavailable, permission='apply', request_key=request_key)
-            return service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key)
+            return self._publish_applied(service.apply(WORKFLOW_ACTOR, draft_id, version, request_key=request_key))
         finally:
             service.close()
+
+    def _publish_applied(self, application):
+        """Post-commit projection; failure must not erase the committed approval.
+
+        Each attempt rechecks the immutable remote version. Replaying an approval
+        never reapplies a write, but may repair a missing projection. This is not
+        a distributed transaction, background worker, or Agent capability.
+        """
+        if (not application['ok'] or self._graph_settings is None
+                or self._graph_settings.backend != 'neo4j'):
+            return application
+        version = application['data']['applied_version']
+        projector = None
+        try:
+            actor = 'system:graph-projector'
+            projector = Service(self._database, principals={actor: {
+                'kind': 'system', 'roles': ['read', 'index']}}, graph_settings=self._graph_settings)
+            synced = projector.graph_views.synchronize(actor, version,
+                request_key='host-graph:' + str(version) + ':' + uuid.uuid4().hex)
+            state = {'backend': 'neo4j', 'data_version': version,
+                'status': 'ready' if synced['ok'] else 'pending',
+                'run_id': synced['run_id'], 'errors': synced['errors']}
+        except Exception as exc:
+            # No raw connection/provider error or credentials in a user response.
+            state = {'backend': 'neo4j', 'data_version': version, 'status': 'pending',
+                'run_id': None, 'errors': [{'code': exc.code if isinstance(exc, DomainError)
+                    else 'GRAPH_UNAVAILABLE', 'message': 'Approved data committed; graph publication is pending'}]}
+        finally:
+            if projector is not None:
+                projector.close()
+        application = {**application, 'data': {**application['data'], 'graph_projection': state},
+                       'warnings': list(application['warnings'])}
+        if state['status'] != 'ready':
+            application['warnings'].append({'code': 'GRAPH_PUBLICATION_PENDING', 'data_version': version})
+        return application
 
 
 def _definition_fingerprint(spec, messages, provider, implementation=None):
@@ -298,6 +336,18 @@ class RequestSession:
         self._budget.check()
         return result
 
+    def context_status(self):
+        """Host metadata stays reachable while the derived graph is unavailable.
+
+        This returns no business facts and is not a query-backend fallback.
+        It lets an authorized user inspect/retry already committed approvals.
+        """
+        self._budget.consume('tool')
+        result = self._service._run(self._identity.actor, 'host_context', {},
+            lambda: self._service._envelope(ok=True, data=None))
+        self._budget.check()
+        return result
+
     def _role_tools(self, role):
         if isinstance(role, str):
             if role in ROLE_TOOLS:
@@ -399,6 +449,7 @@ class RequestSession:
             task_hash = hashlib.sha256(canonical({'payload': task.data(), 'context': task.context.to_dict()}).encode()).hexdigest()
             saved['read_checkpoint'] = {
                 'schema_version': 'read-checkpoint-1', 'task_hash': task_hash,
+                'graph_schema_version': SCHEMA_VERSION,
                 'base_version': current_version, 'data_version': task.context.data_version,
                 'budget': usage, 'expires_at': time.time() + max(0, usage['limits']['deadline_seconds'] - usage['elapsed_seconds']),
                 'consumed': False,
@@ -473,6 +524,7 @@ class RequestSession:
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Task implementation returned invalid messages')
         definition_hash = _definition_fingerprint(spec, self._task_messages(implementation, task, supplied), provider, implementation)
         if (definition_hash is None or metadata.get('definition_hash') != definition_hash or checkpoint.get('schema_version') != 'read-checkpoint-1' or checkpoint.get('task_hash') != expected_hash
+                or checkpoint.get('graph_schema_version') != SCHEMA_VERSION
                 or metadata.get('agent_name') != spec.name or metadata.get('agent_version') != spec.version
                 or any(saved.get(k) != value for k, value in asdict(config).items())):
             raise DomainError('CHECKPOINT_CONTRACT_MISMATCH', 'Resume requires the same task, contract, model and settings')
@@ -529,6 +581,35 @@ class RequestSession:
     def workspace(self):
         from .receipts import workspace
         return workspace(self._service, self._identity.actor)
+
+    def dashboard(self):
+        from .workspace import dashboard
+        self._budget.consume('tool')
+        result = dashboard(self._service, self._identity.actor)
+        self._budget.check()
+        return result
+
+    def business_draft(self, **arguments):
+        from .business_drafts import prepare_business_draft
+        from .claim_response.workspace import build_records as claim_records
+        from .order_fulfillment.workspace import build_records as fulfillment_records
+        builders = {'claims': claim_records, 'fulfillment': fulfillment_records}
+        domain = arguments.get('domain')
+        builder = builders.get(domain) if isinstance(domain, str) else None
+        if builder is None:
+            raise DomainError('INVALID_INPUT', '지원하는 업무를 선택하세요.')
+        self._budget.consume('tool')
+        result = prepare_business_draft(self._service, self._identity.actor,
+                                        builder=builder, **arguments)
+        self._budget.check()
+        return result
+
+    def fulfillment_query(self, action, arguments):
+        from .order_fulfillment.workspace import query
+        self._budget.consume('tool')
+        result = query(self._service, self._identity.actor, action, arguments)
+        self._budget.check()
+        return result
 
     def history_intake(self, filename, content_base64):
         from .receipts import history_intake

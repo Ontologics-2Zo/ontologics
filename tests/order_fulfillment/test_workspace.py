@@ -8,6 +8,7 @@ from ontologics.order_fulfillment.contracts import load_demo_contract
 from ontologics.order_fulfillment.delivery_demo import load_demo_delivery, ROUND, MIXED_WORK, MIXED_SNAPSHOT
 from ontologics.order_fulfillment.fulfillment import fulfillment_status
 from ontologics.order_fulfillment.fulfillment_validation import CONFIRMATION_KEYS
+from ontologics.order_fulfillment.recalculation_demo import load_demo_recalculation
 from ontologics.order_fulfillment.workspace import build_records, query
 from ontologics.service import DomainError, Service
 from tests.db import database_for_test
@@ -92,6 +93,19 @@ class FulfillmentWorkspaceTests(unittest.TestCase):
             with self.subTest(action=action), self.assertRaises(DomainError):
                 query(None, 'alice', action, args)
 
+    def test_comparison_requires_exact_explicit_versions_without_caller_identity(self):
+        args = dict(delivery_round_id=ROUND, before_version=1, after_version=2,
+                    before_as_of='2026-10-27T10:00:00+09:00',
+                    after_as_of='2026-10-27T10:00:00+09:00')
+        invalid = [dict(args, actor='bob'), dict(args, version=2),
+                   dict(args, as_of=args['before_as_of'])]
+        invalid += [{key: value for key, value in args.items() if key != missing}
+                    for missing in args]
+        for values in invalid:
+            with self.subTest(arguments=values), self.assertRaises(DomainError) as caught:
+                query(None, 'alice', 'compare_response_plan', values)
+            self.assertEqual('INVALID_INPUT', caught.exception.code)
+
 
 class FulfillmentWorkspaceApprovalTests(unittest.TestCase):
     def test_shared_draft_approval_exact_version_idempotency_and_b_reads(self):
@@ -135,6 +149,59 @@ class FulfillmentWorkspaceApprovalTests(unittest.TestCase):
 
 
 class FulfillmentWorkspaceHTTPTests(web_fixture.WebCase):
+    def test_source_backed_comparison_is_read_only_and_preserves_exact_versions(self):
+        def approve(records, key):
+            draft = self.ok(self.tool('prepare_draft', {'operations': [
+                {'op': 'put', 'node': row} for row in records], 'request_key': key}))['data']
+            self.assertTrue(draft['validation']['valid'], draft)
+            return self.ok(self.http(self.bob, '/api/review',
+                                    self.review_body(draft, key=key + '-review')))['data_version']
+
+        before = approve(load_demo_contract() + load_demo_delivery(), 'comparison-base')
+        after = approve(load_demo_recalculation('transport2h'), 'comparison-transport')
+        at = '2026-10-27T10:00:00+09:00'
+        args = dict(delivery_round_id=ROUND, before_version=before, after_version=after,
+                    before_as_of=at, after_as_of=at)
+
+        def compare(arguments):
+            return self.http(self.reader, '/api/fulfillment/query',
+                             {'action': 'compare_response_plan', 'arguments': arguments})
+
+        result = self.ok(compare(args))
+        self.assertEqual(after, result['data_version'])
+        data = result['data']
+        self.assertEqual(before, data['before']['data_version'])
+        self.assertEqual(after, data['after']['data_version'])
+        self.assertEqual(960, data['before']['response_plan']['forecast']['on_time_quantity'])
+        self.assertEqual(870, data['after']['response_plan']['forecast']['on_time_quantity'])
+        self.assertEqual(-90, data['quantity_deltas']['on_time_quantity'])
+        self.assertEqual(0, data['time_deltas']['estimated_completion_seconds'])
+        self.assertEqual(3600, data['time_deltas']['estimated_full_arrival_seconds'])
+        self.assertFalse(data['execution_performed'])
+        self.assertTrue(result['evidence'])
+
+        for overrides, status, code in [
+            ({'actor': 'bob'}, 400, 'INVALID_INPUT'),
+            ({'before_version': True}, 400, 'INVALID_VERSION'),
+            ({'after_version': -1}, 400, 'INVALID_VERSION'),
+            ({'after_version': after + 100}, 404, 'VERSION_NOT_FOUND'),
+            ({'before_version': after, 'after_version': before}, 400, 'INVALID_VERSION'),
+            ({'before_version': after, 'after_as_of': '2026-10-27T11:00:00+09:00'},
+             400, 'INVALID_TIME'),
+        ]:
+            with self.subTest(overrides=overrides):
+                self.failed(compare(dict(args, **overrides)), status, code)
+
+        # Reading old/new snapshots and rejecting invalid comparisons never
+        # publishes a new graph or changes the source-backed conditions.
+        for version, seconds in ((before, 3600), (after, 7200)):
+            lookup = self.ok(self.tool('lookup', {'kind': 'DeliveryCondition', 'version': version},
+                                       server=self.reader))
+            self.assertEqual(version, lookup['data_version'])
+            self.assertEqual(seconds, lookup['data'][0]['transport_seconds'])
+        latest = self.ok(self.tool('lookup', {'kind': 'DeliveryCondition'}, server=self.reader))
+        self.assertEqual(after, latest['data_version'])
+
     def test_partial_progress_split_separate_approval_and_exact_version_requery(self):
         records = load_demo_contract() + load_demo_delivery(mixed=True)
         initial = self.ok(self.tool('prepare_draft', {'operations': [

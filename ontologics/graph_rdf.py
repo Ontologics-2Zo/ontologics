@@ -16,6 +16,7 @@ from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef, XSD
 from rdflib.collection import Collection
 from rdflib.plugins.sparql import prepareQuery
 
+from .domain_schema import C2_QUANTITIES
 from .model import (ALLOWED_FIELDS, JSON_FIELDS, LIST_REFERENCES, REAL, SCHEMA, SCHEMA_VERSION, SYNTHETIC,
                     canonical, digest, graph_jsonld, tbox_turtle, validate_graph)
 
@@ -29,6 +30,8 @@ TEMPORAL_TYPES = ('ProductUnit', 'ComponentLot', 'Installation', 'HistoryCoverag
 INTEGER_MINIMUMS = {
     'ClaimIntake': {'claimed_quantity': 1},
     'ContainmentRequest': {'draft_version': 1},
+    'TestRequest': {'draft_version': 1},
+    'ReproductionRequirement': {field: 0 for field in C2_QUANTITIES},
     'ContractItem': {'quantity': 1}, 'DeliveryRound': {'quantity': 1},
     'FinishedGoodsStock': {'quantity': 0},
     'ProductionWork': {'target_quantity': 1, 'completed_quantity': 0},
@@ -38,7 +41,8 @@ INTEGER_MINIMUMS = {
     'ComponentStockSnapshot': {field: 0 for field in (
         'on_hand_quantity', 'reserved_quantity', 'held_quantity', 'available_quantity')},
 }
-TEXT_LIST_FIELDS = {'BOMItem': {'positions'}, 'ClaimIntake': {'reported_serials'}}
+TEXT_LIST_FIELDS = {'BOMItem': {'positions'}, 'ClaimIntake': {'reported_serials'},
+                    'ReproductionRequirement': {'replacement_unit_ids'}}
 
 
 def _check_budget():

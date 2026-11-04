@@ -1,5 +1,21 @@
 # PROJECT_STATUS
 
+## 2026-11-04 — PR #7 사건 간 대체 재고 모순 차단
+
+동료 #7 최신 `d767c72`의 구성별 수요·미결 분리를 보존하고, `replacement_unit_ids`에 같은 그래프의 다른 사건에서 `customer_replacement` 또는 `stock_replacement`로 기록된 보드를 넣으면 `REPLACEMENT_TARGET_CONFLICT`로 거부하도록 C 검증을 보완했다. 같은 사건의 시험 대상 차단은 유지하며, 다른 사건에서 시험했다는 이유만으로 일괄 거부하거나 B·C I04의 재고 소속·배정을 추론하지 않는다. 공개 필드·T-box·`graph-0.4`와 신원·승인·저장·시간 계산은 변경하지 않았다.
+
+관련 C 1·2차 스키마 검사 `python3 -m unittest tests.claim_response.test_schema tests.claim_response.test_schema_phase2 -v` 47개 통과. 두 교체 판정의 교차 사건 차단과 다른 사건의 정상 release 보드를 일괄 차단하지 않는 회귀를 추가했으며 기존 혼합 구성·미결·중복·근거 검사를 함께 확인했다. 전체 회귀·CQ·도구 예제는 push 후 최신 PR CI에서 확인하며 로컬에서 중복 실행하지 않는다. 유료 모델 호출과 사용자 DB 변경은 없다. 병합 후 서비스의 새 namespace 재동기화와 C 화면·Agent 통합은 별도 작업이다.
+
+## 2026-11-03 — PR #7 C 2차 공통 그래프 통합
+
+main `05d55c7`을 포함한 동료 #7 `52fd438`에서 공통 변경만 분리했다. TestRequest·QualityTestResult·ReproductionRequirement 3종을 포함한 32종의 공개 스키마는 `graph-0.4`, Neo4j 직렬화는 기존 `neo4j-projection-2`다. C 담당자의 구성별 계산 함수·역할 테스트·업무 정책과 기존 신원·승인·시간·확정 저장 코드는 수정하지 않았다.
+
+**구현:** C2 수량 5개를 SHACL 0 이상 정수, TestRequest.draft_version을 1 이상 정수로 연결했다. replacement_unit_ids는 현재 계약대로 선택 다중 문자열이며 C의 ProductUnit 검증을 유지한다. 관계로 임의 승격하지 않았고 test_result_ids는 기존 목록 관계를 사용한다. 새 3종의 이름·caption·Browser 색상을 추가했다. T-box를 재생성하고 인계 JSON-LD는 context의 두 관계만 갱신했으며 기존 @graph 사실은 동일하다.
+
+**검증:** 기존 C1 검사를 유지하며 C2의 실제 9종 조회, 두 대체 보드 목록·숫자형·근거·payload 왕복, 자기 승인/구 버전 차단·정확 승인·멱등 반영, 동기화 실패 시 미공개·같은 요청 재시도, PostgreSQL/RDF/Neo4j 일치와 혼합 데이터의 U104 A 제외/B 포함·U106 미확인을 추가했다. graph-0.2 호환 검사를 보존하고 graph-0.3의 C1 승인 초안·old namespace 보존 및 새 namespace 재투영·반영, graph-0.3 읽기 체크포인트 거부를 검사했다. C/Host 실제 DB 검사 14개 통과. RDF·T-box·표시 영향 검사 27개 중 최초 표시 색상 중복 1개를 수정하고 해당 검사를 재실행해 통과했다. A/B·S1/S2 실제 HTTP 및 도메인 영향 검사 23개도 통과했다. 로컬 전체 회귀는 반복하지 않고 PR 최신 head에서 기존 전체 회귀·CQ·공통 도구 예제를 실행한다. 최종 원격 결과는 해당 CI Checks를 따른다. T-box/문서 경로/diff 및 독립 검토를 통과했으며 유료 모델 호출은 없다.
+
+**보존/남은 일:** 검증은 UUID PostgreSQL schema·전용 Neo4j namespace에서만 수행한다. 기존 사용자 DB·승인 원장·namespace·실행 웹의 기준을 자동 전환하지 않는다. 기존 승인 스냅샷·초안·검토 기록과 Neo4j namespace 내용의 전후 해시가 같음을 확인했고 근거는 로컬에만 남긴다. 구성별 재생산 계산 수정은 C 담당자 진행 범위이며 공통 투영 검증 통과만으로 PR 전체를 병합 가능하다고 판단하지 않는다. 수정 결합 후 최신 head의 CI와 혼합 구성 회귀를 확인해야 한다. 실제 중단/출고 실행·C UI/Agent·실제 인증·운영 복구는 추가하지 않았다.
+
 ## 2026-11-02 — A·B·C 동료 개발의 공통 기반 기준 연결
 
 PR #12 병합 main `73179a3`의 기존 공통 코드를 대조했다. 식별·근거·graph-0.3/데이터 버전·Host 신원·사람 승인·공통 도구·누적 한도·RDF/Neo4j·격리 파서는 기존 구현을 재사용한다. 새 엔진·공개 API·DB schema·권한·역할 동작은 만들거나 바꾸지 않았다. README에 A/B/C의 실제 담당 경로와 시작 명령, TOOLS에 기존 확정 계약과 미합의 경계, AGENT_RUNTIME에 A 호환/B typed·읽기/C schema-only의 현재 지원 차이를 연결했다. 기본 네 Agent와 A/B/C 업무 구분을 혼동하지 않도록 했다.

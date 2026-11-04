@@ -71,6 +71,12 @@
     },
     "confirmations": {
       "@type": "@json"
+    },
+    "test_request_id": {
+      "@type": "@id"
+    },
+    "test_result_ids": {
+      "@type": "@id"
     }
   },
   "@graph": [

@@ -423,11 +423,15 @@ with host.request(DevelopmentContext('dev-alice')) as request:
 
 ### 공통 업무 화면 A/B/C
 
+C 조회 `POST /api/claims/query`는 `{action,arguments}`에서 명시적인 `version`과 액션별 필드만 받는다. `claim_file/serial_match/containment_documents/test_request_document/result_file/reproduction_document`를 공통 read 신원·한도로 실행하고 조회 envelope의 근거·충돌을 보존한다. 저장된 요청 문서는 해당 버전의 노드/범위를 렌더링하며 대기 파일로 대체하지 않는다. `result_file`의 `pending_count/registration_complete`는 파일의 등록 가능한 결과 행 기준이고 미검사 보드를 시험 결과로 만들지 않는다.
+
+C 파일 기반 `intake_file/trace_case/containment/test_request/test_results/reproduction`도 같은 `/api/business/draft`를 사용한다. 서버 내부 `BusinessProposal`만 원본 바이트·SourceDocument/Evidence·레코드별 근거를 전달하며 HTTP 입력으로 이 객체나 source 경로를 받지 않는다. 공통 계층은 `data/receipts/business-file-<sha>.<ext>`에 무변경 보존하고 기존 근거와 함께 정확한 초안 버전으로 저장한다. 기존 list 반환 builder와 API 입력은 호환된다. 구성별 재생산은 기존 C 스키마 계산 기준을 재사용하며 미정 구성·대체 후보 모순은 확인 요청으로 차단한다. `reproduction_document.documents/requirements`는 여러 구성의 승인 결과를 모두 포함한다. 로컬 시연 자동승인은 기본 OFF이며 실제 인증·두 사람 검토로 간주하지 않는다.
+
 역할별 계산·입력 검증은 [A workspace](../ontologics/production_planning/workspace.py), [B workspace](../ontologics/order_fulfillment/workspace.py), [C workspace](../ontologics/claim_response/workspace.py)에 둔다. [business_drafts.py](../ontologics/business_drafts.py)는 B/C의 제출 원문·필드와 가상 자료 구분을 보존한 뒤 기존 `_save_draft`를 호출한다. 공개 Agent 도구 허용 목록에 승인이나 이 화면 전용 등록 API를 추가하지 않는다. 화면/HTTP가 주입하는 신원과 정확한 데이터 버전은 그대로 공통 호스트의 책임이다.
 
 - **A:** `search → get → interpret → review → planning → connect → materials → materials-calculate`. 새로운 계약은 `register`로 먼저 접수한다. 기존 `ContractLibrary/LibraryReview/LibraryPlanning/LibraryMaterials`를 재사용하며 계산식이나 예약 차감을 다시 구현하지 않는다. 공통 웹과 같은 DB/schema에 저장된 `pp_*` 원본·재고만 읽는다. A 저장소와 공통 그래프 계약 노드는 자동 변환하지 않으며 다른 schema의 자료를 복사하지 않는다. 원문 대조는 A 준비기록이고 그래프 승인·생산 실행이 아니다.
 - **B:** `production_progress`는 진행 중인 작업의 생산/정상/불량 **누계**를 새 `ProductionObservation` ID로 제안하고 해당 작업의 정상 완료 누계를 함께 보완한다. 기존 기준 시각 이후 기록은 `snapshot_as_of`와 9개 `confirmations`의 명시적 참/거짓을 함께 제출한다. 임의 완전성 확인이나 정상 완료→재고 생성은 하지 않는다. `split_allocation`은 출하가 연결되지 않은 기존 재고 배정만 분할하며 첫 배정 ID·전체 합계를 보존한다. `split_shipments`는 선택한 재고와 납품 회차에 새 배정·출하 ID들을 제안한다. 재고/회차 초과, 중복, 구성·시간·근거 검증은 기존 전체 그래프 검증과 승인에서 수행한다. 실제 출하 실행·이미 출하한 배정 재분할·부분 인수는 지원하지 않는다.
-- **C:** `intake`는 가상 고객 신고를 `needs_review` 접수 초안으로 저장한다. 별도 승인 뒤 `confirm_case`로 신고 일련번호와 사람이 대조한 보드를 선택하면 접수 상태 변경과 사건을 묶은 새 초안이 된다. 다시 별도 사람 승인 후 반영한다. 신고→사건 연결을 고장·원인 확정이나 시험·생산 중단으로 해석하지 않는다. C의 보드별 생산 작업/재고 소속 미합의 경계는 그대로 유지한다.
+- **C:** `intake`는 가상 고객 신고를 `needs_review` 접수 초안으로 저장한다. 별도 승인 뒤 `confirm_case`로 신고 일련번호와 사람이 대조한 보드를 선택하면 접수 상태 변경과 사건을 묶은 새 초안이 된다. 다시 별도 사람 승인 후 반영한다. 신고→사건 연결을 고장·원인 확정이나 시험·생산 중단으로 해석하지 않는다. 이 기본 수동 흐름과 함께 위 파일 기반 단계도 지원한다. C의 보드별 생산 작업/재고 소속 미합의 경계는 그대로 유지한다.
 
 B/C 변경은 `base_version`이 현재 승인 버전과 같아야 하며, 같은 사용자·요청 키·내용의 성공 재시도는 정확한 기존 초안을 반환한다. 변경한 내용은 새 키 또는 작성자의 명시적 초안 개정으로 제출한다. 입력은 가상 기록임을 확인하고 원문 내용·작성 시각·범위 설명을 제공해야 한다. 서버는 `data/receipts/business-<sha256>.json`에 무변경 보존하고 `SourceDocument/Evidence`를 붙인다. 이전 사실의 근거를 지우지 않으며 새 근거를 추가한다. 초안 생성 성공과 `validation.valid`는 별개이고, 자기 승인·오래된 버전·기준 변경은 기존 공통 경로에서 차단한다.
 

@@ -10,9 +10,10 @@ import hashlib
 import io
 from pathlib import Path
 
-from ..model import instant
+from ..model import digest, instant
 from .fixtures import batch_serials
 from .intake import _clean, _issue, _read_bounded, _relative_path
+from .schema import DEMAND, board_configuration, calculation_basis
 from .trace import C_OPERATIONS_BASIS
 
 RESULT_HEADER = ('보드', '시험 결과', '조치 판정', '관측 시각', '비고')
@@ -164,3 +165,75 @@ def reproduction_requirement(case, test_request, results, replacement, *, config
     if available:
         node['replacement_unit_ids'] = available
     return dict(summary, state=state, node=node, reason=None)
+
+
+def reproduction_requirements(nodes, case_id, replacement):
+    """Prepare common-graph proposals using the same per-configuration basis as validation.
+
+    ``replacement`` is an explicit candidate stock adapter, not inferred inventory. The
+    current C adapter declares one configuration. Unknown boards, case test targets and
+    boards already requiring replacement elsewhere cannot offset demand. Exclusions and
+    configurations with no determined requirement are returned for the caller to display.
+    No graph record is changed here; the host still owns evidence storage and approval.
+    """
+    index = {node['id']: node for node in nodes}
+    case = index.get(case_id)
+    if not case or case.get('type') != 'QualityCase':
+        raise ValueError('NOT_A_QUALITY_CASE: select an approved quality case')
+    case_basis = calculation_basis(index, case_id)
+    configurations = sorted({board_configuration(index, board) for board in case_basis['targets']
+                             if board_configuration(index, board) is not None})
+    replacement_targets = {node['unit_id'] for node in nodes
+                           if node.get('type') == 'QualityTestResult'
+                           and node.get('disposition') in DEMAND}
+    available, excluded = [], []
+    for board in sorted(set(replacement.get('unit_ids', []))):
+        configuration = board_configuration(index, board)
+        reason = ('BOARD_UNCONFIRMED' if configuration is None else
+                  'REPLACEMENT_CONFIGURATION_MISMATCH' if configuration != replacement.get('configuration_id') else
+                  'CASE_TEST_TARGET' if board in case_basis['targets'] else
+                  'REPLACEMENT_TARGET_CONFLICT' if board in replacement_targets else None)
+        if reason:
+            excluded.append({'unit_id': board, 'reason': reason})
+        else:
+            available.append(board)
+
+    prepared, undetermined = [], []
+    for configuration in configurations:
+        basis = calculation_basis(index, case_id, configuration)
+        counted = {kind: sum(value == kind for value in basis['effective'].values()) for kind in DEMAND}
+        unresolved = sum(value is None or value == 'unresolved' for value in basis['effective'].values())
+        if unresolved and not sum(counted.values()):
+            undetermined.append({'configuration_id': configuration, 'state': UNDETERMINED,
+                                 'unresolved_quantity': unresolved, 'required_good_quantity': None,
+                                 'conflicting_unit_ids': sorted(basis['conflicts'])})
+            continue
+        stock = [board for board in available if board_configuration(index, board) == configuration]
+        # Identical retests count once; conflicts remain unresolved, with no winning result.
+        result_ids = sorted(min(ids) for board, ids in basis['results'].items()
+                            if board not in basis['conflicts'])
+        evidence = set(case.get('evidence', [])) | set(replacement.get('evidence', []))
+        for node in nodes:
+            if ((node.get('type') == 'TestRequest' and node.get('case_id') == case_id
+                 and set(node.get('unit_ids', [])) & basis['targets'])
+                    or (node.get('type') == 'QualityTestResult' and node.get('case_id') == case_id
+                        and node.get('unit_id') in basis['targets'])
+                    or node['id'] in basis['targets'] or node['id'] in stock):
+                evidence.update(node.get('evidence', []))
+        existing = next((node for node in nodes if node.get('type') == 'ReproductionRequirement'
+                         and node.get('case_id') == case_id and node.get('configuration_id') == configuration), None)
+        evidence.update(existing.get('evidence', []) if existing else [])
+        prepared.append({
+            'id': existing['id'] if existing else 'reproduction:' + digest([case_id, configuration]),
+            'type': 'ReproductionRequirement', 'origin': case['origin'], 'evidence': sorted(evidence),
+            'case_id': case_id, 'configuration_id': configuration, 'unit': 'piece',
+            'customer_replacement_quantity': counted['customer_replacement'],
+            'stock_replacement_quantity': counted['stock_replacement'],
+            'available_replacement_quantity': len(stock),
+            'required_good_quantity': max(0, sum(counted.values()) - len(stock)),
+            'unresolved_quantity': unresolved, 'assessment_state': LOWER_BOUND if unresolved else CONFIRMED,
+            'test_result_ids': result_ids,
+            **({'replacement_unit_ids': stock} if stock else {}),
+        })
+    return {'nodes': prepared, 'undetermined': undetermined, 'excluded_replacements': excluded,
+            'basis': list(replacement.get('basis', []))}

@@ -5,7 +5,7 @@ import json
 import unittest
 import uuid
 
-from ontologics.business_drafts import prepare_business_draft
+from ontologics.business_drafts import BusinessProposal, prepare_business_draft, preserve_proposal_sources
 from ontologics.claim_response.workspace import build_records
 from ontologics.host import CommonHost
 from ontologics.identity import DevelopmentContext, DevelopmentIdentityProvider
@@ -163,12 +163,19 @@ class ClaimFileFlowTests(unittest.TestCase):
         self.index = {node['id']: node for node in seed_nodes()}
 
     def step(self, action, payload):
-        records = claim_workspace.build_records(list(self.index.values()), action, payload)
+        built = claim_workspace.build_records(list(self.index.values()), action, payload)
+        proposal = built if isinstance(built, BusinessProposal) else BusinessProposal(built)
+        records = proposal.records
+        before = set((ROOT / 'data/receipts').glob('business-file-*'))
+        sources = preserve_proposal_sources(proposal, self.index)
+        for path in set((ROOT / 'data/receipts').glob('business-file-*')) - before:
+            self.addCleanup(path.unlink, missing_ok=True)
+        self.index.update({n['id']: n for n in sources})
         self.assertTrue(1 <= len(records) <= claim_workspace.RECORD_LIMIT)
         for record in records:
             self.assertIn(record['type'], C_TYPES)
             self.assertFalse({'origin', 'evidence'} & set(record))
-            self.index[record['id']] = {**record, 'origin': 'synthetic', 'evidence': [FLOW_EVIDENCE]}
+            self.index[record['id']] = {**record, 'origin': 'synthetic', 'evidence': sorted(set([FLOW_EVIDENCE] + proposal.record_evidence.get(record['id'], [])))}
         return records
 
     def view(self, action, **arguments):
@@ -292,7 +299,7 @@ class ClaimFileFlowTests(unittest.TestCase):
         graph = _Graph(self.index)
         before = canonical(list(self.index.values()))
         result = claim_workspace.query(graph, 'reader', 'claim_file', {'file': '1_메일_전수시험_클레임.eml', 'version': 4})
-        self.assertEqual((graph.calls, result['data_version'], result['evidence'], result['conflicts']), ([('reader', 4)], 4, [], []))
+        self.assertEqual((graph.calls, result['data_version'], result['evidence'], result['conflicts']), ([('reader', 4)], 4, ['every'], ['any']))
         self.assertEqual(canonical(list(self.index.values())), before)
         for action, arguments, code in [
                 ('claim_file', {'file': '1_메일_전수시험_클레임.eml'}, 'INVALID_INPUT'),

@@ -60,7 +60,13 @@ async function claimSwitchUser(id) {
   context.csrf_token = response.data.csrf_token;
 }
 
+function claimLocalDemo() {
+  return context?.identity?.identity_mode === 'development'
+    && ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
+}
+
 async function claimApproveDraft(draft) {
+  if (!claimLocalDemo()) throw new Error('자동 승인은 로컬 개발 시연에서만 사용할 수 있습니다.');
   const author = currentDevelopmentPreset();
   const reviewer = (context.development_users || []).find(v => v.id !== author?.id && v.id !== 'reader');
   if (!author || !reviewer) throw new Error('개발 신원이 아니어서 시연 승인을 쓸 수 없습니다.');
@@ -299,12 +305,14 @@ async function mountClaims(container) {
   container.append(node('h2', '클레임 대응'),
     node('p', '고객 신고 접수부터 재생산 요건까지 한 흐름입니다. 각 단계는 초안으로 저장되고 별도 검토자가 승인해야 반영됩니다. 신고는 불량 확정이 아니고, 시험 결과는 테스트팀 파일을 그대로 읽습니다.', 'hint'));
   const controls = node('div');
-  claimToggle(controls, ' 시연 모드 · 저장하면 검토자 신원으로 전환해 자동 승인합니다. 두 사람의 승인이 아닙니다.',
+  if (!claimLocalDemo()) claimAutoApprove = false;
+  const demoToggle = claimToggle(controls, ' 로컬 시연 모드 · 저장하면 검토자 신원으로 전환해 자동 승인합니다. 두 사람의 승인이 아닙니다.',
     claimAutoApprove, value => run(async () => {
       claimAutoApprove = value; await openBusiness('claims');
       message(value ? '시연 모드를 켰습니다. 각 단계가 저장 후 검토자 신원으로 자동 승인됩니다.'
         : '시연 모드를 껐습니다. 각 단계는 초안만 저장하고 별도 검토자가 승인해야 반영됩니다.');
     }));
+  demoToggle.disabled = !claimLocalDemo();
   claimToggle(controls, ' 시연용 가상 기록 확인 · 이 화면에서 저장하는 고객·시험·출하 기록이 실제 사실이 아닌 시연용 가상 기록임을 확인합니다.',
     claimAttested, value => { claimAttested = value; });
   container.append(controls);
@@ -326,11 +334,16 @@ async function mountClaims(container) {
   if (!intakes.some(v => v.id === claimFocus))
     claimFocus = ([...intakes].reverse().find(v => !mine(repros, caseFor(v)).length) || intakes[intakes.length - 1])?.id ?? null;
   const I = intakes.find(v => v.id === claimFocus) || null, C = caseFor(I);
-  const R = mine(repros, C)[0] || null;
+  const requirements = mine(repros, C), R = requirements[0] || null;
   const inbox = CLAIM_INBOX.find(v => I?.reported_serials?.includes(v.serial));
+  let resultFileState = null;
+  if (C && inbox && mine(results, C).length) {
+    try { resultFileState = await claimQuery('result_file', {case_id: C.id, file: inbox.result}); }
+    catch { /* The results tab shows the error; an unread file is not a completed step. */ }
+  }
   // Recomputed on every redraw: the hand-off mark is screen state that changes without a reload.
   const progressNow = () => [!!I, !!C, mine(containments, C).length > 0, mine(tests, C).length > 0,
-    mine(results, C).length > 0, !!R, !!(C && claimUi.handedOff[C.id])];
+    resultFileState?.registration_complete === true, !!R, !!(C && claimUi.handedOff[C.id])];
   const nextOf = progress => progress.indexOf(false) === -1 ? 6 : progress.indexOf(false);
   const output = node('div'); output.id = 'business-feedback';
   const claimTitle = I ? I.external_claim_id + ' · ' + I.customer_name : '';
@@ -339,7 +352,9 @@ async function mountClaims(container) {
     const choose = node('div', null, 'actions');
     const select = businessField(choose, 'claim_focus', '진행 중인 클레임',
       {options: intakes.map(v => ({value: v.id, label: v.external_claim_id + ' · ' + v.customer_name})), value: claimFocus});
-    select.addEventListener('change', () => { claimFocus = select.value; claimTab = null; claimRender(); });
+    select.addEventListener('change', () => run(async () => {
+      claimFocus = select.value; claimTab = null; await openBusiness('claims');
+    }));
     container.append(choose);
   }
 
@@ -359,7 +374,9 @@ async function mountClaims(container) {
       const open = !!claimUi.open[item.file], row = node('tr');
       const toggle = claimButton((open ? '▾ ' : '▸ ') + item.file, async () => { claimUi.open[item.file] = !open; claimRender(); }, false);
       const act = registered
-        ? claimButton('이 클레임으로 진행', async () => { claimFocus = registered.id; claimGo(null); }, false)
+        ? claimButton('이 클레임으로 진행', async () => {
+          claimFocus = registered.id; claimTab = null; await openBusiness('claims');
+        }, false)
         : claimButton('접수', () => { claimPendingSerial = item.serial; return claimAct(output, 'intake_file',
           {file: item.file, collected_at: claimNow()}, '시연용 가상 고객 클레임 원문 파일을 그대로 변환했습니다.',
           '시연용 가상 클레임. 실제 고객 신고가 아님.', 0); });
@@ -454,7 +471,8 @@ async function mountClaims(container) {
   const resultTab = () => {
     if (!C) return needCase();
     if (!mine(tests, C).length) return panel.append(node('p', '먼저 4단계에서 테스트 의뢰서를 만드세요.', 'message'));
-    const file = inbox?.result || CLAIM_INBOX[0].result, stored = mine(results, C).length;
+    const file = inbox?.result, stored = mine(results, C).length;
+    if (!file) return panel.append(node('p', '이 신고에 연결된 결과 파일이 없습니다. 다른 클레임의 시연 파일을 대신 사용하지 않습니다.', 'message'));
     const arrive = () => claimModal('테스트팀 결과가 도착했습니다', ['파일: ' + file,
       '시연용 가상 시험 결과 파일입니다. 실제 시험 성적이 아닙니다.'], '받기', () => { claimUi.received[C.id] = true; claimRender(); });
     if (!stored && !claimUi.received[C.id]) {
@@ -472,9 +490,9 @@ async function mountClaims(container) {
       if (data.issues.length) wrap.append(claimTable(['위치', '문제'], data.issues.map(v => [v.locator || '파일', v.code])));
       const raw = node('details'); raw.append(node('summary', '결과 파일 원문 (' + data.rows.length + '행)'), claimTable(data.header, data.rows));
       wrap.append(raw);
-      if (data.stored < data.rows.length) wrap.append(claimActions(claimButton('결과 등록', () => claimResults(output,
+      if (data.pending_count > 0) wrap.append(claimActions(claimButton('결과 등록', () => claimResults(output,
         {case_id: C.id, file, collected_at: claimNow()}, 4))));
-      else wrap.append(claimNext('테스트팀 결과 ' + data.stored + '건을 등록했습니다.', 5));
+      else if (data.registration_complete) wrap.append(claimNext('이 결과 파일의 등록을 완료했습니다. 미검사·미결 여부는 재생산 계산에서 따로 확인합니다.', 5));
       return wrap;
     });
   };
@@ -484,6 +502,9 @@ async function mountClaims(container) {
     if (!C) return needCase();
     const got = mine(results, C);
     if (!got.length) return panel.append(node('p', '먼저 5단계에서 테스트팀 결과를 등록하세요.', 'message'));
+    if (inbox && !resultFileState?.registration_complete) return panel.append(
+      node('p', '결과 파일의 등록이 완료되지 않았거나 확인하지 못했습니다. 남은 행과 오류를 확인하세요.', 'message'),
+      claimButton('결과 등록 확인', async () => claimGo(4)));
     if (!R) {
       const count = {};
       for (const r of got) { const key = claimLabel(r.disposition); count[key] = (count[key] || 0) + 1; }
@@ -492,21 +513,25 @@ async function mountClaims(container) {
         {case_id: C.id, collected_at: claimNow()}, '승인된 시험 결과의 처리 구분을 세어 재생산 수량을 계산했습니다.', '시연용 가상 재생산 요건.', 5))));
       return;
     }
-    const need = R.customer_replacement_quantity + R.stock_replacement_quantity;
-    claimSection(panel, '재생산 수량', claimFacts([['고객 교체', R.customer_replacement_quantity + '대'],
+    for (const R of requirements) {
+      const need = R.customer_replacement_quantity + R.stock_replacement_quantity;
+      claimSection(panel, '재생산 수량 · ' + R.configuration_id, claimFacts([['고객 교체', R.customer_replacement_quantity + '대'],
       ['보관 대체', R.stock_replacement_quantity + '대'], ['교체 필요 합계', need + '대'],
       ['사용 가능한 대체 재고', R.available_replacement_quantity + '대'], ['재생산 필요', R.required_good_quantity + '대'],
       ['미해결', R.unresolved_quantity + '대'], ['판정', claimLabel(R.assessment_state)]]),
       node('p', '계산: max(0, ' + R.customer_replacement_quantity + ' + ' + R.stock_replacement_quantity + ' − '
         + R.available_replacement_quantity + ') = ' + R.required_good_quantity + '대'
         + (R.assessment_state === 'lower_bound' ? ' · 미검사 보드가 남아 있어 최소 수량입니다.' : ''), 'hint'));
+    }
+    panel.append(claimActions(claimButton('현재 조회 버전으로 재계산 초안 작성', () => claimAct(output, 'reproduction',
+      {case_id: C.id, collected_at: claimNow()}, '승인된 시험 결과로 구성별 재생산 수량을 다시 계산했습니다.', '시연용 가상 재생산 요건 보완.', 5), false)));
     if (!claimUi.docShown[C.id]) {
       panel.append(claimActions(claimButton('요청서 만들기', async () => { claimUi.docShown[C.id] = true; claimRender(); })));
       return;
     }
     const bar = node('div'), doc = node('div'); panel.append(bar);
     claimSection(panel, 'A 재생산 요청서', node('p', '승인된 재생산 요건으로 만든 사람용 사본입니다. 그래프에 저장되는 것은 재생산 요건 기록입니다.', 'hint'), doc);
-    claimLoad(doc, 'reproduction_document', {case_id: C.id}, data => claimDocuments([{filename: '희망 기한 ' + data.requested_due_date, markdown: data.markdown}]));
+    claimLoad(doc, 'reproduction_document', {case_id: C.id}, data => claimDocuments(data.documents || [{filename: '희망 기한 ' + data.requested_due_date, markdown: data.markdown}]));
     if (!claimUi.handedOff[C.id]) bar.append(claimActions(claimButton('A에게 인계', async () => {
       claimUi.handedOff[C.id] = true; claimGo(6);
     })));
@@ -517,12 +542,12 @@ async function mountClaims(container) {
   const handoffTab = () => {
     if (!R) return panel.append(node('p', '먼저 6단계에서 재생산 수량을 계산하세요.', 'message'));
     claimSection(panel, 'A가 조회하는 방법', node('pre', "lookup(kind='ReproductionRequirement', version=" + version + ')'));
-    claimSection(panel, 'A가 가져갈 기록', claimFacts([['기록', R.id], ['클레임', claimTitle], ['구성', R.configuration_id],
+    for (const R of requirements) claimSection(panel, 'A가 가져갈 기록', claimFacts([['기록', R.id], ['클레임', claimTitle], ['구성', R.configuration_id],
       ['재생산 필요', R.required_good_quantity + claimLabel(R.unit)], ['판정', claimLabel(R.assessment_state)],
       ['미해결', R.unresolved_quantity + '대'], ['근거 결과', (R.test_result_ids || []).length + '건']]));
-    claimSection(panel, '모든 재생산 요건', claimTable(['클레임', '재생산 필요', '판정'],
+    claimSection(panel, '모든 재생산 요건', claimTable(['클레임', '구성', '재생산 필요', '판정'],
       repros.map(r => [(intakes.find(v => caseFor(v)?.id === r.case_id) || {}).external_claim_id || r.case_id,
-        r.required_good_quantity + '대', claimLabel(r.assessment_state)])));
+        r.configuration_id, r.required_good_quantity + '대', claimLabel(r.assessment_state)])));
   };
 
   const views = [intakeTab, traceTab, scopeTab, testTab, resultTab, reproTab, handoffTab];

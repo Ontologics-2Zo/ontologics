@@ -22,6 +22,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 from pathlib import Path
 import re
+import secrets
 import uuid
 
 from decimal import Decimal
@@ -528,6 +529,15 @@ def waiting_claims():
     return rows
 
 
+class ScenarioServer(HTTPServer):
+    """Single-operator local demonstration, not a substitute for authentication."""
+
+    def __init__(self, port):
+        super().__init__(('127.0.0.1', port), Handler)
+        self.origin = f'http://127.0.0.1:{self.server_port}'
+        self.csrf_token = secrets.token_urlsafe(32)
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, status, body, kind='application/json; charset=utf-8', extra=None):
         data = body if isinstance(body, bytes) else (body.encode('utf-8') if isinstance(body, str)
@@ -536,6 +546,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', kind)
         self.send_header('Content-Length', str(len(data)))
         self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Content-Security-Policy', "frame-ancestors 'none'")
         for key, value in (extra or {}).items():
             self.send_header(key, value)
         self.end_headers()
@@ -544,11 +556,25 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+    def _guard(self):
+        # Match the common development server's Host/Origin boundary. Loopback
+        # binding alone does not reject requests made by an unrelated webpage.
+        if self.headers.get('Host') != self.server.origin[len('http://'):]:
+            return self._send(403, {'error': 'HOST_REJECTED'})
+        origin = self.headers.get('Origin')
+        if ((origin is not None and origin != self.server.origin)
+                or self.headers.get('Sec-Fetch-Site') == 'cross-site'):
+            return self._send(403, {'error': 'ORIGIN_REJECTED'})
+        return True
+
     def do_GET(self):
+        if self._guard() is not True:
+            return
         if self.path == '/':
             return self._send(200, PAGE, 'text/html; charset=utf-8')
         if self.path == '/api/case':
-            return self._send(200, dict(CURRENT['case'].view(), inputs=input_files(), claims=waiting_claims(), results=arrived_results(CURRENT['case'])))
+            return self._send(200, dict(CURRENT['case'].view(), csrf_token=self.server.csrf_token,
+                                       inputs=input_files(), claims=waiting_claims(), results=arrived_results(CURRENT['case'])))
         match = re.fullmatch(r'/docs/([0-9A-Za-z._-]+\.md)', self.path)
         if match and (DOCS / match.group(1)).is_file():
             return self._send(200, (DOCS / match.group(1)).read_bytes(), 'text/markdown; charset=utf-8',
@@ -556,13 +582,27 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, {'error': 'NOT_FOUND'})
 
     def do_POST(self):
-        length = int(self.headers.get('Content-Length') or 0)
-        if length > MAX_UPLOAD * 2:
-            self.rfile.read(length)
-            return self._send(413, {'error': '파일이 너무 큽니다.'})
+        if self._guard() is not True:
+            return
+        if not secrets.compare_digest(self.headers.get('X-CSRF-Token', '').encode(),
+                                      self.server.csrf_token.encode()):
+            return self._send(403, {'error': 'CSRF_REJECTED'})
+        if self.headers.get_content_type() != 'application/json' or self.headers.get('Transfer-Encoding'):
+            return self._send(400, {'error': 'JSON_REQUIRED'})
         try:
-            body = json.loads(self.rfile.read(length) or b'{}')
-        except ValueError:
+            lengths = self.headers.get_all('Content-Length', [])
+            if len(lengths) != 1:
+                raise ValueError('one Content-Length required')
+            length = int(lengths[0])
+            if not 0 < length <= MAX_UPLOAD * 2:
+                return self._send(413, {'error': '파일이 비어 있거나 너무 큽니다.'})
+            raw = self.rfile.read(length)
+            if len(raw) != length:
+                raise ValueError('incomplete request')
+            body = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+            if not isinstance(body, dict):
+                raise ValueError('JSON object required')
+        except (ValueError, UnicodeError, RecursionError):
             return self._send(400, {'error': '요청 형식 오류'})
         case = CURRENT['case']
         try:
@@ -634,10 +674,10 @@ pre{margin:0;padding:10px;white-space:pre-wrap;font:12px/1.5 ui-monospace,Consol
 const STEPS=[['upload_claim','클레임 접수'],['approve_claim','변환 확인·등록'],['confirm_claim','클레임 확인·추적'],
 ['approve_containment','중단 요청서 검토'],['make_test_request','테스트 의뢰서 작성'],['send_test_request','테스트 의뢰 송부'],
 ['upload_results','테스트팀 결과'],['compute_reproduction','재생산 수량 계산'],['approve_reproduction','재생산 요건 반영']];
-let view=null,busy=false;const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-async function load(){view=await (await fetch('/api/case')).json();render();}
+let view=null,busy=false,csrfToken='';const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function load(){view=await (await fetch('/api/case')).json();csrfToken=view.csrf_token||'';render();}
 async function act(name,payload){if(busy)return;busy=true;render();
- const r=await fetch('/api/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})});
+ const r=await fetch('/api/'+name,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify(payload||{})});
  view=await r.json();busy=false;render();window.scrollTo({top:0,behavior:'smooth'});}
 function intake(i){const c=(view.claims||[])[i];if(c)act('intake_claim',{file:c.file});}
 function takeResults(i){const r=(view.results||[])[i];if(r)act('apply_results',{file:r.file});}
@@ -695,7 +735,7 @@ def main():
             print('.env.local의 OPENAI_API_KEY, OPENAI_MODEL, 비용 상한·단가를 확인하거나 --scripted로 실행하세요.')
             return 1
     CURRENT['case'] = ClaimCase(live=CURRENT['live'])
-    server = HTTPServer(('127.0.0.1', args.port), Handler)
+    server = ScenarioServer(args.port)
     print(f'C 클레임 대응 화면: http://127.0.0.1:{args.port}  (끝내려면 Ctrl+C)')
     print(f'시나리오 입력 파일: {INPUTS}')
     print('클레임 추적 모델: ' + ('실제 모델 ' + CURRENT['live']['settings'].model + ' (유료)' if CURRENT['live'] else '대역 (--scripted)'))

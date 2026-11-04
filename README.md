@@ -41,7 +41,7 @@ API와 입력 계약은 [TOOLS의 공통 업무 화면](docs/TOOLS.md#공통-업
 
 ## 시작
 
-Python 3.10+와 PostgreSQL + pgvector가 필요하다. SQLite·메모리 저장 fallback은 없다. 아래 Compose는 로컬 DB를 편하게 시작하는 방법이며, 이미 pgvector가 설치된 PostgreSQL 서버가 있으면 `DATABASE_URL`만 연결해도 된다. 별도 Agent 서버·MCP는 필요 없다.
+Python 3.10+와 PostgreSQL + pgvector가 필요하다. 화면 회귀 검사(`tests.claim_response.test_claims_ui`)에는 Node.js도 필요하며 프런트엔드 빌드 서버는 요구하지 않는다. SQLite·메모리 저장 fallback은 없다. 아래 Compose는 로컬 DB를 편하게 시작하는 방법이며, 이미 pgvector가 설치된 PostgreSQL 서버가 있으면 `DATABASE_URL`만 연결해도 된다. 별도 Agent 서버·MCP는 필요 없다.
 
 ```bash
 python3 -m venv .venv

@@ -7,19 +7,22 @@ from __future__ import annotations
 
 from collections import Counter
 import csv
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 import email
 from email import policy
 from pathlib import Path
 import tempfile
 
+from ..business_drafts import BusinessProposal
 from ..model import ROOT, digest
 from ..service import DomainError
-from .fixtures import load_operations
+from .fixtures import SOURCE_ID
 from .intake import COLUMNS, PARSERS, convert_claim
-from .reproduction import c_operations_replacement, read_test_results, reproduction_requirement
+from .reproduction import c_operations_replacement, read_test_results, reproduction_requirements
 from .requests import (prepare_containment, prepare_test_request, prepare_reproduction_request,
-                       render_reproduction_request)
+                       render_reproduction_request, render_request, render_test_request)
 from .trace import (MATCHED, c_operations_shipments, c_operations_stock, candidate_scope, line_summary,
                     link_serials, prepare_quality_case, stored_scope, trace_lines)
 
@@ -70,8 +73,53 @@ def _of_type(index, nid, kind, message):
     return node
 
 
+def _verified_source(source):
+    path = (ROOT / source['path']).resolve()
+    if not path.is_relative_to((ROOT / 'data').resolve()) or not path.is_file():
+        raise DomainError('SOURCE_UNAVAILABLE', '승인 버전의 보존 원본을 찾을 수 없습니다.')
+    content = path.read_bytes()
+    if hashlib.sha256(content).hexdigest() != source['sha256']:
+        raise DomainError('SOURCE_HASH_MISMATCH', '승인 버전의 원본 해시가 일치하지 않습니다.')
+    return path, content
+
+
+def _approved_file(index, records, kind, filename):
+    sources = {}
+    for record in records:
+        for eid in record.get('evidence', []):
+            source = index.get(index.get(eid, {}).get('source_id'), {})
+            if source.get('kind') == kind and source.get('url') == 'urn:ontologics:claim_response:' + filename:
+                sources[source['id']] = source
+    if len({n['sha256'] for n in sources.values()}) > 1:
+        raise DomainError('SOURCE_CONFLICT', '같은 파일명의 승인 원본이 여러 개입니다. 원본을 구분해 확인하세요.')
+    if not sources:
+        return None
+    return _verified_source(next(iter(sources.values())))[0]
+
+
+def _read_file(path, reader, *args, collected_at, original_name=None):
+    # Parse exactly the bytes carried by the trusted proposal, not a later disk read.
+    raw = path.read_bytes()
+    if len(raw) > 2 * 1024 * 1024:
+        raise DomainError('INVALID_BUSINESS_SOURCE', '원본은 2MB 이하여야 합니다.')
+    with tempfile.TemporaryDirectory() as folder:
+        copy = Path(folder) / (original_name or path.name)
+        copy.write_bytes(raw)
+        result = reader(copy, *args, collected_at=collected_at)
+    for n in result['nodes']:
+        if n['type'] == 'SourceDocument':
+            n['path'] = path.relative_to(ROOT).as_posix()
+    return result, raw
+
+
+def _proposal(records, source_nodes=(), raw=None):
+    sources = [n for n in source_nodes if n['type'] in {'SourceDocument', 'Evidence'}]
+    attachments = {n['id']: raw for n in sources if n['type'] == 'SourceDocument'}
+    return BusinessProposal([_bare(n) for n in records], sources, attachments,
+                            {n['id']: list(n.get('evidence', [])) for n in records})
+
+
 def _case_context(nodes, index, case_id):
-    """The approved records one case needs: its boards, production records and the C operations basis."""
     case = _of_type(index, case_id, 'QualityCase', '승인된 품질 사건을 선택하세요.')
     intake = _of_type(index, case['intake_id'], 'ClaimIntake', '사건의 클레임 접수 기록이 없습니다.')
     records = [n for n in nodes if n['type'] == 'UnitProductionRecord']
@@ -81,13 +129,19 @@ def _case_context(nodes, index, case_id):
         raise DomainError('CLAIM_LINE_UNRESOLVED', '신고 보드가 한 생산라인으로 모이지 않습니다. 사람이 확인하세요.')
     unit = index.get(case['unit_ids'][0], {})
     return {'case': case, 'intake': intake, 'records': records, 'line_id': line_id,
-            'configuration_id': unit.get('configuration_id'), 'operations': load_operations()}
+            'configuration_id': unit.get('configuration_id'), 'index': index}
+
+
+def _operations(context):
+    source = _of_type(context['index'], SOURCE_ID, 'SourceDocument', '승인된 C 운영 원본이 없습니다.')
+    _, raw = _verified_source(source)
+    return json.loads(raw)
 
 
 def _hold(context):
+    operations = _operations(context)
     return stored_scope(context['case'], context['line_id'], context['records'],
-                        c_operations_stock(context['operations']),
-                        c_operations_shipments(context['operations']))
+                        c_operations_stock(operations), c_operations_shipments(operations))
 
 
 def build_records(nodes, action, payload):
@@ -134,7 +188,7 @@ def build_records(nodes, action, payload):
         _fields(payload, {'file', 'collected_at'})
         path = _inbox_file('claim', payload['file'])
         try:
-            result = convert_claim(path, collected_at=payload['collected_at'])
+            result, raw = _read_file(path, convert_claim, collected_at=payload['collected_at'])
         except ValueError as exc:
             raise DomainError('CLAIM_FILE_UNREADABLE', '클레임 파일을 읽지 못했습니다: ' + str(exc)) from None
         report = result['report']
@@ -145,7 +199,7 @@ def build_records(nodes, action, payload):
         if any(node['type'] == 'ClaimIntake' and node['external_claim_id'] == intake['external_claim_id']
                and node['customer_name'] == intake['customer_name'] for node in nodes):
             raise DomainError('CLAIM_ALREADY_REGISTERED', '같은 고객·클레임 번호가 이미 승인됐습니다.')
-        return [_bare(intake)]
+        return _proposal([intake], result['nodes'], raw)
     if action == 'trace_case':
         # Serial -> board by the recorded serial only. Any serial that does not match stops here
         # for a person; the screen never guesses a near match.
@@ -163,7 +217,7 @@ def build_records(nodes, action, payload):
         case = prepare_quality_case(dict(intake, intake_state='confirmed'), links)
         if case['node'] is None:
             raise DomainError('CLAIM_CASE_NOT_READY', case['reason'])
-        return [dict(_bare(intake), intake_state='confirmed'), _bare(case['node'])]
+        return _proposal([dict(intake, intake_state='confirmed'), case['node']])
     if action == 'containment':
         # Investigation scope and the two request drafts. Generating a request is not sending it
         # and not a defect confirmation; the scope lists boards to hold, not faulty boards.
@@ -177,21 +231,21 @@ def build_records(nodes, action, payload):
         if not prepared['nodes']:
             raise DomainError('CLAIM_SCOPE_NOT_READY', '; '.join(s['reason'] for s in prepared['skipped']))
         candidate = candidate_scope(context['case'], context['line_id'], context['records'],
-                                    c_operations_shipments(context['operations']))
+                                    c_operations_shipments(_operations(context)))
         records = prepared['nodes'] + ([candidate['node']] if candidate['node'] else [])
-        return [_bare(node) for node in records]
+        return _proposal(records)
     if action == 'test_request':
         _fields(payload, {'case_id', 'prepared_at'})
         context = _case_context(nodes, index, payload['case_id'])
         if any(n['type'] == 'TestRequest' and n['case_id'] == payload['case_id'] for n in nodes):
             raise DomainError('TEST_REQUEST_EXISTS', '이 사건의 시험 의뢰가 이미 등록됐습니다.')
         candidate = candidate_scope(context['case'], context['line_id'], context['records'],
-                                    c_operations_shipments(context['operations']))
+                                    c_operations_shipments(_operations(context)))
         test = prepare_test_request(context['case'], context['line_id'], _hold(context),
                                     prepared_at=payload['prepared_at'],
                                     external_claim_id=context['intake']['external_claim_id'],
                                     configuration_id=context['configuration_id'], candidate_result=candidate)
-        return [_bare(test['node'])]
+        return _proposal([test['node']])
     if action == 'test_results':
         # The test team's file, read as written. C never edits an outcome or a disposition.
         # Sent in parts because the common draft takes at most RECORD_LIMIT records at a time.
@@ -200,11 +254,10 @@ def build_records(nodes, action, payload):
         request = next((n for n in nodes if n['type'] == 'TestRequest' and n['case_id'] == payload['case_id']), None)
         if request is None:
             raise DomainError('NOT_FOUND', '먼저 시험 의뢰를 승인하세요.')
-        path = _inbox_file('result', payload['file'])
-        with tempfile.TemporaryDirectory() as folder:
-            copy = Path(folder) / path.name
-            copy.write_bytes(path.read_bytes())
-            read = read_test_results(copy, request, context['case'], collected_at=payload['collected_at'])
+        path = _approved_file(index, _stored(nodes, 'QualityTestResult', payload['case_id']),
+                              'synthetic_test_results', payload['file']) or _inbox_file('result', payload['file'])
+        read, raw = _read_file(path, read_test_results, request, context['case'],
+                               collected_at=payload['collected_at'], original_name=payload['file'])
         if read['state'] != 'needs_review':
             raise DomainError('TEST_RESULT_BLOCKED', '결과 파일에 고칠 행이 있습니다: '
                               + '; '.join(f"{i.get('locator') or '파일'} {i['code']}" for i in read['issues']))
@@ -212,7 +265,7 @@ def build_records(nodes, action, payload):
         pending = [n for n in read['nodes'] if n['type'] == 'QualityTestResult' and n['id'] not in stored]
         if not pending:
             raise DomainError('TEST_RESULTS_COMPLETE', '이 파일의 결과는 모두 등록됐습니다.')
-        return [_bare(node) for node in pending[:RECORD_LIMIT]]
+        return _proposal(pending[:RECORD_LIMIT], read['nodes'], raw)
     if action == 'reproduction':
         # Counts the test team's dispositions. An undetermined quantity is not stored as 0.
         _fields(payload, {'case_id', 'collected_at'})
@@ -223,13 +276,19 @@ def build_records(nodes, action, payload):
         results = [n for n in nodes if n['type'] == 'QualityTestResult' and n['case_id'] == payload['case_id']]
         if not results:
             raise DomainError('NOT_FOUND', '먼저 테스트팀 결과를 승인하세요.')
-        reproduction = reproduction_requirement(context['case'], request, results,
-                                                c_operations_replacement(context['operations']),
-                                                configuration_id=context['configuration_id'])
-        if reproduction['node'] is None:
+        reproduction = reproduction_requirements(nodes, payload['case_id'],
+                                                  c_operations_replacement(_operations(context)))
+        if reproduction['excluded_replacements']:
+            raise DomainError('REPLACEMENT_CANDIDATE_CONFLICT',
+                              '대체 재고 후보를 사람이 확인해야 합니다: ' + '; '.join(
+                                  r['unit_id'] + ' ' + r['reason'] for r in reproduction['excluded_replacements']))
+        if reproduction['undetermined']:
             raise DomainError('REPRODUCTION_UNDETERMINED',
-                              '재생산 수량이 미정입니다. 0으로 저장하지 않습니다: ' + str(reproduction['reason']))
-        return [_bare(reproduction['node'])]
+                              '구성별 재생산 수량이 미정입니다. 0으로 저장하지 않습니다: '
+                              + ', '.join(r['configuration_id'] for r in reproduction['undetermined']))
+        if not reproduction['nodes']:
+            raise DomainError('REPRODUCTION_UNDETERMINED', '등록할 재생산 요건이 없습니다.')
+        return _proposal(reproduction['nodes'])
     raise DomainError('INVALID_CLAIM_ACTION', '지원하지 않는 클레임 작업입니다.')
 
 
@@ -278,25 +337,31 @@ def _claim_report(path):
         raise DomainError('CLAIM_FILE_UNREADABLE', '클레임 파일을 읽지 못했습니다: ' + str(exc)) from None
 
 
-def _source_report(intake):
-    """The waiting file an approved intake came from, matched by customer and claim number."""
-    for path in _inbox('claim'):
-        try:
-            claim = convert_claim(path, collected_at=_now())['report']['claim']
-        except ValueError:
+def _source_report(intake, index):
+    """Use only original files referenced by this approved intake and verified by hash."""
+    claims = []
+    for eid in intake.get('evidence', []):
+        source = index.get(index.get(eid, {}).get('source_id'), {})
+        if source.get('kind') != 'synthetic_claim':
             continue
+        path, _ = _verified_source(source)
+        claim = convert_claim(path, collected_at=source['collected_at'])['report']['claim']
         if (claim.get('customer_name'), claim.get('external_claim_id')) == (intake['customer_name'], intake['external_claim_id']):
-            return claim
-    return None
+            claims.append(claim)
+    if len({c.get('requested_due_date') for c in claims}) > 1:
+        raise DomainError('SOURCE_CONFLICT', '승인된 신고 원본의 희망 기한이 서로 다릅니다. 사람이 확인하세요.')
+    return claims[0] if claims else None
 
 
 def _view_claim_file(nodes, args):
-    path = _inbox_file('claim', args['file'])
+    index = {n['id']: n for n in nodes}
+    path = _approved_file(index, [n for n in nodes if n['type'] == 'ClaimIntake'],
+                          'synthetic_claim', args['file']) or _inbox_file('claim', args['file'])
     report = _claim_report(path)
     claim = report['claim']
     registered = any(n['type'] == 'ClaimIntake' and (n['customer_name'], n['external_claim_id'])
                      == (claim.get('customer_name'), claim.get('external_claim_id')) for n in nodes)
-    return {'file': path.name, 'format': report['format'], 'original': _claim_original(path),
+    return {'file': args['file'], 'format': report['format'], 'original': _claim_original(path),
             'state': report['state'], 'claim': {key: _plain(value) for key, value in claim.items()},
             'claimed_quantity': report['claimed_quantity'],
             'serials': [unit['serial'] for unit in report['unit_candidates']],
@@ -321,17 +386,29 @@ def _stored(nodes, kind, case_id):
     return [n for n in nodes if n['type'] == kind and n.get('case_id') == case_id]
 
 
+def _configuration_label(index, unit_ids):
+    return ', '.join(sorted({index.get(uid, {}).get('configuration_id') or '미확인' for uid in unit_ids}))
+
+
 def _view_containment(nodes, args):
-    """The production stop and shipment hold documents. Before the step is saved this is the draft
-    the person is about to submit; after, it is rendered again from the same approved records."""
     index = {node['id']: node for node in nodes}
     context = _case_context(nodes, index, args['case_id'])
     stored = _stored(nodes, 'ContainmentRequest', args['case_id'])
-    prepared_at = stored[0]['prepared_at'] if stored else _now()
+    if stored:
+        documents = []
+        for request in stored:
+            scope = _of_type(index, request['scope_id'], 'QualityScope', '승인된 요청 범위가 없습니다.')
+            text = render_request(request, context['case'], scope,
+                external_claim_id=context['intake']['external_claim_id'],
+                configuration_id=_configuration_label(index, scope['unit_ids']), review_status='applied',
+                document_version=request.get('draft_version', 1))
+            documents.append({'filename': Path(request['document_ref']).name, 'markdown': text})
+        return {'saved': True, 'prepared_at': stored[0]['prepared_at'], 'documents': documents, 'skipped': []}
+    prepared_at = _now()
     prepared = prepare_containment(context['case'], context['line_id'], context['records'], _hold(context),
-                                   prepared_at=prepared_at, external_claim_id=context['intake']['external_claim_id'],
-                                   configuration_id=context['configuration_id'])
-    return {'saved': bool(stored), 'prepared_at': prepared_at,
+        prepared_at=prepared_at, external_claim_id=context['intake']['external_claim_id'],
+        configuration_id=context['configuration_id'])
+    return {'saved': False, 'prepared_at': prepared_at,
             'documents': [{'filename': name, 'markdown': text} for name, text in prepared['documents'].items()],
             'skipped': prepared['skipped']}
 
@@ -340,13 +417,25 @@ def _view_test_request(nodes, args):
     index = {node['id']: node for node in nodes}
     context = _case_context(nodes, index, args['case_id'])
     stored = _stored(nodes, 'TestRequest', args['case_id'])
-    prepared_at = stored[0]['prepared_at'] if stored else _now()
+    if stored:
+        documents = []
+        for request in stored:
+            targets = {'groups': [{'group': '승인된 시험 대상', 'unit_ids': request['unit_ids'],
+                                    'basis': ', '.join(request['evidence'])}], 'skipped': None}
+            text = render_test_request(context['case'], targets, prepared_at=request['prepared_at'],
+                external_claim_id=context['intake']['external_claim_id'],
+                configuration_id=_configuration_label(index, request['unit_ids']), production_line_id=context['line_id'],
+                review_status='applied', document_version=request.get('draft_version', 1))
+            documents.append({'filename': Path(request['document_ref']).name, 'markdown': text})
+        return {'saved': True, 'prepared_at': stored[0]['prepared_at'],
+                'unit_count': len({u for r in stored for u in r['unit_ids']}), 'documents': documents}
+    prepared_at = _now()
     candidate = candidate_scope(context['case'], context['line_id'], context['records'],
-                                c_operations_shipments(context['operations']))
+                                c_operations_shipments(_operations(context)))
     test = prepare_test_request(context['case'], context['line_id'], _hold(context), prepared_at=prepared_at,
-                                external_claim_id=context['intake']['external_claim_id'],
-                                configuration_id=context['configuration_id'], candidate_result=candidate)
-    return {'saved': bool(stored), 'prepared_at': prepared_at, 'unit_count': len(test['node']['unit_ids']),
+        external_claim_id=context['intake']['external_claim_id'], configuration_id=context['configuration_id'],
+        candidate_result=candidate)
+    return {'saved': False, 'prepared_at': prepared_at, 'unit_count': len(test['node']['unit_ids']),
             'documents': [{'filename': name, 'markdown': text} for name, text in test['documents'].items()]}
 
 
@@ -357,15 +446,18 @@ def _view_result_file(nodes, args):
     request = next(iter(_stored(nodes, 'TestRequest', args['case_id'])), None)
     if request is None:
         raise DomainError('NOT_FOUND', '먼저 시험 의뢰를 승인하세요.')
-    path = _inbox_file('result', args['file'])
-    table = list(csv.reader(path.read_text(encoding='utf-8').splitlines()))
-    with tempfile.TemporaryDirectory() as folder:
-        copy = Path(folder) / path.name
-        copy.write_bytes(path.read_bytes())
-        read = read_test_results(copy, request, context['case'], collected_at=_now())
-    counts = Counter((n['outcome'], n['disposition']) for n in read['nodes'] if n['type'] == 'QualityTestResult')
-    return {'file': path.name, 'header': table[0] if table else [], 'rows': table[1:], 'state': read['state'],
+    path = _approved_file(index, _stored(nodes, 'QualityTestResult', args['case_id']),
+                          'synthetic_test_results', args['file']) or _inbox_file('result', args['file'])
+    read, raw = _read_file(path, read_test_results, request, context['case'],
+                           collected_at=_now(), original_name=args['file'])
+    table = list(csv.reader(raw.decode('utf-8-sig').splitlines()))
+    parsed = [n for n in read['nodes'] if n['type'] == 'QualityTestResult']
+    counts = Counter((n['outcome'], n['disposition']) for n in parsed)
+    stored_ids = {n['id'] for n in _stored(nodes, 'QualityTestResult', args['case_id'])}
+    pending_count = sum(n['id'] not in stored_ids for n in parsed)
+    return {'file': args['file'], 'header': table[0] if table else [], 'rows': table[1:], 'state': read['state'],
             'issues': read['issues'], 'stored': len(_stored(nodes, 'QualityTestResult', args['case_id'])),
+            'pending_count': pending_count, 'registration_complete': read['state'] != 'blocked' and pending_count == 0,
             'counts': [{'outcome': o, 'disposition': d, 'count': n} for (o, d), n in sorted(counts.items())]}
 
 
@@ -375,18 +467,22 @@ def _view_reproduction(nodes, args):
     the graph (kept out by the team decision of 2026-11-04), so it is read again from the claim file."""
     index = {node['id']: node for node in nodes}
     context = _case_context(nodes, index, args['case_id'])
-    requirement = next(iter(_stored(nodes, 'ReproductionRequirement', args['case_id'])), None)
-    if requirement is None:
+    requirements = sorted(_stored(nodes, 'ReproductionRequirement', args['case_id']), key=lambda n: n['configuration_id'])
+    if not requirements:
         raise DomainError('NOT_FOUND', '먼저 재생산 요건을 승인하세요.')
-    claim = _source_report(context['intake'])
+    claim = _source_report(context['intake'], index)
     due = claim.get('requested_due_date') if claim else None
     if not due:
-        raise DomainError('MISSING_DUE_DATE', '원래 클레임 파일에서 희망 기한을 찾지 못했습니다. 요청서를 만들 수 없습니다.')
-    text = render_reproduction_request(_bare(requirement), context['case'], prepared_at=_now(),
-                                       external_claim_id=context['intake']['external_claim_id'],
-                                       requested_due_date=due,
-                                       delivery_reference=context['intake'].get('delivery_reference'))
-    return {'requested_due_date': due, 'requirement': _bare(requirement), 'markdown': text}
+        raise DomainError('MISSING_DUE_DATE', '승인된 신고 원본에서 희망 기한을 찾지 못했습니다. 요청서를 만들 수 없습니다.')
+    documents = []
+    for requirement in requirements:
+        text = render_reproduction_request(requirement, context['case'], prepared_at=_now(),
+            external_claim_id=context['intake']['external_claim_id'], requested_due_date=due,
+            delivery_reference=context['intake'].get('delivery_reference'), review_status='applied')
+        documents.append({'filename': requirement['id'].replace(':', '_') + '.md', 'markdown': text})
+    return {'requested_due_date': due, 'requirement': _bare(requirements[0]),
+            'requirements': [_bare(r) for r in requirements], 'markdown': documents[0]['markdown'], 'documents': documents}
+
 
 
 VIEWS = {'claim_file': _view_claim_file, 'serial_match': _view_serial_match,
@@ -406,4 +502,4 @@ def query(service, actor, action, arguments):
     if not graph['ok']:
         return graph
     view = VIEWS[action](graph['data'], {key: value for key, value in arguments.items() if key != 'version'})
-    return {**graph, 'data': view, 'evidence': [], 'conflicts': []}
+    return {**graph, 'data': view}

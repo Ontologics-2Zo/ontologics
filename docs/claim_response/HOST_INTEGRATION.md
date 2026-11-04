@@ -2,7 +2,8 @@
 
 > 기능: C 클레임 대응 (`claim_response`)
 > 기준: `ontologics/host.py`의 `AgentRegistration`, `examples/extension_agent.py`, `docs/AGENT_RUNTIME.md`
-> 상태: 역할 등록 구현·테스트 완료. 웹 화면 연결은 공통 담당자 요청 대기.
+> 현재: 공통 `#claims` 화면의 7단계 함수·조회·초안 연결을 지원한다. C 모델 역할의 자동 업무 인계와는 구분한다. 아래 번호별 단계 기록과 PR #6 검토 상태는 당시 개발 이력이다.
+> PR #15 보완: 원본 해시/근거 보존, 승인 문서 표시, 구성별 계산, 클레임 선택과 로컬 시연 요청 보호. 공통 계약은 [TOOLS](../TOOLS.md#공통-업무-화면-abc), 실제 검증 범위는 [PROJECT_STATUS](../../PROJECT_STATUS.md)를 따른다.
 
 ## 1. 요약
 

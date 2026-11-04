@@ -6,6 +6,11 @@
   <link rel="icon" href="data:,">
   <title>Ontologics · 제조 제품정보 서비스</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/business.js" defer></script>
+<script src="/static/planning.js" defer></script>
+<script src="/static/fulfillment.js" defer></script>
+<script src="/static/claims.js" defer></script>
+<script src="/static/dashboard.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
@@ -13,19 +18,22 @@
 <div class="shell">
   <aside class="sidebar" aria-label="서비스 메뉴">
     <div class="brand"><span class="brand-mark" aria-hidden="true">O</span><div><strong>Ontologics</strong><small>제조 제품정보 서비스</small></div></div>
-    <p class="nav-caption">업무 공간</p>
+    <p class="nav-caption">WORKSPACE · 업무 공간</p>
     <nav id="navigation">
       <button type="button" data-view="home"><span>01</span>업무 현황</button>
+      <button type="button" data-view="planning"><span>02</span>생산·자재 계획</button>
+      <button type="button" data-view="fulfillment"><span>03</span>계약·납품</button>
+      <button type="button" data-view="claims"><span>04</span>클레임·대응</button>
       <button type="button" data-view="product"><span>02</span>제품 구성·BOM 등록</button>
       <button type="button" data-view="history"><span>03</span>개별 보드·부품 로트 이력</button>
       <button type="button" data-view="investigation" class="active" aria-current="page"><span>04</span>로트 장착 이력 조회</button>
       <button type="button" data-view="review"><span>05</span>등록·변경안 검토 및 승인</button>
       <button type="button" data-view="evidence"><span>06</span>기술 문서·근거 조회</button>
     </nav>
-    <div class="sidebar-note"><strong>S1·S2 업무 연결</strong><p>조회 → 보완 초안 → 별도 검토 → 승인 버전 반영 → 같은 조건 비교</p><p>등록·변경안의 승인과 반영은 공통 호스트가 처리합니다.</p></div>
+    <div class="sidebar-note"><strong>근거로 연결된 제조 업무</strong><p>조회 → 보완 초안 → 별도 검토 → 승인 버전 반영 → 같은 조건 비교</p><p>등록·변경안의 승인과 반영은 공통 호스트가 처리합니다.</p></div>
   </aside>
   <div class="workspace">
-    <header class="topbar"><div class="development-identity"><div><span class="dev-badge">개발 환경</span><span id="identity">서버 신원 확인 중…</span><small id="identity-permissions">서버 권한 확인 중…</small></div><label class="development-user-label" for="dev-user-select">개발 사용자 · 로그인 아님<select id="dev-user-select" disabled aria-describedby="identity-permissions"><option value="">서버 사용자 목록 확인 중…</option></select></label></div><div class="version-label" id="current-version">데이터 버전 확인 중</div></header>
+    <header class="topbar"><form id="global-search" class="global-search"><label class="sr-only" for="global-query">제품·보드·원본 검색</label><input id="global-query" placeholder="제품·보드·원본 검색" maxlength="200"><button type="submit" aria-label="전체 근거 검색">검색</button></form><div class="development-identity"><div><span class="dev-badge">개발 환경</span><span id="identity">서버 신원 확인 중…</span><small id="identity-permissions">서버 권한 확인 중…</small></div><label class="development-user-label" for="dev-user-select">개발 사용자 · 로그인 아님<select id="dev-user-select" disabled aria-describedby="identity-permissions"><option value="">서버 사용자 목록 확인 중…</option></select></label></div><div class="version-label" id="current-version">데이터 버전 확인 중</div><button id="toggle-ai" type="button" aria-expanded="false" aria-controls="ai-panel">✦ AI 업무 지원</button></header>
     <div class="dev-notice" id="development-notice">로그인 없는 개발 신원입니다. 실제 사용자 인증 완료를 의미하지 않습니다. 보드·로트·장착/제거 기록은 시연용 가상 데이터입니다.</div>
     <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
     <div class="content-grid">
@@ -103,10 +111,18 @@
           </section>
         </section>
         <section id="view-home" class="view" hidden>
-          <div class="page-heading"><div><p class="eyebrow">제조 제품정보 서비스</p><h1>업무 현황</h1><p>서버에 저장된 등록·변경안과 승인된 데이터 버전을 확인하고 다음 업무를 이어갑니다.</p></div><button type="button" id="refresh-workspace">현황 새로고침</button></div>
-          <div class="overview-grid" id="workspace-metrics"><p class="hint">현황을 불러오면 실제 저장된 값을 표시합니다.</p></div>
-          <section class="card"><div class="section-heading"><h2>등록·변경안</h2><span id="workspace-version" class="pill neutral"></span></div><p class="hint">표에 표시된 정확한 초안 버전을 열어 검토합니다. 승인과 데이터 반영은 서로 다른 상태입니다.</p><div id="workspace-drafts"></div></section>
-          <section class="card"><h2>업무 시작</h2><div class="work-links"><button type="button" data-open-view="product"><strong>제품 개정·BOM 구성 등록</strong><span>원본 접수 → 추출 확인 → 비교 → 등록 초안</span></button><button type="button" data-open-view="investigation"><strong>부품 로트 장착 이력 조사</strong><span>A/B 조회 → 근거 확인 → 이력 보완 → 전후 비교</span></button><button type="button" data-open-view="evidence"><strong>기술 문서·기록 근거 찾기</strong><span>승인된 데이터 버전에 연결된 원본과 근거 조회</span></button></div><p class="hint">개발 신원과 시연 운영 기록을 사용하는 업무 연결입니다. 실제 인증·운영 배포 완료를 뜻하지 않습니다.</p></section>
+          <div class="page-heading"><div><p class="eyebrow">WORKSPACE / OVERVIEW</p><h1>업무 현황</h1><p>등록·승인과 생산·납품·클레임 기록을 한곳에서 확인합니다.</p></div><div><button type="button" id="refresh-workspace">현황 새로고침</button><p id="dashboard-state" class="hint" role="status">현황 조회 전</p></div></div>
+          <div class="overview-grid" id="workspace-metrics" aria-label="업무 현황 요약"></div>
+          <section class="card"><div class="section-heading"><h2>등록·변경안 검토</h2><span id="workspace-version" class="pill neutral"></span></div>
+            <div class="row-filter"><label>상태<select id="draft-status-filter"><option value="">전체 상태</option><option value="awaiting_review">승인 대기</option><option value="needs_changes">보완 필요</option><option value="approved">승인 후 미반영</option><option value="applied">반영 완료</option><option value="rejected">반려</option></select></label><span id="draft-coverage" class="hint"></span></div><div id="workspace-drafts"></div>
+          </section>
+          <div id="business-panels" class="business-panels"></div>
+          <section class="card foundation"><div class="section-heading"><h2>제품·이력 기준 정보</h2><div id="foundation-counts"></div></div><div class="quick-actions"><button type="button" data-open-view="product">원본 접수·BOM 등록</button><button type="button" data-open-view="history">보드·로트 이력</button><button type="button" data-open-view="investigation">장착 이력 조사</button><button type="button" data-open-view="evidence">기술 문서·근거 조회</button></div><p class="hint">현황은 승인된 기록과 최신 초안 상태입니다. 실시간 설비 관제·실제 생산량·불량률을 추정하지 않습니다.</p></section>
+        </section>
+        <section id="view-business" class="view" hidden>
+          <div class="page-heading"><div><p class="eyebrow">승인된 업무 기록</p><h1 id="business-title">업무 기록</h1><p id="business-note"></p></div><button id="business-refresh" type="button">최신 승인 버전 조회</button></div>
+          <div id="business-actions" class="card business-actions"></div>
+          <div class="business-layout"><section class="card"><div class="record-filters"><label>기록 종류<select id="business-kind"></select></label><label>목록 내 검색<input id="business-query" placeholder="식별자·등록 내용 검색"></label></div><p id="business-coverage" class="hint"></p><div id="business-records"></div></section><section class="card record-detail-panel" id="business-detail"><p class="hint">기록의 상세·근거를 선택하세요.</p></section></div>
         </section>
         <section id="view-product" class="view" hidden>
           <div class="page-heading"><div><p class="eyebrow">S2 · 기존 사양·BOM 구조화</p><h1>제품 구성·BOM 등록</h1><p>실제 원본을 접수하고 개정·기존 구성과 연결한 뒤, 별도 검토자의 승인으로 등록합니다.</p></div><span class="pill neutral">OLIMEX L/L1 · WROOM</span></div>
@@ -140,7 +156,7 @@
           <section class="card"><form id="evidence-search-form"><div class="form-grid"><label class="wide">찾을 정보 · ID, 문자열 또는 의미<input id="evidence-search-query" placeholder="예: LAN8710, U104, 제거 시점을 확인할 기록" maxlength="200"></label><label>검색 방식<select id="evidence-search-mode"><option value="lexical">문자열 검색</option><option value="semantic">의미 검색 · 관련 근거 후보</option></select></label><label>자료 구분<select id="evidence-origin"><option value="all">실제·가상 모두</option><option value="real">실제 공개 기술 자료</option><option value="synthetic">시연용 가상 운영 기록</option></select></label><label>데이터 버전 · 비우면 현재 승인 버전<input id="evidence-version" type="number" min="0" step="1"></label></div><div class="actions"><button type="submit" id="evidence-search" class="primary">원본·기록 근거 찾기</button></div></form><p id="evidence-search-mode-note" class="hint">현재 승인된 그래프에서 문자열이 일치하는 정보를 찾습니다.</p><p class="hint">의미 검색은 선택한 승인 버전에 색인된 근거 후보만 반환합니다. 검색 결과와 유사도는 부품 동일성·장착 판정·승인을 대신하지 않습니다.</p></section><section class="card" id="evidence-results-card" hidden><div class="section-heading"><h2>검색 결과</h2><span id="evidence-result-version" class="pill neutral"></span></div><p id="evidence-result-count" class="hint"></p><div id="evidence-search-results"></div></section>
         </section>
       </main>
-      <aside class="ai-panel" aria-labelledby="ai-title"><div class="ai-heading"><span class="ai-icon" aria-hidden="true">✦</span><div><h2 id="ai-title">AI 업무 지원</h2><small id="ai-subtitle">현재 업무의 조건·근거·버전 연결</small></div></div><p id="model-status" class="hint">모델 설정 확인 중…</p><div class="ai-context"><strong>현재 화면에서 공유하는 대상·조건</strong><p id="ai-context">아직 고정된 조회 조건이 없습니다.</p></div><form id="ai-form"><label>업무 요청<textarea id="ai-question" rows="4" maxlength="2000" placeholder="확인된 근거를 설명하거나, 조사할 보드·로트·A/B 시각을 알려줘."></textarea></label><button type="submit" id="ask-ai" class="primary">업무 요청·설명</button></form><div id="ai-draft-controls" class="ai-draft-controls" hidden><p id="ai-draft-target" class="hint"></p><p class="hint">접수 자료의 원본·미확인 사항을 확인한 뒤 요청하세요. 이 버튼은 접수 원본의 초안을 저장하며 승인·확정 반영하지 않습니다. 사실 정정은 새 원본을 접수하고 새 초안 버전으로 검토합니다.</p><button type="button" id="prepare-ai-draft">AI 등록 초안 저장 요청</button></div><p class="hint">등록·조회 정보의 근거·버전·검증은 공통 도구를 사용합니다. AI는 초안을 승인하거나 확정 데이터를 바꿀 수 없습니다.</p><div id="ai-output" aria-live="polite"></div></aside>
+      <aside class="ai-panel" id="ai-panel" aria-labelledby="ai-title" hidden><div class="ai-heading"><span class="ai-icon" aria-hidden="true">✦</span><div><h2 id="ai-title">AI 업무 지원</h2><small id="ai-subtitle">현재 업무의 조건·근거·버전 연결</small></div></div><p id="model-status" class="hint">모델 설정 확인 중…</p><div class="ai-context"><strong>현재 화면에서 공유하는 대상·조건</strong><p id="ai-context">아직 고정된 조회 조건이 없습니다.</p></div><form id="ai-form"><label>업무 요청<textarea id="ai-question" rows="4" maxlength="2000" placeholder="확인된 근거를 설명하거나, 조사할 보드·로트·A/B 시각을 알려줘."></textarea></label><button type="submit" id="ask-ai" class="primary">업무 요청·설명</button></form><div id="ai-draft-controls" class="ai-draft-controls" hidden><p id="ai-draft-target" class="hint"></p><p class="hint">접수 자료의 원본·미확인 사항을 확인한 뒤 요청하세요. 이 버튼은 접수 원본의 초안을 저장하며 승인·확정 반영하지 않습니다. 사실 정정은 새 원본을 접수하고 새 초안 버전으로 검토합니다.</p><button type="button" id="prepare-ai-draft">AI 등록 초안 저장 요청</button></div><p class="hint">등록·조회 정보의 근거·버전·검증은 공통 도구를 사용합니다. AI는 초안을 승인하거나 확정 데이터를 바꿀 수 없습니다.</p><div id="ai-output" aria-live="polite"></div></aside>
     </div>
   </div>
 </div>

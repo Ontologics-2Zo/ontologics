@@ -210,13 +210,13 @@ function updateControls() {
   if (!state.draftRef) $('revise-draft').checked = false;
 }
 function selectView(view, setHash = true) {
-  const titles = {home: '업무 현황', product: '제품 구성·BOM 등록', history: '개별 보드·부품 로트 이력', investigation: '로트 장착 이력 조회', review: '등록·변경안 검토 및 승인', evidence: '기술 문서·근거 조회'};
+  const titles = {home: '업무 현황', product: '제품 구성·BOM 등록', history: '개별 보드·부품 로트 이력', investigation: '로트 장착 이력 조회', review: '등록·변경안 검토 및 승인', evidence: '기술 문서·근거 조회', planning: '생산·자재 계획', fulfillment: '계약·납품', claims: '클레임·대응'};
   if (!Object.hasOwn(titles, view)) view = 'home';
   if (currentView !== view) clear('ai-output');
   currentView = view;
   document.title = 'Ontologics · ' + (titles[view] || titles.home);
   document.querySelectorAll('.view').forEach((item) => { item.hidden = true; });
-  $('view-' + view).hidden = false;
+  $(businessViews[view] ? 'view-business' : 'view-' + view).hidden = false;
   document.querySelectorAll('#navigation button').forEach((button) => {
     button.classList.toggle('active', button.dataset.view === view);
     if (button.dataset.view === view) button.setAttribute('aria-current', 'page');
@@ -281,33 +281,15 @@ function displaySource(source, version, download = true) {
   return box;
 }
 async function enterView(view) {
+  if (businessViews[view]) return openBusiness(view);
   selectView(view);
   if (view === 'home') await refreshWorkspace();
   if (view === 'product' && state.sourceReceipt) renderReceipt();
   if (view === 'history' && state.historyReceipt) renderHistoryReceipt();
   updateControls();
 }
-async function refreshWorkspace() {
-  const response = must(await api('/api/workspace'));
-  const data = response.data, drafts = data.drafts || [];
-  workspaceVersion = response.data_version;
-  $('workspace-version').textContent = '데이터 v' + workspaceVersion;
-  $('current-version').textContent = '확인한 현재 데이터 v' + workspaceVersion;
-  const metrics = clear('workspace-metrics');
-  for (const [label, value, detail] of [['승인된 데이터 버전', 'v' + workspaceVersion, '조회에 사용하는 스냅샷'], ['불러온 변경안', drafts.length, '서버가 반환한 최근 초안 목록'], ['목록 중 검토 대기', drafts.filter((item) => item.status === 'awaiting_review').length, '현재 유효성은 검토 시 재확인']]) {
-    const card = node('div', null, 'metric'); card.append(node('small', label), node('strong', value), node('p', detail)); metrics.append(card);
-  }
-  const output = clear('workspace-drafts');
-  if (!drafts.length) output.append(node('p', '저장된 등록·변경안이 없습니다. 제품 구성 등록 또는 이력 보완을 시작하세요.', 'hint'));
-  else output.append(simpleTable(['초안 · 버전', '상태', '작성자 / 검토자', '기준 → 반영', ''], drafts.map((draft) => {
-    const id = draft.draft_id || draft.id, version = draft.version;
-    const identity = node('div'); identity.append(node('p', draft.author), node('small', draft.reviewer || '검토자 없음'));
-    return [id + ' · v' + version, node('span', draftLabels[draft.status] || draft.status, 'pill neutral'), identity, 'v' + draft.base_version + ' → ' + ((draft.applied_data_version ?? draft.applied_version) === null || (draft.applied_data_version ?? draft.applied_version) === undefined ? '미반영' : 'v' + (draft.applied_data_version ?? draft.applied_version)), actionButton('이 버전 검토', async () => { selectView('review'); await loadDraft({id, version}); })];
-  })));
-  output.append(node('p', '현재 페이지의 조사 조건은 브라우저 탭에 보관됩니다. 서버의 전체 조사 이력 재개·업무함 기능을 제공하는 것은 아닙니다.', 'hint'));
-  output.append(jsonDetails('현황 조회 실행 근거', {data_version: response.data_version, run_id: response.run_id, returned_drafts: drafts.length}));
-  updateAIContext();
-}
+async function refreshWorkspace() { return loadDashboard(); }
+
 async function intakeSource() {
   const file = $('source-file').files[0];
   if (!file) throw new Error('접수할 OLIMEX WROOM ODS 원본 파일을 선택하세요.');
@@ -529,7 +511,7 @@ async function searchEvidence() {
       if (Number.isFinite(candidate.similarity)) article.append(node('p', '유사도 점수: ' + candidate.similarity.toFixed(4) + ' · 사실 확률이나 장착 판정이 아닙니다.', 'hint'));
       if (candidate.evidence?.length) article.append(evidenceButton(candidate.evidence, response.data_version));
       if (candidate.source) article.append(displaySource(candidate.source, response.data_version));
-      if (candidate.evidence?.[0]) article.append(actionButton('이 근거 후보를 AI로 설명', async () => { state.knowledgeContext = {version: response.data_version, context: {node_id: candidate.evidence[0]}, label: candidate.evidence[0] + ' · 의미 검색 후보'}; persist(); updateAIContext(); $('ai-question').focus(); document.querySelector('.ai-panel').scrollIntoView({behavior: 'smooth', block: 'start'}); }));
+      if (candidate.evidence?.[0]) article.append(actionButton('이 근거 후보를 AI로 설명', async () => { state.knowledgeContext = {version: response.data_version, context: {node_id: candidate.evidence[0]}, label: candidate.evidence[0] + ' · 의미 검색 후보'}; persist(); updateAIContext(); setAIExpanded(true); $('ai-question').focus(); document.querySelector('.ai-panel').scrollIntoView({behavior: 'smooth', block: 'start'}); }));
       article.append(jsonDetails('후보에 연결된 승인 정보·근거 해시', {facts: candidate.facts, content_hash: candidate.content_hash})); output.append(article);
     }
     if (!candidates.length) output.append(node('p', '이 색인 범위에서 반환된 후보가 없습니다. 관련 근거나 사실이 존재하지 않는다는 뜻은 아닙니다.', 'hint'));
@@ -544,7 +526,7 @@ async function searchEvidence() {
       const references = record.type === 'Evidence' ? [record.id] : record.evidence || [];
       if (references.length) article.append(evidenceButton(references, response.data_version));
       if (record.type === 'SourceDocument') article.append(displaySource(record, response.data_version));
-      article.append(actionButton('이 대상을 AI로 설명', async () => { state.knowledgeContext = {version: response.data_version, context: {node_id: record.id}, label: record.id}; persist(); updateAIContext(); $('ai-question').focus(); document.querySelector('.ai-panel').scrollIntoView({behavior: 'smooth', block: 'start'}); }));
+      article.append(actionButton('이 대상을 AI로 설명', async () => { state.knowledgeContext = {version: response.data_version, context: {node_id: record.id}, label: record.id}; persist(); updateAIContext(); setAIExpanded(true); $('ai-question').focus(); document.querySelector('.ai-panel').scrollIntoView({behavior: 'smooth', block: 'start'}); }));
       article.append(jsonDetails('등록된 값·관계', record)); output.append(article);
     }
     if (!results.length) output.append(node('p', '이 버전과 검색 조건에 맞는 등록 정보가 없습니다. 존재하지 않음이나 안전 판정을 뜻하지 않습니다.', 'hint'));
@@ -901,6 +883,11 @@ function assistantScope() {
   if (!context) return null;
   const currentVersion = Number.isInteger(workspaceVersion) ? workspaceVersion : context.initial_data_version;
   let version = currentVersion, shared = {}, description = '업무에 필요한 대상과 조건을 먼저 확인합니다.', subtitle = '업무 요청 분석·처리 안내';
+  if (businessViews[currentView]) {
+    if (!businessSelection?.node) return null;
+    version = businessSelection.version;
+    return {path:'/api/assistant', body:{version,screen:'evidence',context:{node_id:businessSelection.node.id}}, subtitle:'선택한 기록의 근거 설명', description:businessTitle(businessSelection.node)+' · 데이터 v'+version};
+  }
   if (currentView === 'investigation') {
     subtitle = '로트 사용처·장착 이력 조사 지원';
     if (state.baseline) {
@@ -963,7 +950,7 @@ function updateAIContext() {
     aiScopeFingerprint = fingerprint;
   }
   const descriptions = {product: '등록 초안을 저장하거나 승인된 구성을 조회하면 같은 대상을 AI가 설명할 수 있습니다.', review: '정확한 초안 버전을 불러오면 검토 근거를 설명할 수 있습니다.', history: '보드·로트 이력을 조회해 설명할 대상을 고정하세요.', evidence: '검색 결과에서 「이 대상을 AI로 설명」을 선택하세요.', home: '업무 현황을 불러오면 요청의 처리 경로를 안내합니다.', investigation: '아직 고정된 조회 조건이 없습니다.'};
-  $('ai-context').textContent = scope?.description || descriptions[currentView];
+  $('ai-context').textContent = scope?.description || descriptions[currentView] || '목록에서 상세·근거를 선택하면 같은 기록과 버전을 AI가 설명합니다.';
   $('ai-subtitle').textContent = scope?.subtitle || '현재 업무의 대상·조건·근거 연결';
   if (!isBusy) $('ask-ai').disabled = !scope || !context?.model?.configured;
   const draftTarget = assistantDraftTarget();
@@ -1112,6 +1099,7 @@ async function askAI() {
 }
 async function route() {
   const [view, raw] = location.hash.slice(1).split('?');
+  if (businessViews[view]) { await openBusiness(view); return; }
   selectView(view || 'home', false);
   if (view === 'home' || (!view && currentView === 'home')) await refreshWorkspace();
   if (view === 'product' && state.sourceReceipt) renderReceipt();
@@ -1189,6 +1177,7 @@ async function initialize() {
   if (context.session_reset) message('개발 세션을 새로 확인했습니다. 현재 서버가 제공한 사용자 ' + context.identity.subject + '의 업무 현황에서 시작합니다. 실제 로그인·인증 완료를 뜻하지 않습니다.');
 }
 
+initializeDashboardControls();
 $('dev-user-select').addEventListener('change', (event) => {
   if (isBusy || developmentSwitchPending || developmentSessionNeedsReload) { event.target.value = currentDevelopmentPreset()?.id || ''; return; }
   const id = event.target.value;
@@ -1228,7 +1217,7 @@ $('compare-results').addEventListener('click', () => run(compareResults, $('comp
 $('go-compare').addEventListener('click', () => run(async () => { const configuration = configurationFromDraft(loadedDraft); if (configuration) { selectView('product'); $('configuration-id').value = configuration; if (loadedDraft.status !== 'applied') throw new Error('이 등록안의 정확한 버전이 아직 반영되지 않았습니다.'); await loadConfiguration({configuration_id: configuration, version: loadedDraft.applied_version}); $('configuration-result').scrollIntoView({behavior: 'smooth', block: 'start'}); } else { selectView('investigation'); $('comparison-card').scrollIntoView({behavior: 'smooth', block: 'start'}); } }, $('go-compare')));
 $('ai-form').addEventListener('submit', (event) => { event.preventDefault(); run(askContextAI, $('ask-ai')); });
 $('prepare-ai-draft').addEventListener('click', () => run(prepareAIDraft, $('prepare-ai-draft')));
-$('explain-results').addEventListener('click', () => { $('ai-question').focus(); document.querySelector('.ai-panel').scrollIntoView({behavior: 'smooth', block: 'start'}); });
+$('explain-results').addEventListener('click', () => { setAIExpanded(true); $('ai-question').focus(); document.querySelector('.ai-panel').scrollIntoView({behavior: 'smooth', block: 'start'}); });
 $('close-evidence').addEventListener('click', () => $('evidence-dialog').close());
 $('copy-review-path').addEventListener('click', () => run(async () => { try { await navigator.clipboard.writeText($('review-path').value); message('검토 경로를 복사했습니다. Bob 등 다른 개발 사용자를 선택한 뒤 같은 서비스 주소에서 열거나 업무 현황의 같은 초안을 선택하세요.', 'success'); } catch { $('review-path').select(); message('자동 복사를 사용할 수 없습니다. 선택된 검토 경로를 직접 복사하세요.'); } }, $('copy-review-path')));
 $('refresh-workspace').addEventListener('click', () => run(refreshWorkspace, $('refresh-workspace')));

@@ -248,6 +248,31 @@ class CPhase2ValidationTests(unittest.TestCase):
                 self.req['replacement_unit_ids'] = [board]
                 self.assert_invalid('REPLACEMENT_TARGET_CONFLICT')
 
+    def add_replacement_board_result_in_other_case(self, disposition):
+        claimed_serial = 'C-D001' if disposition == 'stock_replacement' else 'C-R001'
+        self.add(dict(copy.deepcopy(self.index['claim-intake:test']), id='claim-intake:other',
+                      external_claim_id='CLM-DEMO-C-OTHER', reported_serials=[claimed_serial]))
+        self.add(dict(copy.deepcopy(self.index[CASE]), id='quality-case:other',
+                      intake_id='claim-intake:other', unit_ids=['unit:test-' + claimed_serial]))
+        self.add(dict(copy.deepcopy(self.index[REQUEST]), id='test-request:other',
+                      case_id='quality-case:other', unit_ids=['unit:test-C-R001']))
+        self.add(dict(result('C-R001', 'pass' if disposition == 'release' else 'fail', disposition,
+                             request='test-request:other'), case_id='quality-case:other'))
+
+    def test_replacement_demand_in_another_case_is_not_available_stock(self):
+        for disposition in ('customer_replacement', 'stock_replacement'):
+            with self.subTest(disposition=disposition):
+                self.setUp()
+                self.add_replacement_board_result_in_other_case(disposition)
+                self.assert_invalid('REPLACEMENT_TARGET_CONFLICT')
+
+    def test_released_board_from_another_case_is_not_blanket_rejected(self):
+        self.add_replacement_board_result_in_other_case('release')
+        outcome = validate_graph(self.nodes)
+        self.assertTrue(outcome['valid'], outcome['errors'])
+        self.assertEqual(1, self.req['available_replacement_quantity'])
+        self.assertEqual(1, self.req['required_good_quantity'])
+
     def test_requirement_needs_a_test_request_of_its_case(self):
         self.remove(REQUEST)
         self.assert_invalid('NO_TEST_REQUEST')

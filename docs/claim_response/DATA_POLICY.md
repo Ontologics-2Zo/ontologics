@@ -65,7 +65,7 @@ C 기능은 이 범위 밖의 기록(클레임, 생산라인과 생산 기록, �
    - `test_result_ids`에 같은 보드의 결과를 두 번 넣으면 거부한다(`DUPLICATE_BOARD_RESULT`). 충돌한 결과를 넣어도 거부한다(`RESULT_CONFLICT`).
 6. 재생산 필요량은 `max(0, 고객 교체 + 보관 대체 − 사용할 대체 재고)`이며 0 이상의 정수다(`QUANTITY_MISMATCH`, `INVALID_QUANTITY`).
 7. 미결이 0이면 `confirmed`, 1 이상이면 `lower_bound`(최소 수량)다(`ASSESSMENT_STATE_MISMATCH`). **확인된 교체 수요 없이 미결만 있으면 미정이며 노드를 만들지 않는다**(저장하면 `UNDETERMINED_NOT_STORED`). 미결·미검사를 확정 0대로 저장하지 않는다.
-8. 대체 재고 보드(`replacement_unit_ids`)는 같은 구성의 `ProductUnit`이어야 하고 개수가 사용할 대체 재고 수량과 같아야 한다(`CONFIGURATION_MISMATCH`, `QUANTITY_MISMATCH`). **같은 사건의 시험 대상 보드는 대체 재고가 될 수 없다**(`REPLACEMENT_TARGET_CONFLICT`, 교체 대상이 자기 자신을 상쇄하지 못함). 다른 주문 배정 여부는 사람이 확인한다(재고 소속은 B·C I04 미합의).
+8. 대체 재고 보드(`replacement_unit_ids`)는 같은 구성의 `ProductUnit`이어야 하고 개수가 사용할 대체 재고 수량과 같아야 한다(`CONFIGURATION_MISMATCH`, `QUANTITY_MISMATCH`). **같은 사건의 시험 대상 보드 및 같은 그래프의 다른 사건에서 고객 교체·보관 대체로 기록된 보드는 대체 재고가 될 수 없다**(`REPLACEMENT_TARGET_CONFLICT`). 다른 사건의 시험 의뢰·미검사만으로 일괄 제외하지 않으며, 시험 결과를 임의로 해제·수리 완료로 바꾸지 않는다. 다른 주문 배정 여부는 사람이 확인한다(재고 소속은 B·C I04 미합의).
 9. **C → A는 한 방향 요청**이다(A 회신). A의 계산 결과·접수 응답을 받는 타입은 없다. A 요청서의 "이번 재생산 요청량"(같은 건의 기존 요청분 제외), 고객 희망 기한, 관련 계약은 **요청서 문서에만** 쓰고 그래프 필드로 두지 않는다. 그래프에는 문서 참조(`document_ref`)만 남는다.
 
 ## 5. 여전히 허용하지 않는 것

@@ -1,5 +1,11 @@
 # PROJECT_STATUS
 
+## 2026-11-04 — PR #7 사건 간 대체 재고 모순 차단
+
+동료 #7 최신 `d767c72`의 구성별 수요·미결 분리를 보존하고, `replacement_unit_ids`에 같은 그래프의 다른 사건에서 `customer_replacement` 또는 `stock_replacement`로 기록된 보드를 넣으면 `REPLACEMENT_TARGET_CONFLICT`로 거부하도록 C 검증을 보완했다. 같은 사건의 시험 대상 차단은 유지하며, 다른 사건에서 시험했다는 이유만으로 일괄 거부하거나 B·C I04의 재고 소속·배정을 추론하지 않는다. 공개 필드·T-box·`graph-0.4`와 신원·승인·저장·시간 계산은 변경하지 않았다.
+
+관련 C 1·2차 스키마 검사 `python3 -m unittest tests.claim_response.test_schema tests.claim_response.test_schema_phase2 -v` 47개 통과. 두 교체 판정의 교차 사건 차단과 다른 사건의 정상 release 보드를 일괄 차단하지 않는 회귀를 추가했으며 기존 혼합 구성·미결·중복·근거 검사를 함께 확인했다. 전체 회귀·CQ·도구 예제는 push 후 최신 PR CI에서 확인하며 로컬에서 중복 실행하지 않는다. 유료 모델 호출과 사용자 DB 변경은 없다. 병합 후 서비스의 새 namespace 재동기화와 C 화면·Agent 통합은 별도 작업이다.
+
 ## 2026-11-03 — PR #7 C 2차 공통 그래프 통합
 
 main `05d55c7`을 포함한 동료 #7 `52fd438`에서 공통 변경만 분리했다. TestRequest·QualityTestResult·ReproductionRequirement 3종을 포함한 32종의 공개 스키마는 `graph-0.4`, Neo4j 직렬화는 기존 `neo4j-projection-2`다. C 담당자의 구성별 계산 함수·역할 테스트·업무 정책과 기존 신원·승인·시간·확정 저장 코드는 수정하지 않았다.

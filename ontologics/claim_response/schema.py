@@ -191,6 +191,12 @@ def _validate_reproduction(index, nid, n, error, warnings):
         if not _string_list(refs):
             error(nid, 'INVALID_REFERENCE', 'replacement_unit_ids must be a nonempty list of unique IDs')
             return
+        # A known replacement demand remains unavailable even when another case recorded it.
+        # This does not infer stock ownership/allocation or reject every untested board.
+        replacement_targets = {row['unit_id'] for row in index.values()
+                               if row.get('type') == 'QualityTestResult'
+                               and row.get('disposition') in DEMAND
+                               and isinstance(row.get('unit_id'), str)}
         for ref in refs:
             unit = _typed(index, ref, 'ProductUnit')
             if unit is None:
@@ -200,6 +206,8 @@ def _validate_reproduction(index, nid, n, error, warnings):
             if ref in basis['targets']:
                 # A board sent to the test team (to be replaced, held or still open) cannot offset itself.
                 error(nid, 'REPLACEMENT_TARGET_CONFLICT', ref + ' is a test target of this case, not replacement stock')
+            elif ref in replacement_targets:
+                error(nid, 'REPLACEMENT_TARGET_CONFLICT', ref + ' already requires replacement in another case')
         if not bad and len(refs) != values['available_replacement_quantity']:
             error(nid, 'QUANTITY_MISMATCH', 'replacement_unit_ids must list available_replacement_quantity boards')
 

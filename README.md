@@ -1,5 +1,24 @@
 # Ontologics 공통 기반 v0.3.0 — PostgreSQL + pgvector
 
+## 통합 업무 화면 — 개발 중인 첫 연결
+
+공통 웹의 `/#home`에서 검토 대기·보완·승인 후 미반영의 **최신 초안 전체 건수**와 최근 100개 목록, 승인된 생산·자재/계약·납품/클레임 기록을 확인한다. 같은 앱의 메뉴에서 목록·유형/문자열 필터 → 정확한 데이터 버전의 상세 → 연결된 개체/원본 근거로 이동한다. AI 패널은 기본 접힘이며 기존 Knowledge의 `node_id`·version 설명 계약을 재사용한다. 기존 S1/S2 원본 접수·초안·승인·재조회 화면과 사용자 전환은 유지한다.
+
+기존 승인 DB에서 `seed`를 다시 실행하지 않는다. 기존 웹 실행 명령 그대로, 비어 있는 로컬 포트를 선택한다. 예시의 경로/schema는 본인의 기존 설정으로 바꾸고 환경 파일은 Git에 넣지 않는다.
+
+```bash
+python -m ontologics.web serve --development --user alice --port 8062 \
+  --schema EXISTING_DEVELOPMENT_SCHEMA --env-file /absolute/local/.env.local \
+  --graph-backend neo4j --graph-env-file /absolute/local/.env.graph.local
+```
+
+새 포트는 동일 브라우저 개발 세션·Host 권한/승인·선택 graph backend를 사용한다. 대시보드 건수는 승인 **기록 수**이며 생산량·납품 완료량·불량률이 아니다. 그룹에는 공통 계약이 중복 노출될 수 있으므로 그룹 합계를 회사 전체 수량으로 사용하지 않는다. 조회 오류는 0건으로 바꾸지 않는다. 목록을 새로 불러오기 전까지 상세와 근거는 선택한 버전을 유지한다.
+
+현재 연결은 S1/S2 업무와 A/B/C 승인 기록 조회다. A 계약 원문·자재 계산의 전용 `pp_*` 업무, B 예측/부분·분할 등록, C 접수·Agent 전체 업무는 아직 이 공통 화면에 연결하지 않았다. B의 격리 시험 웹을 운영 화면으로 합치지 않는다. 기존 Agent의 모델·비용 설정이 없으면 AI 미연결로 표시하며 자동 유료 호출은 없다. 실제 인증·운영 배포 완료를 뜻하지 않는다.
+
+변경 영향 검사는 `tests.test_workspace`와 기존 S1/S2 대표 HTTP 흐름을 사용한다. API 계약은 [TOOLS](docs/TOOLS.md)의 `GET /api/dashboard`, UI 코드는 `ontologics/static/dashboard.js`와 기존 `app.js/index.html/app.css`다.
+
+
 실제 OLIMEX 사양·BOM을 제품·구성으로 등록하고, 가상 개별 보드·로트 이력과 연결해 조사·보완하는 공통 라이브러리다. S1은 문제 상황 분석 및 생산·사용 이력 보완, S2는 기존 구성 기준에 연결한 제품 등록이다. 현재는 동료의 Agent 개발을 위한 실행 가능한 기준 버전이며 운영 서비스 전체의 완성본은 아니다.
 
 ## 시작

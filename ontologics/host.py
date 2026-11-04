@@ -582,6 +582,13 @@ class RequestSession:
         from .receipts import workspace
         return workspace(self._service, self._identity.actor)
 
+    def dashboard(self):
+        from .workspace import dashboard
+        self._budget.consume('tool')
+        result = dashboard(self._service, self._identity.actor)
+        self._budget.check()
+        return result
+
     def history_intake(self, filename, content_base64):
         from .receipts import history_intake
         return history_intake(self._service, self._identity.actor, filename, content_base64)

@@ -169,6 +169,8 @@ class WebApplication:
         with self.host.request(self.context) as request:
             if path == '/api/workspace':
                 return request.workspace()
+            if path == '/api/dashboard':
+                return request.dashboard()
             if path == '/api/sources/intake':
                 exact_keys(body, ('filename', 'content_base64'))
                 return request.intake(**body)
@@ -385,11 +387,12 @@ class Handler(BaseHTTPRequestHandler):
             if method == 'GET':
                 files = {'/': ('index.html', 'text/html; charset=utf-8'),
                          '/static/app.css': ('app.css', 'text/css; charset=utf-8'),
-                         '/static/app.js': ('app.js', 'text/javascript; charset=utf-8')}
+                         '/static/app.js': ('app.js', 'text/javascript; charset=utf-8'),
+                         '/static/dashboard.js': ('dashboard.js', 'text/javascript; charset=utf-8')}
                 if url.path in files and not url.query:
                     name, mime = files[url.path]
                     return self.send_content(200, (STATIC / name).read_bytes(), mime)
-                if url.path in {'/api/context', '/api/demo-supplement', '/api/workspace'} and not url.query:
+                if url.path in {'/api/context', '/api/demo-supplement', '/api/workspace', '/api/dashboard'} and not url.query:
                     result = self.app.dispatch(url.path)
                     if url.path == '/api/context' and result['ok']:
                         result['data']['session_reset'] = self.session_reset
